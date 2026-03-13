@@ -36,8 +36,25 @@ deploy:production:
     - apk add --no-cache bash openssh-client rsync sshpass
     - test -n "$DEPLOY_HOST"
     - test -n "$DEPLOY_USER"
-    - test -n "$DEPLOY_PASSWORD"
     - test -n "$PROD_ENV_FILE"
+    - |
+      if [ -n "${DEPLOY_SSH_PRIVATE_KEY_FILE:-}" ]; then
+        export DEPLOY_AUTH_MODE="key-file"
+        export DEPLOY_KEY_PATH="$DEPLOY_SSH_PRIVATE_KEY_FILE"
+      elif [ -n "${DEPLOY_SSH_PRIVATE_KEY:-}" ]; then
+        export DEPLOY_AUTH_MODE="key-inline"
+        export DEPLOY_KEY_PATH="$CI_PROJECT_DIR/.deploy_ssh_key"
+        printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$DEPLOY_KEY_PATH"
+      elif [ -n "${DEPLOY_PASSWORD:-}" ]; then
+        export DEPLOY_AUTH_MODE="password"
+      else
+        echo "One auth variable is required: DEPLOY_SSH_PRIVATE_KEY_FILE, DEPLOY_SSH_PRIVATE_KEY, or DEPLOY_PASSWORD." >&2
+        exit 1
+      fi
+    - |
+      if [ "${DEPLOY_AUTH_MODE:-}" != "password" ]; then
+        chmod 600 "$DEPLOY_KEY_PATH"
+      fi
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - |
@@ -48,34 +65,61 @@ deploy:production:
       fi
     - chmod 600 ~/.ssh/known_hosts
   script:
-    - >
-      SSHPASS="$DEPLOY_PASSWORD"
-      RSYNC_RSH="sshpass -e ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=yes -o PubkeyAuthentication=no"
-      rsync -az --delete
-      --exclude '.git/'
-      --exclude '.venv/'
-      --exclude '__pycache__/'
-      --exclude '.pytest_cache/'
-      --exclude 'backend/.venv/'
-      --exclude 'backend/.env'
-      --exclude 'backend/secrets/'
-      --exclude 'deploy/.env'
-      ./
-      "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
-    - >
-      SSHPASS="$DEPLOY_PASSWORD"
-      sshpass -e scp -P "$DEPLOY_PORT"
-      -o StrictHostKeyChecking=yes
-      -o PubkeyAuthentication=no
-      "$PROD_ENV_FILE"
-      "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
-    - >
-      SSHPASS="$DEPLOY_PASSWORD"
-      sshpass -e ssh -p "$DEPLOY_PORT"
-      -o StrictHostKeyChecking=yes
-      -o PubkeyAuthentication=no
-      "$DEPLOY_USER@$DEPLOY_HOST"
-      "cd '$DEPLOY_PATH' && bash deploy/remote-deploy.sh"
+    - |
+      if [ "${DEPLOY_AUTH_MODE:-}" = "password" ]; then
+        export SSHPASS="$DEPLOY_PASSWORD"
+        RSYNC_RSH="sshpass -e ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=yes -o PubkeyAuthentication=no -o PreferredAuthentications=password" \
+        rsync -az --delete \
+          --exclude '.git/' \
+          --exclude '.venv/' \
+          --exclude '__pycache__/' \
+          --exclude '.pytest_cache/' \
+          --exclude 'backend/.venv/' \
+          --exclude 'backend/.env' \
+          --exclude 'backend/secrets/' \
+          --exclude 'deploy/.env' \
+          ./ \
+          "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+        sshpass -e scp -P "$DEPLOY_PORT" \
+          -o StrictHostKeyChecking=yes \
+          -o PubkeyAuthentication=no \
+          -o PreferredAuthentications=password \
+          "$PROD_ENV_FILE" \
+          "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
+
+        sshpass -e ssh -p "$DEPLOY_PORT" \
+          -o StrictHostKeyChecking=yes \
+          -o PubkeyAuthentication=no \
+          -o PreferredAuthentications=password \
+          "$DEPLOY_USER@$DEPLOY_HOST" \
+          "cd '$DEPLOY_PATH' && bash deploy/remote-deploy.sh"
+      else
+        RSYNC_RSH="ssh -i $DEPLOY_KEY_PATH -p $DEPLOY_PORT -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes" \
+        rsync -az --delete \
+          --exclude '.git/' \
+          --exclude '.venv/' \
+          --exclude '__pycache__/' \
+          --exclude '.pytest_cache/' \
+          --exclude 'backend/.venv/' \
+          --exclude 'backend/.env' \
+          --exclude 'backend/secrets/' \
+          --exclude 'deploy/.env' \
+          ./ \
+          "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+
+        scp -i "$DEPLOY_KEY_PATH" -P "$DEPLOY_PORT" \
+          -o StrictHostKeyChecking=yes \
+          -o IdentitiesOnly=yes \
+          "$PROD_ENV_FILE" \
+          "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
+
+        ssh -i "$DEPLOY_KEY_PATH" -p "$DEPLOY_PORT" \
+          -o StrictHostKeyChecking=yes \
+          -o IdentitiesOnly=yes \
+          "$DEPLOY_USER@$DEPLOY_HOST" \
+          "cd '$DEPLOY_PATH' && bash deploy/remote-deploy.sh"
+      fi
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
       when: manual
