@@ -193,3 +193,9 @@ deploy/secrets/
 !frontend/src/shared/lib/
 !frontend/src/shared/lib/**
 .vercel
+
+
+
+
+
+ml

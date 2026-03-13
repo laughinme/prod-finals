@@ -23,6 +23,7 @@ backend:test:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
 
 deploy:production:
   stage: deploy
@@ -32,14 +33,11 @@ deploy:production:
   environment:
     name: production
   before_script:
-    - apk add --no-cache bash openssh-client rsync
+    - apk add --no-cache bash openssh-client rsync sshpass
     - test -n "$DEPLOY_HOST"
     - test -n "$DEPLOY_USER"
-    - test -n "$DEPLOY_SSH_PRIVATE_KEY_FILE"
+    - test -n "$DEPLOY_PASSWORD"
     - test -n "$PROD_ENV_FILE"
-    - eval "$(ssh-agent -s)"
-    - chmod 600 "$DEPLOY_SSH_PRIVATE_KEY_FILE"
-    - ssh-add "$DEPLOY_SSH_PRIVATE_KEY_FILE"
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - |
@@ -51,6 +49,8 @@ deploy:production:
     - chmod 600 ~/.ssh/known_hosts
   script:
     - >
+      SSHPASS="$DEPLOY_PASSWORD"
+      RSYNC_RSH="sshpass -e ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=yes -o PubkeyAuthentication=no"
       rsync -az --delete
       --exclude '.git/'
       --exclude '.venv/'
@@ -60,11 +60,22 @@ deploy:production:
       --exclude 'backend/.env'
       --exclude 'backend/secrets/'
       --exclude 'deploy/.env'
-      -e "ssh -p $DEPLOY_PORT"
       ./
       "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
-    - scp -P "$DEPLOY_PORT" "$PROD_ENV_FILE" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
-    - ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && bash deploy/remote-deploy.sh"
+    - >
+      SSHPASS="$DEPLOY_PASSWORD"
+      sshpass -e scp -P "$DEPLOY_PORT"
+      -o StrictHostKeyChecking=yes
+      -o PubkeyAuthentication=no
+      "$PROD_ENV_FILE"
+      "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
+    - >
+      SSHPASS="$DEPLOY_PASSWORD"
+      sshpass -e ssh -p "$DEPLOY_PORT"
+      -o StrictHostKeyChecking=yes
+      -o PubkeyAuthentication=no
+      "$DEPLOY_USER@$DEPLOY_HOST"
+      "cd '$DEPLOY_PATH' && bash deploy/remote-deploy.sh"
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
       when: manual
