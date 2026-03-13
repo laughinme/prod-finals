@@ -40,11 +40,14 @@ deploy:production:
     - |
       if [ -n "${DEPLOY_SSH_PRIVATE_KEY_FILE:-}" ]; then
         export DEPLOY_AUTH_MODE="key-file"
-        export DEPLOY_KEY_PATH="$DEPLOY_SSH_PRIVATE_KEY_FILE"
+        export DEPLOY_KEY_PATH="$CI_PROJECT_DIR/.deploy_ssh_key"
+        tr -d '\r' < "$DEPLOY_SSH_PRIVATE_KEY_FILE" > "$DEPLOY_KEY_PATH"
       elif [ -n "${DEPLOY_SSH_PRIVATE_KEY:-}" ]; then
         export DEPLOY_AUTH_MODE="key-inline"
         export DEPLOY_KEY_PATH="$CI_PROJECT_DIR/.deploy_ssh_key"
-        printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$DEPLOY_KEY_PATH"
+        printf '%s' "$DEPLOY_SSH_PRIVATE_KEY" \
+          | sed 's/\\n/\n/g' \
+          | tr -d '\r' > "$DEPLOY_KEY_PATH"
       elif [ -n "${DEPLOY_PASSWORD:-}" ]; then
         export DEPLOY_AUTH_MODE="password"
       else
@@ -54,6 +57,14 @@ deploy:production:
     - |
       if [ "${DEPLOY_AUTH_MODE:-}" != "password" ]; then
         chmod 600 "$DEPLOY_KEY_PATH"
+        if ! grep -q "BEGIN .*PRIVATE KEY" "$DEPLOY_KEY_PATH"; then
+          echo "SSH key is invalid: expected private key content (BEGIN ... PRIVATE KEY)." >&2
+          exit 1
+        fi
+        if ! ssh-keygen -y -f "$DEPLOY_KEY_PATH" >/dev/null 2>&1; then
+          echo "SSH key is unreadable. Check key format/newlines or remove passphrase." >&2
+          exit 1
+        fi
       fi
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
