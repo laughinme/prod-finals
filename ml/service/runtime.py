@@ -102,12 +102,22 @@ class MlRuntime:
         )
         self._startup_error: str | None = None
         self._loaded_from_artifact = False
+        self._pipeline: ModelPipeline | None = None
 
         try:
             self._qdrant_client = QdrantClient(url=self._settings.qdrant_url)
         except Exception as exc:
             self._qdrant_client = None
             self._startup_error = f"Qdrant connection failed: {exc}"
+
+        try:
+            self._pipeline = self._build_pipeline()
+        except Exception as exc:
+            self._pipeline = None
+            if self._startup_error:
+                self._startup_error = f"{self._startup_error}; pipeline init failed: {exc}"
+            else:
+                self._startup_error = f"Pipeline init failed: {exc}"
             
     def _build_pipeline(self) -> ModelPipeline:
         artifact_path = Path(self._settings.model_artifact_path)
