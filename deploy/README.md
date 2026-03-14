@@ -58,7 +58,7 @@ Minimal setup on the VM:
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-plugin rsync
+sudo apt install -y docker.io docker-compose-v2 rsync
 sudo usermod -aG docker "$USER"
 sudo mkdir -p /opt/chupapis
 sudo chown -R "$USER":"$USER" /opt/chupapis
@@ -77,10 +77,12 @@ Then reconnect so the docker group is applied.
 
 ## Notes
 
-- Frontend is built inside the nginx image during deployment.
-- Keep `VITE_API_BASE_URL=` empty in production if frontend and backend are served from one domain through nginx.
+- Frontend is built inside the `caddy` image during deployment.
+- Caddy terminates TLS, automatically obtains Let's Encrypt certificates, and proxies `/api/*` to backend and `/media-*` to MinIO.
+- Keep `VITE_API_BASE_URL=` empty in production if frontend and backend are served from one domain.
 - Backend migrations run automatically from `backend/entry.sh` when the backend container starts.
-- A plain `502 Bad Gateway` on `/api/*` usually means nginx is up but the `backend` container never became healthy or exited during startup.
+- Ports `80` and `443` must be open on the VM for automatic HTTPS to work.
+- Set `SITE_URL` and `STORAGE_ENDPOINT_PUBLIC` to the final `https://...` domain, and keep `COOKIE_SECURE=true` in production.
 
 ## Quick debugging on the VM
 
@@ -90,7 +92,7 @@ Connect with the SSH command from Spirit, then run:
 cd /opt/chupapis
 docker compose --env-file deploy/.env -f docker-compose.prod.yml ps
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f backend
-docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f nginx
+docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f caddy
 docker compose --env-file deploy/.env -f docker-compose.prod.yml exec backend sh
 ```
 
@@ -100,3 +102,4 @@ What to look for first:
 - Short or missing `JWT_SECRET`.
 - `JWT_ALGO=RS256` left over after switching to shared-secret JWT signing.
 - Alembic migration errors from `backend/entry.sh`.
+- Caddy ACME errors if certificate issuance fails on first boot.

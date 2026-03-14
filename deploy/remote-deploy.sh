@@ -25,7 +25,7 @@ done
 print_diagnostics() {
   "${compose_cmd[@]}" ps || true
   echo
-  "${compose_cmd[@]}" logs --tail=200 backend nginx db redis minio minio-init || true
+  "${compose_cmd[@]}" logs --tail=200 backend caddy db redis minio minio-init || true
 }
 
 if ! "${compose_cmd[@]}" up -d --remove-orphans db redis minio; then
@@ -40,7 +40,7 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 150 backend nginx; then
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 150 backend caddy; then
   echo "Deployment failed. Printing compose diagnostics..." >&2
   print_diagnostics
   exit 1

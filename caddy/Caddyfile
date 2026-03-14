@@ -1,0 +1,19 @@
+{$SITE_URL} {
+    encode gzip zstd
+
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+
+    handle /media-public/* {
+        reverse_proxy minio:9000
+    }
+
+    handle /media-private/* {
+        reverse_proxy minio:9000
+    }
+
+    root * /srv
+    try_files {path} /index.html
+    file_server
+}
