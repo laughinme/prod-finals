@@ -32,6 +32,7 @@ class UserModel(TimestampModel):
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None
+    quiz_completed: bool = False
     is_onboarded: bool
     onboarding_status: str
     has_min_profile: bool

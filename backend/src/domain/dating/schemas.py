@@ -89,6 +89,7 @@ class OnboardingAnswersRequest(BaseModel):
 class OnboardingAnswersResponse(BaseModel):
     step_key: str
     saved: bool = True
+    quiz_completed: bool = False
 
 
 class FeedCandidate(BaseModel):
@@ -98,14 +99,12 @@ class FeedCandidate(BaseModel):
     city: str | None = None
     bio: str | None = None
     avatar_url: str | None = None
-    profile_completion_badge: str | None = None
 
 
 class CompatibilityPreview(BaseModel):
     score: float = Field(..., ge=0, le=1)
     preview: str
     reason_codes: list[str] = Field(default_factory=list)
-    details_available: bool
 
 
 class FeedCardActions(BaseModel):
@@ -132,7 +131,6 @@ class FeedEmptyState(BaseModel):
 class FeedResponse(BaseModel):
     feed_state: FeedState
     profile_status: ProfileStatus
-    decision_mode: DecisionMode
     batch_id: UUID | None = None
     generated_at: datetime | None = None
     expires_at: datetime | None = None

@@ -132,6 +132,16 @@ class User(TimestampMixin, Base):
         return True
 
     @property
+    def quiz_completed(self) -> bool:
+        return bool(
+            self.looking_for_genders
+            and self.age_range_min is not None
+            and self.age_range_max is not None
+            and self.distance_km is not None
+            and self.goal is not None
+        )
+
+    @property
     def has_approved_photo(self) -> bool:
         return bool(self.avatar_key and self.avatar_moderation_status == AvatarModerationStatus.APPROVED.value)
 

@@ -199,6 +199,7 @@ class OnboardingService(BaseDatingService):
 
         return OnboardingAnswersResponse(
             step_key=payload.step_key,
+            quiz_completed=user.quiz_completed,
         )
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
@@ -252,7 +253,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.LOCKED,
                 profile_status=user.profile_status,
-                decision_mode=DecisionMode.FALLBACK,
                 lock_reason=self._build_lock_reason(user),
                 cards=[],
             )
@@ -270,7 +270,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.DEGRADED,
                 profile_status=user.profile_status,
-                decision_mode=DecisionMode.FALLBACK,
                 cards=[],
                 warnings=["feed_generation_failed"],
             )
@@ -280,7 +279,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
@@ -292,7 +290,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
@@ -305,7 +302,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
@@ -316,7 +312,6 @@ class FeedService(BaseDatingService):
         return FeedResponse(
             feed_state=FeedState.READY,
             profile_status=user.profile_status,
-            decision_mode=DecisionMode(batch.decision_mode),
             batch_id=batch.id,
             generated_at=batch.created_at,
             expires_at=batch.expires_at,
@@ -384,7 +379,6 @@ class FeedService(BaseDatingService):
                     compatibility_mode="basic_fallback",
                     preview=preview.preview,
                     reason_codes=preview.reason_codes,
-                    details_available=preview.details_available,
                 )
             )
 
@@ -439,9 +433,6 @@ class FeedService(BaseDatingService):
             if candidate is None:
                 continue
             age = _age_for_birth_date(candidate.birth_date, today)
-            badge = None
-            if candidate.profile_completion_percent >= 90:
-                badge = "Complete profile"
             cards.append(
                 FeedCard(
                     serve_item_id=item.id,
@@ -452,7 +443,6 @@ class FeedService(BaseDatingService):
                         city=candidate.city.name if candidate.city else None,
                         bio=candidate.bio,
                         avatar_url=candidate.avatar_url,
-                        profile_completion_badge=badge,
                     ),
                     compatibility=self.ml_facade.build_preview(
                         type(
@@ -791,7 +781,6 @@ class ConversationService(BaseDatingService):
             conversation_id=conversation_id,
             payload=SendMessageRequest(text=item.text),
         )
-
 
 class SafetyService(BaseDatingService):
     async def block(self, *, actor: User, payload: BlockRequest) -> BlockResponse:
