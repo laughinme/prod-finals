@@ -37,7 +37,7 @@ function formatDate(iso: string | null | undefined): string {
 
 function ProfileSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 py-10 px-4">
+    <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-10">
       <div className="flex items-center gap-6">
         <Skeleton className="size-24 rounded-full" />
         <div className="space-y-2">
@@ -56,27 +56,27 @@ export default function ProfilePage() {
 
   return (
     <div className="relative flex-1">
-      <div className="absolute top-0 left-0 right-0 h-48 sm:h-64 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-b border-border/40 z-0"></div>
+      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 lg:px-6 pt-40 sm:pt-56 pb-12 relative z-10">
+      <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-40 pb-12 lg:px-6 sm:pt-56">
         {isLoading && <ProfileSkeleton />}
 
         {isError && (
-          <div className="mx-auto max-w-2xl py-20 text-center text-muted-foreground mt-12 bg-card rounded-xl border p-8">
+          <div className="mx-auto mt-12 max-w-2xl rounded-xl border bg-card p-8 py-20 text-center text-muted-foreground">
             Не удалось загрузить профиль. Попробуйте обновить страницу.
           </div>
         )}
 
         {profile && (
           <motion.div
-            className="flex flex-col md:flex-row gap-8 lg:gap-12"
+            className="flex flex-col gap-8 md:flex-row lg:gap-12"
             variants={container}
             initial="hidden"
             animate="show"
           >
             <motion.div
               variants={item}
-              className="w-full md:w-1/3 flex flex-col items-center md:items-start text-center md:text-left gap-6"
+              className="flex w-full flex-col items-center gap-6 text-center md:w-1/3 md:items-start md:text-left"
             >
               <div className="-mt-12 sm:-mt-20">
                 <ProfileAvatarUpload
@@ -86,22 +86,22 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="space-y-1 w-full">
+              <div className="w-full space-y-1">
                 <h1 className="truncate text-3xl font-extrabold tracking-tight">
                   {profile.username || profile.email}
                 </h1>
-                <p className="truncate text-base text-muted-foreground font-medium">
+                <p className="truncate text-base font-medium text-muted-foreground">
                   {profile.email}
                 </p>
               </div>
 
               {profile.roles && profile.roles.length > 0 && (
-                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                <div className="flex flex-wrap justify-center gap-2 md:justify-start">
                   {profile.roles.map((role) => (
                     <Badge
                       key={role}
                       variant="secondary"
-                      className="text-xs px-2.5 py-0.5"
+                      className="px-2.5 py-0.5 text-xs"
                     >
                       {role}
                     </Badge>
@@ -113,17 +113,17 @@ export default function ProfilePage() {
 
               <div className="w-full space-y-4 text-sm">
                 <div className="flex items-center text-muted-foreground">
-                  <IconMail className="size-4 mr-3" />
+                  <IconMail className="mr-3 size-4" />
                   <span>{profile.email}</span>
                 </div>
 
                 <div className="flex items-center text-muted-foreground">
-                  <IconCalendar className="size-4 mr-3" />
+                  <IconCalendar className="mr-3 size-4" />
                   <span>В сети с {formatDate(profile.createdAt)}</span>
                 </div>
 
                 <div className="flex items-center text-muted-foreground">
-                  <IconShieldCheck className="size-4 mr-3" />
+                  <IconShieldCheck className="mr-3 size-4" />
                   {profile.banned ? (
                     <Badge
                       variant="destructive"
@@ -134,7 +134,7 @@ export default function ProfilePage() {
                   ) : (
                     <Badge
                       variant="outline"
-                      className="h-5 rounded-sm px-1.5 text-[10px] font-semibold uppercase border-foreground/20 text-foreground/70"
+                      className="h-5 rounded-sm border-foreground/20 px-1.5 text-[10px] font-semibold uppercase text-foreground/70"
                     >
                       Активен
                     </Badge>
@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
             <motion.div
               variants={item}
-              className="w-full md:w-2/3 flex flex-col pt-4 md:pt-8"
+              className="flex w-full flex-col pt-4 md:w-2/3 md:pt-8"
             >
               <ProfileEditForm profile={profile} />
             </motion.div>

@@ -4,12 +4,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-compose_cmd=(
-  docker compose
-  --env-file deploy/.env
-  -f docker-compose.prod.yml
-)
-
 required_files=(
   "docker-compose.prod.yml"
   "deploy/.env"
@@ -22,11 +16,137 @@ for file in "${required_files[@]}"; do
   fi
 done
 
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is not installed on VM. Install docker.io first." >&2
+  exit 1
+fi
+
+if docker compose version >/dev/null 2>&1; then
+  compose_cmd=(
+    docker compose
+    --env-file deploy/.env
+    -f docker-compose.prod.yml
+  )
+elif command -v docker-compose >/dev/null 2>&1; then
+  compose_cmd=(
+    docker-compose
+    --env-file deploy/.env
+    -f docker-compose.prod.yml
+  )
+else
+  echo "Docker Compose is missing. Install docker-compose-v2 or docker-compose." >&2
+  exit 1
+fi
+
+echo "Using compose command: ${compose_cmd[*]}"
+"${compose_cmd[@]}" version || true
+
+read_env_value() {
+  local name="$1"
+  local line
+  line="$(grep -E "^${name}=" deploy/.env | tail -n 1 || true)"
+  if [[ -z "$line" ]]; then
+    echo ""
+    return
+  fi
+  local value="${line#*=}"
+  value="${value%\"}"
+  value="${value#\"}"
+  echo "$value"
+}
+
+is_truthy() {
+  local value
+  value="$(echo "$1" | tr '[:upper:]' '[:lower:]')"
+  [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" || "$value" == "on" ]]
+}
+
 print_diagnostics() {
   "${compose_cmd[@]}" ps || true
   echo
-  "${compose_cmd[@]}" logs --tail=200 backend caddy db redis minio minio-init || true
+  echo "----- ml-service logs -----"
+  "${compose_cmd[@]}" logs --tail=200 ml-service || true
+  echo
+  echo "----- backend logs -----"
+  "${compose_cmd[@]}" logs --tail=120 backend || true
+  echo
+  echo "----- caddy logs -----"
+  "${compose_cmd[@]}" logs --tail=120 caddy || true
+  echo
+  echo "----- infra logs -----"
+  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init || true
 }
+
+wait_for_backend_health() {
+  local timeout_sec="$1"
+  local deadline
+  local container_id
+  local status
+  local health
+
+  deadline=$((SECONDS + timeout_sec))
+  while (( SECONDS < deadline )); do
+    container_id="$("${compose_cmd[@]}" ps -q backend 2>/dev/null || true)"
+    if [[ -z "$container_id" ]]; then
+      sleep 2
+      continue
+    fi
+
+    status="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+    health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
+
+    if [[ "$status" == "running" && "$health" == "healthy" ]]; then
+      return 0
+    fi
+    if [[ "$status" == "exited" || "$status" == "dead" || "$health" == "unhealthy" ]]; then
+      echo "Backend container is not healthy (status=$status, health=$health)." >&2
+      return 1
+    fi
+    sleep 2
+  done
+
+  echo "Backend health check timeout after ${timeout_sec}s." >&2
+  return 1
+}
+
+wait_for_service_running() {
+  local service_name="$1"
+  local timeout_sec="$2"
+  local deadline
+  local container_id
+  local status
+
+  deadline=$((SECONDS + timeout_sec))
+  while (( SECONDS < deadline )); do
+    container_id="$("${compose_cmd[@]}" ps -q "$service_name" 2>/dev/null || true)"
+    if [[ -z "$container_id" ]]; then
+      sleep 2
+      continue
+    fi
+    status="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+    if [[ "$status" == "running" ]]; then
+      return 0
+    fi
+    if [[ "$status" == "exited" || "$status" == "dead" ]]; then
+      echo "Service $service_name is not running (status=$status)." >&2
+      return 1
+    fi
+    sleep 2
+  done
+
+  echo "Service $service_name did not become running after ${timeout_sec}s." >&2
+  return 1
+}
+
+if is_truthy "$(read_env_value ML_TRAIN_ON_START)"; then
+  if [[ -z "$(read_env_value ML_TRAIN_DATA_URL)" ]]; then
+    if is_truthy "$(read_env_value ML_TRAIN_REQUIRED)"; then
+      echo "ML_TRAIN_ON_START=true and ML_TRAIN_REQUIRED=true but ML_TRAIN_DATA_URL is empty in deploy/.env" >&2
+      exit 1
+    fi
+    echo "WARNING: ML_TRAIN_ON_START=true but ML_TRAIN_DATA_URL is empty. Training will be skipped." >&2
+  fi
+fi
 
 if ! "${compose_cmd[@]}" up -d --remove-orphans db redis minio; then
   echo "Failed to start infrastructure services." >&2
@@ -40,10 +160,28 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 150 backend caddy; then
-  echo "Deployment failed. Printing compose diagnostics..." >&2
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend caddy; then
+  echo "Failed to start application services." >&2
   print_diagnostics
   exit 1
 fi
 
-"${compose_cmd[@]}" ps
+if ! wait_for_backend_health 180; then
+  echo "Backend did not become healthy after startup." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_service_running caddy 60; then
+  echo "Caddy did not start correctly." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_service_running ml-service 120; then
+  echo "ml-service did not start correctly." >&2
+  print_diagnostics
+  exit 1
+fi
+
+"${compose_cmd[@]}" ps || true

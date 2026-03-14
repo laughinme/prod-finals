@@ -1,4 +1,44 @@
 services:
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-ml-service
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-change-me-ml-token}
+      ML_SAMPLE_USER_COUNT: ${ML_SAMPLE_USER_COUNT:-120}
+      ML_SAMPLE_TX_PER_USER: ${ML_SAMPLE_TX_PER_USER:-20}
+      ML_SAMPLE_SEED: ${ML_SAMPLE_SEED:-42}
+      ML_FEATURES_VERSION: ${ML_FEATURES_VERSION:-features_v1}
+      ML_MODEL_ARTIFACT_PATH: ${ML_MODEL_ARTIFACT_PATH:-/app/ml/artifacts/model.json}
+      ML_TRAIN_ON_START: ${ML_TRAIN_ON_START:-false}
+      ML_TRAIN_REQUIRED: ${ML_TRAIN_REQUIRED:-false}
+      ML_TRAIN_DATA_URL: ${ML_TRAIN_DATA_URL:-}
+      ML_TRAIN_DATA_PATH: ${ML_TRAIN_DATA_PATH:-/app/ml/data/train.csv}
+      ML_TRAIN_ARCHIVE_MEMBER: ${ML_TRAIN_ARCHIVE_MEMBER:-}
+      ML_TRAIN_DOWNLOAD_TIMEOUT_SEC: ${ML_TRAIN_DOWNLOAD_TIMEOUT_SEC:-120}
+      ML_MODEL_UPLOAD_REQUIRED: ${ML_MODEL_UPLOAD_REQUIRED:-false}
+      ML_MODEL_S3_ENDPOINT: ${ML_MODEL_S3_ENDPOINT:-}
+      ML_MODEL_S3_REGION: ${ML_MODEL_S3_REGION:-}
+      ML_MODEL_S3_ACCESS_KEY: ${ML_MODEL_S3_ACCESS_KEY:-}
+      ML_MODEL_S3_SECRET_KEY: ${ML_MODEL_S3_SECRET_KEY:-}
+      ML_MODEL_S3_BUCKET: ${ML_MODEL_S3_BUCKET:-}
+      ML_MODEL_S3_PREFIX: ${ML_MODEL_S3_PREFIX:-ml-models}
+      ML_MODEL_S3_KEY: ${ML_MODEL_S3_KEY:-}
+      ML_MODEL_S3_SECURE: ${ML_MODEL_S3_SECURE:-}
+      ML_MODEL_S3_FORCE_PATH_STYLE: ${ML_MODEL_S3_FORCE_PATH_STYLE:-true}
+      STORAGE_ENDPOINT_INTERNAL: ${STORAGE_ENDPOINT_INTERNAL:-http://minio:9000}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?STORAGE_ACCESS_KEY_is_required}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:?STORAGE_SECRET_KEY_is_required}
+      STORAGE_PRIVATE_BUCKET: ${STORAGE_PRIVATE_BUCKET:-media-private}
+    volumes:
+      - ml_artifacts:/app/ml/artifacts
+      - ml_data:/app/ml/data
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -7,6 +47,8 @@ services:
     env_file:
       - ./deploy/.env
     depends_on:
+      ml-service:
+        condition: service_started
       db:
         condition: service_healthy
       redis:
@@ -113,3 +155,5 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  ml_artifacts:
+  ml_data:
