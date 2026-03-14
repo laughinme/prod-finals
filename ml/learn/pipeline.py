@@ -29,12 +29,23 @@ def _clamp_score(value: float) -> float:
 
 
 def _parse_numeric_user_id(raw_user_id: str) -> int | None:
-    if not raw_user_id.startswith("user-"):
-        return None
-    suffix = raw_user_id.split("-", 1)[1]
+    if raw_user_id.startswith("user-"):
+        suffix = raw_user_id.split("-", 1)[1]
+    else:
+        suffix = raw_user_id
     if not suffix.isdigit():
         return None
     return int(suffix)
+
+
+def _resolve_profile_key(profiles: dict[str, object], user_id: int) -> str | None:
+    direct_key = str(user_id)
+    prefixed_key = f"user-{user_id}"
+    if direct_key in profiles:
+        return direct_key
+    if prefixed_key in profiles:
+        return prefixed_key
+    return None
 
 
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -81,11 +92,11 @@ class ModelPipeline:
         soft_seen = set(soft_seen_user_ids)
         hard_exclude.add(request_user_id)
 
-        request_user_key = f"user-{request_user_id}"
+        request_user_key = _resolve_profile_key(self._artifact.profiles, request_user_id)
         warnings: list[str] = []
 
         scored: list[RecommendationItem] = []
-        if request_user_key in self._artifact.profiles:
+        if request_user_key is not None:
             matches = get_matches(self._artifact, request_user_key, top_n=max(200, limit * 5))
             for row in matches:
                 candidate_raw = str(row["user_id"])
@@ -130,11 +141,11 @@ class ModelPipeline:
         candidate_user_id: int,
         max_reasons: int,
     ) -> list[ExplanationSignal]:
-        requester_key = f"user-{requester_user_id}"
-        candidate_key = f"user-{candidate_user_id}"
+        requester_key = _resolve_profile_key(self._artifact.profiles, requester_user_id)
+        candidate_key = _resolve_profile_key(self._artifact.profiles, candidate_user_id)
 
-        requester = self._artifact.profiles.get(requester_key)
-        candidate = self._artifact.profiles.get(candidate_key)
+        requester = self._artifact.profiles.get(requester_key) if requester_key else None
+        candidate = self._artifact.profiles.get(candidate_key) if candidate_key else None
         if requester is None or candidate is None:
             raise LookupError("pair_not_found")
 
