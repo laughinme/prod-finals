@@ -81,6 +81,26 @@ deploy:production:
     - chmod 600 ~/.ssh/known_hosts
   script:
     - |
+      DEPLOY_ENV_FILE="$CI_PROJECT_DIR/.deploy.env"
+      cp "$PROD_ENV_FILE" "$DEPLOY_ENV_FILE"
+
+      upsert_deploy_env() {
+        local key="$1"
+        local value="${!key:-}"
+        if [ -z "$value" ]; then
+          return
+        fi
+        sed -i "/^${key}=/d" "$DEPLOY_ENV_FILE"
+        printf '%s=%s\n' "$key" "$value" >> "$DEPLOY_ENV_FILE"
+      }
+
+      upsert_deploy_env ML_TRAIN_DATA_URL
+      upsert_deploy_env ML_TRAIN_ON_START
+      upsert_deploy_env ML_TRAIN_REQUIRED
+      upsert_deploy_env ML_TRAIN_DATA_PATH
+      upsert_deploy_env ML_MODEL_ARTIFACT_PATH
+      upsert_deploy_env ML_TRAIN_DOWNLOAD_TIMEOUT_SEC
+
       if [ "${DEPLOY_AUTH_MODE:-}" = "password" ]; then
         export SSHPASS="$DEPLOY_PASSWORD"
         RSYNC_RSH="sshpass -e ssh -p $DEPLOY_PORT -o StrictHostKeyChecking=yes -o PubkeyAuthentication=no -o PreferredAuthentications=password" \
@@ -100,7 +120,7 @@ deploy:production:
           -o StrictHostKeyChecking=yes \
           -o PubkeyAuthentication=no \
           -o PreferredAuthentications=password \
-          "$PROD_ENV_FILE" \
+          "$DEPLOY_ENV_FILE" \
           "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
 
         sshpass -e ssh -p "$DEPLOY_PORT" \
@@ -126,7 +146,7 @@ deploy:production:
         scp -i "$DEPLOY_KEY_PATH" -P "$DEPLOY_PORT" \
           -o StrictHostKeyChecking=yes \
           -o IdentitiesOnly=yes \
-          "$PROD_ENV_FILE" \
+          "$DEPLOY_ENV_FILE" \
           "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/.env"
 
         ssh -i "$DEPLOY_KEY_PATH" -p "$DEPLOY_PORT" \

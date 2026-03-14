@@ -15,7 +15,7 @@ services:
       ML_MODEL_ARTIFACT_PATH: ${ML_MODEL_ARTIFACT_PATH:-/app/ml/artifacts/model.json}
       ML_TRAIN_ON_START: ${ML_TRAIN_ON_START:-true}
       ML_TRAIN_REQUIRED: ${ML_TRAIN_REQUIRED:-true}
-      ML_TRAIN_DATA_URL: ${ML_TRAIN_DATA_URL:?ML_TRAIN_DATA_URL_is_required}
+      ML_TRAIN_DATA_URL: ${ML_TRAIN_DATA_URL:-}
       ML_TRAIN_DATA_PATH: ${ML_TRAIN_DATA_PATH:-/app/ml/data/train.csv}
     volumes:
       - ml_artifacts:/app/ml/artifacts
