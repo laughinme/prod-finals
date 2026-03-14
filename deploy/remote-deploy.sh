@@ -99,10 +99,42 @@ wait_for_backend_health() {
   return 1
 }
 
+wait_for_service_running() {
+  local service_name="$1"
+  local timeout_sec="$2"
+  local deadline
+  local container_id
+  local status
+
+  deadline=$((SECONDS + timeout_sec))
+  while (( SECONDS < deadline )); do
+    container_id="$("${compose_cmd[@]}" ps -q "$service_name" 2>/dev/null || true)"
+    if [[ -z "$container_id" ]]; then
+      sleep 2
+      continue
+    fi
+    status="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+    if [[ "$status" == "running" ]]; then
+      return 0
+    fi
+    if [[ "$status" == "exited" || "$status" == "dead" ]]; then
+      echo "Service $service_name is not running (status=$status)." >&2
+      return 1
+    fi
+    sleep 2
+  done
+
+  echo "Service $service_name did not become running after ${timeout_sec}s." >&2
+  return 1
+}
+
 if is_truthy "$(read_env_value ML_TRAIN_ON_START)"; then
   if [[ -z "$(read_env_value ML_TRAIN_DATA_URL)" ]]; then
-    echo "ML_TRAIN_ON_START=true but ML_TRAIN_DATA_URL is empty in deploy/.env" >&2
-    exit 1
+    if is_truthy "$(read_env_value ML_TRAIN_REQUIRED)"; then
+      echo "ML_TRAIN_ON_START=true and ML_TRAIN_REQUIRED=true but ML_TRAIN_DATA_URL is empty in deploy/.env" >&2
+      exit 1
+    fi
+    echo "WARNING: ML_TRAIN_ON_START=true but ML_TRAIN_DATA_URL is empty. Training will be skipped." >&2
   fi
 fi
 
@@ -118,23 +150,32 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if "${compose_cmd[@]}" up --help 2>/dev/null | grep -q -- '--wait'; then
-  if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 180 ml-service backend nginx; then
-    echo "Failed to start application services." >&2
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend nginx; then
+  echo "Failed to start application services." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_backend_health 180; then
+  echo "Backend did not become healthy after startup." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_service_running nginx 60; then
+  echo "Nginx did not start correctly." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_service_running ml-service 120; then
+  if is_truthy "$(read_env_value ML_TRAIN_REQUIRED)"; then
+    echo "ml-service did not start and ML_TRAIN_REQUIRED=true." >&2
     print_diagnostics
     exit 1
-  fi
-else
-  if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend nginx; then
-    echo "Failed to start application services." >&2
-    print_diagnostics
-    exit 1
-  fi
-  if ! wait_for_backend_health 180; then
-    echo "Backend did not become healthy after startup." >&2
-    print_diagnostics
-    exit 1
+  else
+    echo "WARNING: ml-service is not running, but ML_TRAIN_REQUIRED is not true. Continuing deploy." >&2
   fi
 fi
 
-"${compose_cmd[@]}" ps
+"${compose_cmd[@]}" ps || true
