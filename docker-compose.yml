@@ -1,4 +1,29 @@
 services:
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    container_name: ml-service
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      ML_SERVICE_TOKEN: dev-ml-token
+      ML_SAMPLE_USER_COUNT: 120
+      ML_SAMPLE_TX_PER_USER: 20
+      ML_SAMPLE_SEED: 42
+      ML_FEATURES_VERSION: features_v1
+      ML_MODEL_ARTIFACT_PATH: /app/ml/artifacts/model.json
+      ML_TRAIN_ON_START: "false"
+      ML_TRAIN_REQUIRED: "false"
+      ML_TRAIN_DATA_URL: ""
+      ML_TRAIN_DATA_PATH: /app/ml/data/train.csv
+    volumes:
+      - ml_artifacts:/app/ml/artifacts
+      - ml_data:/app/ml/data
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -24,7 +49,11 @@ services:
       STORAGE_PRIVATE_BUCKET: media-private
       STORAGE_PRESIGN_EXPIRES_SEC: 600
       STORAGE_USE_PATH_STYLE: "true"
+      ML_SERVICE_URL: http://ml-service:8080
+      ML_SERVICE_TOKEN: dev-ml-token
     depends_on:
+      ml-service:
+        condition: service_started
       db:
         condition: service_healthy
       redis:
@@ -112,3 +141,5 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  ml_artifacts:
+  ml_data:

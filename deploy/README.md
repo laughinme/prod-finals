@@ -58,7 +58,8 @@ Minimal setup on the VM:
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-plugin rsync
+sudo apt install -y docker.io rsync
+sudo apt install -y docker-compose-v2 || sudo apt install -y docker-compose
 sudo usermod -aG docker "$USER"
 sudo mkdir -p /opt/chupapis
 sudo chown -R "$USER":"$USER" /opt/chupapis
@@ -74,12 +75,14 @@ Then reconnect so the docker group is applied.
 4. The job syncs the repo to the VM.
 5. The job uploads `deploy/.env`.
 6. The job runs `bash deploy/remote-deploy.sh` on the VM and waits until services are healthy.
+7. During `ml-service` startup, training runs automatically when `ML_TRAIN_ON_START=true` and dataset is downloaded from `ML_TRAIN_DATA_URL`.
 
 ## Notes
 
 - Frontend is built inside the nginx image during deployment.
 - Keep `VITE_API_BASE_URL=` empty in production if frontend and backend are served from one domain through nginx.
 - Backend migrations run automatically from `backend/entry.sh` when the backend container starts.
+- ML model training can run automatically during deploy via `ml/entry.sh` + `ML_TRAIN_DATA_URL`.
 - A plain `502 Bad Gateway` on `/api/*` usually means nginx is up but the `backend` container never became healthy or exited during startup.
 
 ## Quick debugging on the VM
