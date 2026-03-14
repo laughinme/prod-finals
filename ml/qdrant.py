@@ -38,7 +38,7 @@ def run_ingestion():
         print(f"2. Обучение CatBoost... Размер train: {len(train_df)} строк, predict: {len(predict_df)} строк")
         
         model = CatBoostClassifier(
-            iterations=105,        # <-- УМЕНЬШИЛИ с 150 до 30 (для быстрого теста этого хватит) груповое мочилово
+            iterations=105,        # <-- УМЕНЬШИЛИ с 150 до 30 (для быстрого теста этого хватит)
             verbose=5,            # <-- ВАЖНО: теперь каждые 5 итераций он будет писать прогресс в консоль
             text_features=['merchant_nm'],
             cat_features=['merchant_type_code'],
