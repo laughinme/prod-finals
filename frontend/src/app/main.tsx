@@ -17,6 +17,19 @@ if (!rootElement) {
   throw new Error(i18n.t("common.configuration_error"));
 }
 
+Sentry.init({
+  dsn: "https://36c479372735efd0da21508044214ce5@o4511044892033024.ingest.de.sentry.io/4511044893868112",
+  sendDefaultPii: true,
+  integrations: [Sentry.browserTracingIntegration()],
+  // Tracing
+  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  tracePropagationTargets: ["localhost", /^https:\/\/yourserver\.io\/api/],
+  // Session Replay
+  replaysOnErrorSampleRate: 1.0, // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.,
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
+});
+
 createRoot(rootElement, {
   onUncaughtError: Sentry.reactErrorHandler((error, errorInfo) => {
     console.error("Uncaught error", error, errorInfo);
