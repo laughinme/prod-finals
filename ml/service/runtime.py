@@ -9,6 +9,7 @@ from uuid import UUID
 
 from ml.learn.model import artifact_from_json_bytes
 from ml.learn.pipeline import ModelPipeline, bootstrap_pipeline
+from qdrant_client import QdrantClient # Не забудь добавить в импорты
 
 from .schemas import (
     AckResponse,
@@ -39,6 +40,8 @@ class RuntimeSettings:
     features_version: str
     max_feedback_events_in_memory: int
     model_artifact_path: str
+    qdrant_url: str
+    data_path: str
 
     @classmethod
     def from_env(cls) -> "RuntimeSettings":
@@ -48,12 +51,10 @@ class RuntimeSettings:
             sample_seed=int(os.getenv("ML_SAMPLE_SEED", "42")),
             features_version=os.getenv("ML_FEATURES_VERSION", "features_v1"),
             max_feedback_events_in_memory=int(os.getenv("ML_MAX_FEEDBACK_EVENTS", "10000")),
-            model_artifact_path=os.getenv(
-                "ML_MODEL_ARTIFACT_PATH",
-                "/app/ml/artifacts/model.json",
-            ),
+            model_artifact_path=os.getenv("ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json"),
+            qdrant_url=os.getenv("QDRANT_URL", "http://qdrant:6333"),
+            data_path=os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv"),
         )
-
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -101,11 +102,11 @@ class MlRuntime:
         self._loaded_from_artifact = False
 
         try:
-            self._pipeline: ModelPipeline | None = self._build_pipeline()
+            self._qdrant_client = QdrantClient(url=self._settings.qdrant_url)
         except Exception as exc:
-            self._pipeline = None
-            self._startup_error = str(exc)
-
+            self._qdrant_client = None
+            self._startup_error = f"Qdrant connection failed: {exc}"
+            
     def _build_pipeline(self) -> ModelPipeline:
         artifact_path = Path(self._settings.model_artifact_path)
         if artifact_path.exists():
