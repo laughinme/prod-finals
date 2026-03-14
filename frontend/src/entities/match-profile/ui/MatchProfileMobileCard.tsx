@@ -61,20 +61,6 @@ export function MatchProfileMobileCard({
           </div>
 
           <div className="flex gap-2">
-            {featuredTags.map((tag) => {
-              const Icon = resolveTagIcon(tag);
-
-              return (
-                <div
-                  key={tag}
-                  className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md"
-                  title={tag}
-                >
-                  <Icon className="size-5" />
-                </div>
-              );
-            })}
-
             <button
               onClick={onOpenReport}
               className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md transition-colors hover:bg-[#383838]"
