@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/react";
@@ -57,16 +57,7 @@ export function QuizFlow() {
   }
 
   if (isConfigError || (!question && !isConfigLoading)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-secondary/20 p-6 text-center">
-        <div className="space-y-4">
-          <p className="text-xl font-medium text-destructive">
-            {t("common.error")}
-          </p>
-          <Button onClick={() => navigate(-1)}>{t("common.back")}</Button>
-        </div>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const handleAnswerChange = (value: string | string[]) => {
