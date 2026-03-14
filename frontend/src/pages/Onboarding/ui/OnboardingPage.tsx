@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Activity,
   ArrowRight,
@@ -11,6 +12,7 @@ import { Button } from "@/shared/components/ui/button";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="flex min-h-screen w-full flex-1 flex-col bg-background md:flex-row">
@@ -29,9 +31,9 @@ export default function OnboardingPage() {
           transition={{ delay: 0.1 }}
           className="mb-6 text-5xl leading-tight font-bold tracking-tight md:text-7xl"
         >
-          Знакомства по
+          {t("onboarding.title_part1")}
           <br />
-          образу жизни
+          {t("onboarding.title_part2")}
         </motion.h1>
 
         <motion.p
@@ -40,8 +42,7 @@ export default function OnboardingPage() {
           transition={{ delay: 0.2 }}
           className="max-w-xl text-lg text-muted-foreground md:text-xl"
         >
-          Мы анализируем ваши привычки и ритм жизни, чтобы находить людей, с
-          которыми вам действительно по пути.
+          {t("onboarding.description")}
         </motion.p>
       </div>
 
@@ -58,10 +59,9 @@ export default function OnboardingPage() {
                 <Activity className="size-7 text-primary" />
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Умный мэтчинг</h3>
+                <h3 className="mb-2 text-xl font-semibold">{t("onboarding.smart_matching_title")}</h3>
                 <p className="leading-relaxed text-muted-foreground">
-                  Рекомендации на основе агрегированных данных о досуге, любимых
-                  местах и тратах.
+                  {t("onboarding.smart_matching_description")}
                 </p>
               </div>
             </motion.div>
@@ -76,10 +76,9 @@ export default function OnboardingPage() {
                 <ShieldCheck className="size-7 text-primary" />
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Приватность 100%</h3>
+                <h3 className="mb-2 text-xl font-semibold">{t("onboarding.privacy_title")}</h3>
                 <p className="leading-relaxed text-muted-foreground">
-                  Никаких точных сумм и адресов. Только общие интересы и паттерны
-                  поведения.
+                  {t("onboarding.privacy_description")}
                 </p>
               </div>
             </motion.div>
@@ -94,13 +93,13 @@ export default function OnboardingPage() {
             <Button
               size="lg"
               className="h-14 w-full gap-2 rounded-2xl text-lg font-semibold"
-              onClick={() => navigate("/profile-setup")}
+              onClick={() => navigate("/photo-upload")}
             >
-              Создать профиль
+              {t("onboarding.create_profile")}
               <ArrowRight className="size-5" />
             </Button>
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Нажимая кнопку, вы соглашаетесь с правилами обработки данных.
+              {t("onboarding.tos_agreement")}
             </p>
           </motion.div>
         </div>

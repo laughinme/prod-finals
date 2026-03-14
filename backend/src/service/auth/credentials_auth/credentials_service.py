@@ -61,7 +61,8 @@ class CredentialsService:
         user = User(
             email=payload.email,
             password_hash=password_hash,
-            display_name=payload.display_name,
+            username=getattr(payload, "username", None),
+            display_name=getattr(payload, "display_name", None) or getattr(payload, "username", None),
         )
         
         try:

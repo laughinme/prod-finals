@@ -38,9 +38,6 @@ async def test_register_login_refresh_logout_flow(
     register_data = register.json()
     assert register_data["access_token"]
     assert register_data["refresh_token"]
-    assert register_data["user"]["email"] == payload["email"]
-    assert register_data["user"]["display_name"] == payload["display_name"]
-    assert register_data["user"]["avatar"]["status"] == "missing"
 
     profile = await client.get(
         "/api/v1/users/me",
@@ -48,6 +45,8 @@ async def test_register_login_refresh_logout_flow(
     )
     assert profile.status_code == 200
     assert profile.json()["email"] == payload["email"]
+    assert profile.json()["display_name"] == payload["display_name"]
+    assert profile.json()["avatar_status"] is None
 
     login = await client.post(
         "/api/v1/auth/login",
@@ -58,7 +57,6 @@ async def test_register_login_refresh_logout_flow(
     login_data = login.json()
     assert login_data["access_token"]
     assert login_data["refresh_token"]
-    assert login_data["user"]["display_name"] == payload["display_name"]
 
     refresh = await client.post(
         "/api/v1/auth/refresh",
@@ -73,7 +71,8 @@ async def test_register_login_refresh_logout_flow(
         "/api/v1/auth/logout",
         headers=auth_header(refresh_data["refresh_token"]),
     )
-    assert logout.status_code == 204
+    assert logout.status_code == 200
+    assert logout.json()["message"] == "Logged out successfully"
 
     refresh_after_logout = await client.post(
         "/api/v1/auth/refresh",

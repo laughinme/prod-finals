@@ -69,11 +69,11 @@ async def _upload_avatar(client: AsyncClient, access_token: str) -> None:
     assert upload.status_code in {200, 204}
     confirm = await client.post(
         "/api/v1/users/me/avatar/confirm",
-        json={"file_key": data["file_key"]},
+        json={"object_key": data["object_key"]},
         headers=auth_header(access_token),
     )
     assert confirm.status_code == 200
-    assert confirm.json()["status"] == "approved"
+    assert confirm.json()["avatar_status"] == "approved"
 
 
 async def _complete_profile(
@@ -182,9 +182,9 @@ async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker
         looking_for_genders=["female"],
         goal="casual_dates",
     )
-    assert profile_a["profile_status"] == "ready"
-    assert profile_b["profile_status"] == "ready"
-    assert profile_a["can_open_feed"] is True
+    assert profile_a["profile_status"] == "active"
+    assert profile_b["profile_status"] == "active"
+    assert profile_a["is_onboarded"] is True
 
     feed_a = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_a.status_code == 200
@@ -407,7 +407,7 @@ async def test_seeded_demo_users_can_demo_login_and_get_feed(redis_client):
         access_token = login.json()["access_token"]
         user = login.json()["user"]
         assert user["display_name"] == "Anna"
-        assert user["profile_status"] == "ready"
+        assert user["profile_status"] == "active"
 
         feed = await seeded_client.get("/api/v1/feed", headers=auth_header(access_token))
         assert feed.status_code == 200

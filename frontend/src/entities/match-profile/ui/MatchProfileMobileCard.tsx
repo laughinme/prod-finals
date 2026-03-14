@@ -8,6 +8,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { MatchProfile } from "../model";
 
@@ -38,6 +39,7 @@ export function MatchProfileMobileCard({
   onPass,
   onOpenReport,
 }: MatchProfileMobileCardProps) {
+  const { t } = useTranslation();
   const featuredTags = profile.tags.slice(0, 2);
 
   return (
@@ -59,24 +61,10 @@ export function MatchProfileMobileCard({
           </div>
 
           <div className="flex gap-2">
-            {featuredTags.map((tag) => {
-              const Icon = resolveTagIcon(tag);
-
-              return (
-                <div
-                  key={tag}
-                  className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md"
-                  title={tag}
-                >
-                  <Icon className="size-5" />
-                </div>
-              );
-            })}
-
             <button
               onClick={onOpenReport}
               className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md transition-colors hover:bg-[#383838]"
-              aria-label="Пожаловаться на профиль"
+              aria-label={t("discovery.report_profile")}
             >
               <ShieldAlert className="size-5" />
             </button>
@@ -103,7 +91,7 @@ export function MatchProfileMobileCard({
             <button
               onClick={onPass}
               className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-[#2A2A2A] text-white transition-colors hover:bg-[#333333]"
-              aria-label="Пропустить профиль"
+              aria-label={t("discovery.pass_profile")}
             >
               <X className="size-6" strokeWidth={2.5} />
             </button>
@@ -111,7 +99,7 @@ export function MatchProfileMobileCard({
             <button
               onClick={onLike}
               className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-primary text-black shadow-[0_0_40px_rgba(255,221,45,0.3)] transition-colors hover:bg-[#FFD100]"
-              aria-label="Лайкнуть профиль"
+              aria-label={t("discovery.like_profile")}
             >
               <Heart className="size-6 fill-current" strokeWidth={2.5} />
             </button>
