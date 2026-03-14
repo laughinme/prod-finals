@@ -78,7 +78,7 @@ export default function MatchPage() {
         >
           <Button
             size="lg"
-            className="h-14 flex-1 gap-2 rounded-2xl text-lg font-semibold"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg font-semibold"
             onClick={() => {
               openChat(matchedProfile.id);
               navigate("/chat");
@@ -90,7 +90,7 @@ export default function MatchPage() {
           <Button
             variant="outline"
             size="lg"
-            className="h-14 flex-1 rounded-2xl text-lg"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg"
             onClick={() => {
               closeMatch();
               navigate("/discovery");
