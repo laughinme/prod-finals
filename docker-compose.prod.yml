@@ -11,6 +11,8 @@ services:
       context: .
       dockerfile: ml/Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-ml-service
+    env_file:
+      - ./deploy/.env
     depends_on:
       - qdrant
     environment:
