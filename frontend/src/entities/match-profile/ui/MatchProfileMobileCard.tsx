@@ -9,7 +9,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
+import type { MatchProfile } from "../model";
+
+interface MatchProfileMobileCardProps {
+  profile: MatchProfile;
+  onLike: () => void;
+  onPass: () => void;
+  onOpenReport: () => void;
+}
 
 function resolveTagIcon(tag: string): LucideIcon {
   const normalizedTag = tag.toLowerCase();
@@ -25,12 +32,12 @@ function resolveTagIcon(tag: string): LucideIcon {
   return Sparkles;
 }
 
-export function DiscoveryMobileProfileCard({
+export function MatchProfileMobileCard({
   profile,
   onLike,
   onPass,
   onOpenReport,
-}: DiscoveryProfileCardViewProps) {
+}: MatchProfileMobileCardProps) {
   const featuredTags = profile.tags.slice(0, 2);
 
   return (

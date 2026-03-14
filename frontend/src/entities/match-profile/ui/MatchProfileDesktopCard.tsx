@@ -1,16 +1,23 @@
 import { Calendar, Heart, Info, MapPin, ShieldAlert, X } from "lucide-react";
 
-import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
+import type { MatchProfile } from "../model";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 
-export function DiscoveryDesktopProfileCard({
+interface MatchProfileDesktopCardProps {
+  profile: MatchProfile;
+  onLike: () => void;
+  onPass: () => void;
+  onOpenReport: () => void;
+}
+
+export function MatchProfileDesktopCard({
   profile,
   onLike,
   onPass,
   onOpenReport,
-}: DiscoveryProfileCardViewProps) {
+}: MatchProfileDesktopCardProps) {
   return (
     <Card className="overflow-hidden rounded-4xl border-border bg-card py-0 shadow-xl md:flex-row">
       <div className="relative h-[50vh] w-full md:h-[70vh] md:w-1/2">
@@ -47,14 +54,12 @@ export function DiscoveryDesktopProfileCard({
           </div>
 
           <div className="flex flex-col items-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mb-2 text-muted-foreground hover:text-destructive"
+            <button
+              className="mb-2 text-muted-foreground transition-colors hover:text-destructive"
               onClick={onOpenReport}
             >
               <ShieldAlert className="size-5" />
-            </Button>
+            </button>
             <div className="rounded-xl bg-primary/20 px-3 py-1.5 text-lg font-bold text-primary-foreground">
               {profile.matchScore}%
             </div>
