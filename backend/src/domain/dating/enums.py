@@ -24,12 +24,6 @@ class ProfileStatus(str, Enum):
     BLOCKED = "blocked"
 
 
-class RecommendationMode(str, Enum):
-    COLD_START = "cold_start"
-    BEHAVIORAL = "behavioral"
-    HYBRID = "hybrid"
-
-
 class FeedState(str, Enum):
     LOCKED = "locked"
     READY = "ready"
@@ -95,8 +89,6 @@ class CompatibilityReasonCode(str, Enum):
     AGE_FIT = "age_fit"
     GOAL_FIT = "goal_fit"
     MUTUAL_PREFERENCE_FIT = "mutual_preference_fit"
-    LIFESTYLE_OVERLAP = "lifestyle_overlap"
-    BEHAVIORAL_SIGNAL = "behavioral_signal"
     PROFILE_QUALITY = "profile_quality"
 
 
@@ -157,8 +149,3 @@ class AuditEntityType(str, Enum):
     REPORT = "report"
     QUIZ = "quiz"
 
-
-class InsightStrength(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"

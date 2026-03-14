@@ -45,7 +45,7 @@ async def _register_user(client: AsyncClient, faker: Faker, prefix: str) -> tupl
     payload = {
         "email": f"{prefix}_{suffix}@example.com",
         "password": password,
-        "display_name": f"{prefix}_{suffix}",
+        "username": f"{prefix}_{suffix}",
     }
     response = await client.post("/api/v1/auth/register", json=payload, headers=_mobile_headers())
     assert response.status_code == 201
@@ -82,25 +82,17 @@ async def _complete_profile(
     *,
     display_name: str,
     birth_date: str,
-    city: str,
+    city_id: str,
     gender: str,
-    looking_for_genders: list[str],
-    goal: str,
 ) -> dict:
     patch = await client.patch(
         "/api/v1/users/me",
         json={
             "display_name": display_name,
             "birth_date": birth_date,
-            "city": city,
+            "city_id": city_id,
             "gender": gender,
             "bio": f"{display_name} bio",
-            "search_preferences": {
-                "looking_for_genders": looking_for_genders,
-                "age_range": {"min": 24, "max": 36},
-                "distance_km": 30,
-                "goal": goal,
-            },
         },
         headers=auth_header(access_token),
     )
@@ -109,6 +101,42 @@ async def _complete_profile(
     me = await client.get("/api/v1/users/me", headers=auth_header(access_token))
     assert me.status_code == 200
     return me.json()
+
+
+async def _answer_onboarding_filters(
+    client: AsyncClient,
+    access_token: str,
+    *,
+    genders: list[str],
+    age_min: int,
+    age_max: int,
+    goal: str,
+    radius_km: int = 30,
+) -> None:
+    responses = [
+        await client.post(
+            "/api/v1/onboarding/answers",
+            json={"step_key": "who_to_meet", "answers": genders},
+            headers=auth_header(access_token),
+        ),
+        await client.post(
+            "/api/v1/onboarding/answers",
+            json={"step_key": "preferred_age_range", "answers": [str(age_min), str(age_max)]},
+            headers=auth_header(access_token),
+        ),
+        await client.post(
+            "/api/v1/onboarding/answers",
+            json={"step_key": "connection_goal", "answers": [goal]},
+            headers=auth_header(access_token),
+        ),
+        await client.post(
+            "/api/v1/onboarding/answers",
+            json={"step_key": "search_radius", "answers": [str(radius_km)]},
+            headers=auth_header(access_token),
+        ),
+    ]
+    for response in responses:
+        assert response.status_code == 200
 
 
 async def _promote_to_admin(user_id: str) -> None:
@@ -133,9 +161,10 @@ async def _promote_to_admin(user_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
+async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
     _, access_a = await _register_user(client, faker, "alice")
     _, access_b = await _register_user(client, faker, "bob")
+    _, access_c = await _register_user(client, faker, "charlie")
 
     locked_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert locked_feed.status_code == 200
@@ -144,7 +173,11 @@ async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker
 
     onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
     assert onboarding_config.status_code == 200
-    assert onboarding_config.json()["steps"]
+    steps = {step["step_key"]: step for step in onboarding_config.json()["steps"]}
+    assert set(steps) == {"who_to_meet", "preferred_age_range", "connection_goal", "search_radius"}
+    assert steps["who_to_meet"]["required_for_feed"] is True
+    assert steps["preferred_age_range"]["step_type"] == "range"
+    assert steps["search_radius"]["required_for_feed"] is True
 
     skipped = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_a))
     assert skipped.status_code == 200
@@ -156,7 +189,7 @@ async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
-        json={"step_key": "weekend_vibe", "answers": ["city_walks", "live_events"]},
+        json={"step_key": "who_to_meet", "answers": ["male"]},
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
@@ -167,28 +200,80 @@ async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker
         access_a,
         display_name="Alice",
         birth_date="1998-05-12",
-        city="Moscow",
+        city_id="msk",
         gender="female",
-        looking_for_genders=["male"],
-        goal="casual_dates",
     )
     profile_b = await _complete_profile(
         client,
         access_b,
         display_name="Bob",
         birth_date="1996-03-03",
-        city="Moscow",
+        city_id="msk",
         gender="male",
-        looking_for_genders=["female"],
-        goal="casual_dates",
     )
-    assert profile_a["profile_status"] == "active"
-    assert profile_b["profile_status"] == "active"
-    assert profile_a["is_onboarded"] is True
+    profile_c = await _complete_profile(
+        client,
+        access_c,
+        display_name="Charlie",
+        birth_date="1980-03-03",
+        city_id="spb",
+        gender="male",
+    )
+
+    feed_still_locked = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert feed_still_locked.status_code == 200
+    assert feed_still_locked.json()["feed_state"] == "locked"
+    assert feed_still_locked.json()["next_action"]["type"] in {"start_quiz", "resume_quiz"}
+
+    await _answer_onboarding_filters(
+        client,
+        access_a,
+        genders=["male"],
+        age_min=24,
+        age_max=36,
+        goal="casual_dates",
+        radius_km=30,
+    )
+    await _answer_onboarding_filters(
+        client,
+        access_b,
+        genders=["female"],
+        age_min=24,
+        age_max=36,
+        goal="casual_dates",
+        radius_km=30,
+    )
+    await _answer_onboarding_filters(
+        client,
+        access_c,
+        genders=["female"],
+        age_min=21,
+        age_max=29,
+        goal="serious_relationship",
+        radius_km=30,
+    )
+
+    state_a = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    assert state_a.status_code == 200
+    assert state_a.json()["feed_unlocked"] is True
+    assert "search_preferences.looking_for_genders" not in state_a.json()["missing_required_fields"]
+
+    me_a = await client.get("/api/v1/users/me", headers=auth_header(access_a))
+    me_b = await client.get("/api/v1/users/me", headers=auth_header(access_b))
+    assert me_a.status_code == 200
+    assert me_b.status_code == 200
+    assert me_a.json()["goal"] == "dating"
+    assert me_a.json()["looking_for_genders"] == ["male"]
+    assert me_a.json()["profile_status"] == "active"
+    assert me_b.json()["profile_status"] == "active"
+    assert me_a.json()["is_onboarded"] is True
 
     feed_a = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_a.status_code == 200
     assert feed_a.json()["feed_state"] == "ready"
+    candidate_ids_a = {card["candidate"]["user_id"] for card in feed_a.json()["cards"]}
+    assert profile_b["id"] in candidate_ids_a
+    assert profile_c["id"] not in candidate_ids_a
     card_a = next(card for card in feed_a.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
 
     explanation = await client.get(
@@ -299,31 +384,29 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         access_a,
         display_name="Admin Candidate",
         birth_date="1997-05-12",
-        city="Moscow",
+        city_id="msk",
         gender="female",
-        looking_for_genders=["male"],
-        goal="casual_dates",
     )
     profile_b = await _complete_profile(
         client,
         access_b,
         display_name="Blocked User",
         birth_date="1995-05-12",
-        city="Moscow",
+        city_id="msk",
         gender="male",
-        looking_for_genders=["female"],
-        goal="casual_dates",
     )
     profile_c = await _complete_profile(
         client,
         access_c,
         display_name="Reported User",
         birth_date="1994-05-12",
-        city="Moscow",
+        city_id="msk",
         gender="male",
-        looking_for_genders=["female"],
-        goal="casual_dates",
     )
+
+    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=24, age_max=36, goal="casual_dates")
+    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=24, age_max=36, goal="casual_dates")
+    await _answer_onboarding_filters(client, access_c, genders=["female"], age_min=24, age_max=36, goal="casual_dates")
 
     block = await client.post(
         "/api/v1/blocks",
@@ -383,7 +466,7 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
 
 
 @pytest.mark.asyncio
-async def test_seeded_demo_users_can_demo_login_and_get_feed(redis_client):
+async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
     os.environ["DEV_SEED_ENABLED"] = "true"
     clear_settings_cache()
     session_factory = get_session_factory()
@@ -399,15 +482,12 @@ async def test_seeded_demo_users_can_demo_login_and_get_feed(redis_client):
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
         login = await seeded_client.post(
-            "/api/v1/auth/demo-login",
-            json={"demo_user_id": "anna"},
+            "/api/v1/auth/login",
+            json={"email": "anna.demo@example.com", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert login.status_code == 200
         access_token = login.json()["access_token"]
-        user = login.json()["user"]
-        assert user["display_name"] == "Anna"
-        assert user["profile_status"] == "active"
 
         feed = await seeded_client.get("/api/v1/feed", headers=auth_header(access_token))
         assert feed.status_code == 200

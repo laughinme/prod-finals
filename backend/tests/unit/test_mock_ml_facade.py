@@ -26,8 +26,6 @@ async def test_mock_ml_facade_prefers_better_matching_candidate():
         bio="Coffee and theater",
         avatar_url="https://example.com/a.png",
         profile_completion_percent=100,
-        lifestyle_codes=["coffee_spots", "city_walks"],
-        has_behavioral_profile=True,
     )
     strong = FeedCandidateContext(
         user_id=uuid4(),
@@ -44,8 +42,6 @@ async def test_mock_ml_facade_prefers_better_matching_candidate():
         bio="Theater and sport",
         avatar_url="https://example.com/b.png",
         profile_completion_percent=95,
-        lifestyle_codes=["coffee_spots", "outdoors"],
-        has_behavioral_profile=True,
     )
     weak = FeedCandidateContext(
         user_id=uuid4(),
@@ -62,8 +58,6 @@ async def test_mock_ml_facade_prefers_better_matching_candidate():
         bio=None,
         avatar_url="https://example.com/c.png",
         profile_completion_percent=50,
-        lifestyle_codes=["stay_local"],
-        has_behavioral_profile=False,
     )
 
     ranked = await facade.rank(requester, [weak, strong], limit=2)

@@ -1,60 +1,74 @@
-from collections import Counter
+from .enums import Goal, OnboardingStepType
+from .schemas import OnboardingStep, OnboardingStepOption
 
-from .enums import InsightStrength, OnboardingStepType
-from .schemas import LifestyleTag, OnboardingStep, OnboardingStepOption
 
+HARD_FILTER_STEP_KEYS = {
+    "who_to_meet",
+    "preferred_age_range",
+    "connection_goal",
+    "search_radius",
+}
 
 _QUIZ_STEPS = [
     OnboardingStep(
-        step_key="weekend_vibe",
-        title="How do you usually spend weekends?",
-        description="These answers only improve ranking quality.",
+        step_key="who_to_meet",
+        title="Who would you like to see first?",
+        subtitle="This affects which profiles are eligible for your feed.",
+        description="Choose one or more genders you want in your recommendations.",
         step_type=OnboardingStepType.MULTI_SELECT,
+        optional=False,
+        multi_select=True,
+        required_for_feed=True,
+        min_answers=1,
+        max_answers=3,
         options=[
-            OnboardingStepOption(value="cozy_home", label="Cozy home evenings"),
-            OnboardingStepOption(value="city_walks", label="City walks"),
-            OnboardingStepOption(value="outdoors", label="Outdoors"),
-            OnboardingStepOption(value="live_events", label="Concerts and events"),
+            OnboardingStepOption(value="male", label="Men"),
+            OnboardingStepOption(value="female", label="Women"),
+            OnboardingStepOption(value="other", label="Other"),
         ],
     ),
     OnboardingStep(
-        step_key="social_energy",
-        title="What social pace feels right?",
+        step_key="preferred_age_range",
+        title="What age range feels right?",
+        subtitle="We use this as a hard filter for your feed.",
+        description="Set the age range you want to see first.",
+        step_type=OnboardingStepType.RANGE,
+        optional=False,
+        required_for_feed=True,
+        range_min=18,
+        range_max=99,
+        range_min_label="18",
+        range_max_label="99",
+    ),
+    OnboardingStep(
+        step_key="connection_goal",
+        title="What kind of connection are you looking for?",
+        subtitle="This helps us filter and rank the feed.",
+        description="Choose the closest intention right now.",
         step_type=OnboardingStepType.SINGLE_SELECT,
+        optional=False,
+        required_for_feed=True,
+        max_answers=1,
         options=[
-            OnboardingStepOption(value="quiet", label="Quiet and calm"),
-            OnboardingStepOption(value="balanced", label="Balanced"),
-            OnboardingStepOption(value="outgoing", label="Outgoing"),
+            OnboardingStepOption(value=Goal.SERIOUS_RELATIONSHIP.value, label="Serious relationship"),
+            OnboardingStepOption(value=Goal.CASUAL_DATES.value, label="Casual dates"),
+            OnboardingStepOption(value=Goal.NEW_FRIENDS.value, label="New friends"),
         ],
     ),
     OnboardingStep(
-        step_key="food_mood",
-        title="What sounds most like you?",
-        step_type=OnboardingStepType.MULTI_SELECT,
-        options=[
-            OnboardingStepOption(value="coffee_spots", label="Coffee spots"),
-            OnboardingStepOption(value="new_restaurants", label="New restaurants"),
-            OnboardingStepOption(value="home_cooking", label="Home cooking"),
-        ],
-    ),
-    OnboardingStep(
-        step_key="travel_style",
-        title="What is your travel style?",
+        step_key="search_radius",
+        title="How far are you open to meeting?",
+        subtitle="We keep this practical for the first version.",
+        description="This is used as a location filter. In MVP it works on city-level availability.",
         step_type=OnboardingStepType.SINGLE_SELECT,
+        optional=False,
+        required_for_feed=True,
+        max_answers=1,
         options=[
-            OnboardingStepOption(value="spontaneous", label="Spontaneous"),
-            OnboardingStepOption(value="planned", label="Well planned"),
-            OnboardingStepOption(value="stay_local", label="Local plans first"),
-        ],
-    ),
-    OnboardingStep(
-        step_key="pet_attitude",
-        title="How do you feel about pets?",
-        step_type=OnboardingStepType.SINGLE_SELECT,
-        options=[
-            OnboardingStepOption(value="love_pets", label="Love pets"),
-            OnboardingStepOption(value="okay_with_pets", label="Okay with pets"),
-            OnboardingStepOption(value="no_pets", label="Prefer no pets"),
+            OnboardingStepOption(value="10", label="Up to 10 km"),
+            OnboardingStepOption(value="30", label="Up to 30 km"),
+            OnboardingStepOption(value="60", label="Up to 60 km"),
+            OnboardingStepOption(value="100", label="Up to 100 km"),
         ],
     ),
 ]
@@ -77,14 +91,9 @@ def get_step(step_key: str) -> OnboardingStep | None:
     return None
 
 
-def get_option_label(code: str) -> str:
-    return _OPTION_LABELS.get(code, code.replace("_", " ").title())
+def is_hard_filter_step(step_key: str) -> bool:
+    return step_key in HARD_FILTER_STEP_KEYS
 
 
-def derive_lifestyle_tags(answer_map: dict[str, list[str]]) -> list[LifestyleTag]:
-    counter = Counter(code for answers in answer_map.values() for code in answers)
-    tags: list[LifestyleTag] = []
-    for code, count in counter.most_common(5):
-        strength = InsightStrength.HIGH if count > 1 else InsightStrength.MEDIUM
-        tags.append(LifestyleTag(code=code, label=get_option_label(code), strength=strength))
-    return tags
+def hard_filter_steps() -> list[OnboardingStep]:
+    return [step for step in _QUIZ_STEPS if step.step_key in HARD_FILTER_STEP_KEYS]

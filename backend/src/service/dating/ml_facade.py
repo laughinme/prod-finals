@@ -15,7 +15,6 @@ from domain.dating import (
     RankedCandidate,
     RankedCandidates,
 )
-from domain.dating.quiz_catalog import get_option_label
 
 
 def _age_for_birth_date(birth_date: date | None, today: date) -> int | None:
@@ -88,15 +87,6 @@ class MockMlFacade(MlFacade):
                 score += 0.16
                 reason_codes.append(CompatibilityReasonCode.AGE_FIT)
 
-            overlap = sorted(set(requester.lifestyle_codes) & set(candidate.lifestyle_codes))
-            if overlap:
-                score += min(0.18, 0.06 * len(overlap))
-                reason_codes.append(CompatibilityReasonCode.LIFESTYLE_OVERLAP)
-
-            if requester.has_behavioral_profile and candidate.has_behavioral_profile:
-                score += 0.10
-                reason_codes.append(CompatibilityReasonCode.BEHAVIORAL_SIGNAL)
-
             completion_bonus = min(candidate.profile_completion_percent / 1000, 0.10)
             if completion_bonus:
                 score += completion_bonus
@@ -127,7 +117,7 @@ class MockMlFacade(MlFacade):
             serve_item_id=payload.serve_item_id,
             candidate_user_id=payload.candidate.user_id,
             reasons=reasons,
-            disclaimer="These explanations use aggregated profile and quiz signals only.",
+            disclaimer="These explanations use aggregated profile and onboarding filter signals only.",
         )
 
     def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
@@ -141,8 +131,6 @@ class MockMlFacade(MlFacade):
             CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
             CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
-            CompatibilityReasonCode.LIFESTYLE_OVERLAP: "There is a clear overlap in lifestyle signals.",
-            CompatibilityReasonCode.BEHAVIORAL_SIGNAL: "Behavioral patterns point to a stronger fit.",
             CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
         }
         return CompatibilityPreview(
@@ -179,35 +167,25 @@ class MockMlFacade(MlFacade):
         requester: FeedCandidateContext,
         candidate: FeedCandidateContext,
     ) -> IcebreakersResponse:
-        shared = sorted(set(requester.lifestyle_codes) & set(candidate.lifestyle_codes))
-        items: list[Icebreaker] = []
-        for code in shared[:3]:
-            items.append(
-                Icebreaker(
-                    icebreaker_id=code,
-                    text=f"Ask about {get_option_label(code).lower()}.",
-                    reason=f"Shared lifestyle signal: {get_option_label(code)}",
-                )
-            )
-        if not items:
-            items = [
-                Icebreaker(
-                    icebreaker_id="weekend_opening",
-                    text="What does a great weekend look like for you?",
-                    reason="A safe generic opener for a new conversation.",
-                ),
+        return IcebreakersResponse(
+            items=[
                 Icebreaker(
                     icebreaker_id="city_opening",
                     text="What place in your city would you happily revisit together?",
-                    reason="Works well when both profiles are local.",
+                    reason="A safe opener based on local context.",
                 ),
                 Icebreaker(
-                    icebreaker_id="food_opening",
-                    text="What is your current comfort food or cafe pick?",
-                    reason="Easy first-message topic with low pressure.",
+                    icebreaker_id="weekend_opening",
+                    text="What does a great weekend usually look like for you?",
+                    reason="Works well as a low-pressure first question.",
+                ),
+                Icebreaker(
+                    icebreaker_id="goal_opening",
+                    text="What are you hoping to find here right now?",
+                    reason="Useful when both sides want to align expectations early.",
                 ),
             ]
-        return IcebreakersResponse(items=items[:3])
+        )
 
     def _has_mutual_gender_fit(
         self,
@@ -265,16 +243,6 @@ class MockMlFacade(MlFacade):
                 "Preferences align both ways",
                 "Your mutual preferences suggest the match is viable from both sides.",
                 0.81,
-            ),
-            CompatibilityReasonCode.LIFESTYLE_OVERLAP: (
-                "Lifestyle overlap",
-                "Optional quiz signals point to overlapping habits and social pace.",
-                0.72,
-            ),
-            CompatibilityReasonCode.BEHAVIORAL_SIGNAL: (
-                "Behavioral signal",
-                "Additional behavioral context increases confidence in this recommendation.",
-                0.69,
             ),
             CompatibilityReasonCode.PROFILE_QUALITY: (
                 "Strong profile signal",

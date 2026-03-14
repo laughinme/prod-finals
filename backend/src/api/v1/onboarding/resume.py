@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post(
     "/resume",
     response_model=OnboardingStateResponse,
-    summary="Resume optional onboarding quiz",
+    summary="Resume onboarding filters",
 )
 async def resume_onboarding(
     user: Annotated[User, Depends(auth_user)],

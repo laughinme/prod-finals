@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get(
     "/config",
     response_model=OnboardingConfigResponse,
-    summary="Get optional onboarding quiz config",
+    summary="Get onboarding filter config",
 )
 async def get_onboarding_config(
     _: Annotated[User, Depends(auth_user)],
