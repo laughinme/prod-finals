@@ -141,12 +141,6 @@ class User(TimestampMixin, Base):
             missing.append("city")
         if self.gender is None:
             missing.append("gender")
-        if not self.looking_for_genders:
-            missing.append("search_preferences.looking_for_genders")
-        if self.age_range_min is None or self.age_range_max is None:
-            missing.append("search_preferences.age_range")
-        if self.goal is None:
-            missing.append("search_preferences.goal")
         return missing
 
     @property

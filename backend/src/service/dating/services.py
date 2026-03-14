@@ -158,14 +158,6 @@ class BaseDatingService:
             if not field.startswith("search_preferences.")
         ]
 
-    @staticmethod
-    def _missing_filter_fields(user: User) -> list[str]:
-        return [
-            field
-            for field in user.missing_required_fields
-            if field.startswith("search_preferences.")
-        ]
-
     def _build_next_action(self, user: User) -> NextAction | None:
         if user.profile_status == ProfileStatus.BLOCKED.value:
             return None
@@ -175,13 +167,6 @@ class BaseDatingService:
                 title="Complete required profile fields",
                 description="Add the basics needed to unlock the real feed.",
                 cta_label="Complete profile",
-            )
-        if self._missing_filter_fields(user):
-            return NextAction(
-                type=NextActionType.RESUME_QUIZ if user.quiz_status == QuizStatus.IN_PROGRESS.value else NextActionType.START_QUIZ,
-                title="Set your feed filters",
-                description="Answer the onboarding questions that define who should appear in your feed.",
-                cta_label="Continue onboarding" if user.quiz_status == QuizStatus.IN_PROGRESS.value else "Start onboarding",
             )
         if user.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
             return NextAction(
@@ -196,20 +181,6 @@ class BaseDatingService:
                 title="Wait for moderation",
                 description="Your avatar is being reviewed.",
                 cta_label="Okay",
-            )
-        if user.quiz_status == QuizStatus.IN_PROGRESS.value:
-            return NextAction(
-                type=NextActionType.RESUME_QUIZ,
-                title="Continue onboarding",
-                description="Finish the remaining feed filters to unlock matching.",
-                cta_label="Resume",
-            )
-        if user.quiz_status in {QuizStatus.NOT_STARTED.value, QuizStatus.SKIPPED.value}:
-            return NextAction(
-                type=NextActionType.START_QUIZ,
-                title="Set feed filters",
-                description="Answer the onboarding questions that decide who appears in your feed.",
-                cta_label="Start onboarding",
             )
         return NextAction(
             type=NextActionType.OPEN_FEED,
