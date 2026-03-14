@@ -152,7 +152,7 @@ class RecommendationContext(StrictModel):
 
 class RecommendationRequest(StrictModel):
     trace_id: UUID
-    request_user_id: int
+    request_user_id: str | int
     limit: int = Field(default=12, ge=1, le=50)
     strategy: Strategy = Strategy.balanced
     hard_filters: HardFilters | None = None
@@ -167,7 +167,8 @@ class ReasonSignal(StrictModel):
 
 
 class RecommendationCandidate(StrictModel):
-    candidate_user_id: int
+    # Может быть числовым (bootstrap / тестовые данные) или строковым (реальные user_id из транзакций)
+    candidate_user_id: str | int
     score: float = Field(ge=0, le=1)
     score_components: dict[str, float] | None = None
     reason_signals: list[ReasonSignal] = Field(min_length=1, max_length=5)
@@ -187,8 +188,8 @@ class RecommendationResponse(StrictModel):
 class SwipeFeedbackRequest(StrictModel):
     trace_id: UUID
     event_id: UUID
-    actor_user_id: int
-    target_user_id: int
+    actor_user_id: str | int
+    target_user_id: str | int
     action: SwipeAction
     shown_rank: int | None = Field(default=None, ge=1, le=100)
     shown_score: float | None = Field(default=None, ge=0, le=1)
@@ -201,16 +202,16 @@ class MatchOutcomeRequest(StrictModel):
     trace_id: UUID
     event_id: UUID
     match_id: UUID
-    user_a_id: int
-    user_b_id: int
+    user_a_id: str | int
+    user_b_id: str | int
     outcome: MatchOutcome
     happened_at: datetime
 
 
 class CompatibilityExplanationRequest(StrictModel):
     trace_id: UUID
-    requester_user_id: int
-    candidate_user_id: int
+    requester_user_id: str | int
+    candidate_user_id: str | int
     channel: ExplanationChannel = ExplanationChannel.feed
     locale: str = "ru-RU"
     max_reasons: int = Field(default=3, ge=1, le=5)
@@ -225,7 +226,7 @@ class ExplanationReason(StrictModel):
 
 class CompatibilityExplanationResponse(StrictModel):
     trace_id: UUID
-    candidate_user_id: int
+    candidate_user_id: str | int
     privacy_level: PrivacyLevel
     reasons: list[ExplanationReason] = Field(min_length=1, max_length=5)
     privacy_checks: list[str] = Field(default_factory=list, max_length=10)

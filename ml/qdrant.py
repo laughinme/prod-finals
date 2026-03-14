@@ -17,7 +17,7 @@ def run_ingestion():
     client = QdrantClient(host="qdrant", port=6333)
     
     print("1. Загрузка и очистка данных...")
-    df = pd.read_csv(config.DATA_PATH)
+    df = pd.read_csv("/app/ml/transaction_600_new.csv")
     unique_users = df['party_rk'].unique()[:config.LIMIT_USERS]
     df = df[df['party_rk'].isin(unique_users)].copy()
 

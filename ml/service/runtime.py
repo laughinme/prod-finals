@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid5, NAMESPACE_DNS
 
 from ml.learn.model import artifact_from_json_bytes
 from ml.learn.pipeline import ModelPipeline, bootstrap_pipeline
@@ -31,6 +31,7 @@ from .schemas import (
     ReasonCode,
     ReasonSignal,
     Strength,
+    SwipeFeedbackRequest,
 )
 
 
@@ -92,6 +93,10 @@ def _reason_signals_by_score(score: float, fallback_mode: bool) -> list[ReasonSi
             second,
         ]
     return [first, second]
+
+
+def _string_to_uuid(string: str) -> str:
+    return str(uuid5(NAMESPACE_DNS, string))
 
 
 class MlRuntime:
@@ -183,7 +188,38 @@ class MlRuntime:
         decision_mode = RecommendationDecisionMode.fallback
         candidates: list[RecommendationCandidate] = []
 
-        if self._pipeline is not None:
+        # Попробуем использовать Qdrant для рекомендаций (с дообучением)
+        if self._qdrant_client is not None:
+            qdrant_candidates = self._recommend_via_qdrant(
+                request_user_id=request.request_user_id,
+                limit=request.limit,
+                hard_exclude_user_ids=hard_exclude or [],
+                soft_seen_user_ids=soft_seen or [],
+                strategy=request.strategy.value,
+                trace_seed=trace_seed,
+            )
+            if qdrant_candidates:
+                decision_mode = RecommendationDecisionMode.model
+                for item in qdrant_candidates:
+                    is_soft_seen = item.candidate_user_id in soft_seen_set
+                    policy_flags = []
+                    if is_soft_seen:
+                        policy_flags.append("cooldown_candidate")
+                    candidates.append(
+                        RecommendationCandidate(
+                            candidate_user_id=item.candidate_user_id,
+                            score=round(item.score, 4),
+                            reason_signals=_reason_signals_by_score(item.score, fallback_mode=False),
+                            policy_flags=policy_flags,
+                        )
+                    )
+            else:
+                warnings.append("qdrant_unavailable_fallback_to_model")
+        else:
+            warnings.append("qdrant_unavailable")
+
+        # Fallback к модели, если Qdrant не сработал
+        if not candidates and self._pipeline is not None:
             items, runtime_warnings, runtime_decision_mode = self._pipeline.recommend(
                 request_user_id=request.request_user_id,
                 limit=request.limit,
@@ -212,7 +248,7 @@ class MlRuntime:
                         policy_flags=policy_flags,
                     )
                 )
-        else:
+        elif not candidates:
             warnings.append("ranker_unavailable")
 
         return RecommendationResponse(
@@ -270,6 +306,137 @@ class MlRuntime:
             }
         )
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+
+    def _recommend_via_qdrant(
+        self,
+        *,
+        request_user_id: str | int,
+        limit: int,
+        hard_exclude_user_ids: Iterable[str | int],
+        soft_seen_user_ids: Iterable[str | int],
+        strategy: str,
+        trace_seed: int,
+    ) -> list[RecommendationItem]:
+        """
+        Ищет рекомендации через Qdrant, используя обновленные векторы (с дообучением).
+        """
+        try:
+            # Получаем вектор пользователя
+            user_id_str = _string_to_uuid(_normalize_user_id(request_user_id))
+            user_points = self._qdrant_client.retrieve(
+                collection_name="user_profiles",
+                ids=[user_id_str]
+            )
+            if not user_points:
+                return []  # Пользователь не найден в Qdrant
+            user_vector = user_points[0].vector
+
+            # Исключаем hard_exclude
+            exclude_ids = {_string_to_uuid(_normalize_user_id(uid)) for uid in hard_exclude_user_ids}
+            exclude_ids.add(user_id_str)  # Исключаем самого себя
+
+            # Ищем ближайших в Qdrant
+            search_result = self._qdrant_client.search(
+                collection_name="user_profiles",
+                query_vector=user_vector,
+                limit=limit * 2,  # Больше, чтобы учесть фильтры
+                score_threshold=0.5,  # Минимальный скор
+            )
+
+            items = []
+            for hit in search_result:
+                if hit.id in exclude_ids:
+                    continue
+                # Преобразуем id обратно в user_id (из payload или из id)
+                # Предполагаем, что id - это uuid от party_rk, и payload содержит party_rk
+                candidate_user_id = hit.payload.get("party_rk", str(hit.id))
+                score = hit.score
+                # Применяем стратегию
+                if strategy == "high_precision":
+                    score = min(1.0, score + 0.03)
+                elif strategy == "exploration":
+                    score = max(0.0, score - 0.05)
+                # Soft seen
+                if candidate_user_id in soft_seen_user_ids:
+                    score = max(0.0, score - 0.15)
+                items.append(RecommendationItem(candidate_user_id, score))
+                if len(items) >= limit:
+                    break
+
+            return items
+        except Exception as exc:
+            print(f"Qdrant search failed: {exc}")
+            return []
+
+    def process_swipe_feedback(self, payload: SwipeFeedbackRequest) -> AckResponse:
+        # Сохраняем событие
+        self.save_feedback_event(
+            event_id=payload.event_id,
+            trace_id=payload.trace_id,
+            event_type="swipe",
+        )
+        
+        # Обрабатываем дообучение только для "pass" (отказ)
+        if payload.action == "pass" and self._qdrant_client is not None:
+            self._update_user_vector_on_pass(payload.actor_user_id, payload.target_user_id, payload.trace_id)
+        
+        return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+
+    def _update_user_vector_on_pass(self, actor_user_id: int, target_user_id: int, trace_id: UUID) -> None:
+        """
+        Обновляет вектор пользователя actor_user_id, чтобы он стал менее похожим на target_user_id.
+        Это реализует дообучение по свайпам "pass".
+        """
+        try:
+            # Получаем векторы из Qdrant
+            actor_id = _string_to_uuid(str(actor_user_id))
+            target_id = _string_to_uuid(str(target_user_id))
+            
+            points = self._qdrant_client.retrieve(
+                collection_name="user_profiles",
+                ids=[actor_id, target_id],
+                with_vectors=True
+            )
+            
+            if len(points) != 2:
+                print(f"[{trace_id}] Could not retrieve vectors for users {actor_user_id} and {target_user_id}")
+                return
+            
+            actor_vector = None
+            target_vector = None
+            for point in points:
+                if point.id == actor_id:
+                    actor_vector = point.vector
+                elif point.id == target_id:
+                    target_vector = point.vector
+            
+            if actor_vector is None or target_vector is None:
+                print(f"[{trace_id}] Missing vectors for update")
+                return
+            
+            # Корректируем вектор актора: вычитаем часть вектора цели
+            # alpha - коэффициент обучения, можно настроить
+            alpha = 0.01  # маленький шаг, чтобы не переобучить сильно
+            new_vector = [
+                actor - alpha * target
+                for actor, target in zip(actor_vector, target_vector)
+            ]
+            
+            # Нормализуем вектор, чтобы сохранить единичную длину (для косинусного расстояния)
+            norm = np.linalg.norm(new_vector)
+            if norm > 0:
+                new_vector = [x / norm for x in new_vector]
+            
+            # Обновляем вектор в Qdrant
+            self._qdrant_client.upsert(
+                collection_name="user_profiles",
+                points=[PointStruct(id=actor_id, vector=new_vector)]
+            )
+            
+            print(f"[{trace_id}] Updated vector for user {actor_user_id} based on pass to {target_user_id}")
+            
+        except Exception as exc:
+            print(f"[{trace_id}] Error updating user vector: {exc}")
     def update_user_profile_favorites(
         self, 
         user_id: int, 

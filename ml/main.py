@@ -175,11 +175,7 @@ async def post_swipe_feedback(payload: SwipeFeedbackRequest) -> AckResponse:
                 "trace_id": str(payload.trace_id),
             },
         )
-    return runtime.save_feedback_event(
-        event_id=payload.event_id,
-        trace_id=payload.trace_id,
-        event_type="swipe",
-    )
+    return runtime.process_swipe_feedback(payload)
 
 
 @app.post(

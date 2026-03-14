@@ -12,7 +12,8 @@ from .prepare_data import Transaction, generate_sample_transactions
 
 @dataclass(slots=True)
 class RecommendationItem:
-    candidate_user_id: int
+    # Может быть числовым (bootstrap), может быть строковым (реальные id)
+    candidate_user_id: str | int
     score: float
 
 
@@ -28,23 +29,20 @@ def _clamp_score(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
-def _parse_numeric_user_id(raw_user_id: str) -> int | None:
-    if raw_user_id.startswith("user-"):
-        suffix = raw_user_id.split("-", 1)[1]
-    else:
-        suffix = raw_user_id
-    if not suffix.isdigit():
-        return None
-    return int(suffix)
+def _normalize_user_id(raw_user_id: str | int) -> str:
+    # Поддерживаем числовые id (user-1) и любые строковые id (хеши, UUID и т.п.)
+    if isinstance(raw_user_id, int):
+        return f"user-{raw_user_id}"
+    raw = str(raw_user_id)
+    if raw.isdigit():
+        return f"user-{raw}"
+    return raw
 
 
-def _resolve_profile_key(profiles: dict[str, object], user_id: int) -> str | None:
-    direct_key = str(user_id)
-    prefixed_key = f"user-{user_id}"
-    if direct_key in profiles:
-        return direct_key
-    if prefixed_key in profiles:
-        return prefixed_key
+def _resolve_profile_key(profiles: dict[str, object], user_id: str | int) -> str | None:
+    key = _normalize_user_id(user_id)
+    if key in profiles:
+        return key
     return None
 
 
@@ -64,11 +62,10 @@ class ModelPipeline:
         self.features_version = "features_v1"
         self.trained_at = datetime.now(timezone.utc)
 
-        self._known_user_ids: list[int] = []
+        # Храним ключи, которые уже есть в профилях, чтобы можно было быстро строить fallback-пул
+        self._known_user_ids: list[str] = []
         for raw_user_id in artifact.profiles.keys():
-            parsed = _parse_numeric_user_id(raw_user_id)
-            if parsed is not None:
-                self._known_user_ids.append(parsed)
+            self._known_user_ids.append(str(raw_user_id))
 
     @property
     def known_user_count(self) -> int:
@@ -81,16 +78,16 @@ class ModelPipeline:
     def recommend(
         self,
         *,
-        request_user_id: int,
+        request_user_id: str | int,
         limit: int,
-        hard_exclude_user_ids: Iterable[int],
-        soft_seen_user_ids: Iterable[int],
+        hard_exclude_user_ids: Iterable[str | int],
+        soft_seen_user_ids: Iterable[str | int],
         strategy: str,
         trace_seed: int,
     ) -> tuple[list[RecommendationItem], list[str], str]:
-        hard_exclude = set(hard_exclude_user_ids)
-        soft_seen = set(soft_seen_user_ids)
-        hard_exclude.add(request_user_id)
+        hard_exclude = {_normalize_user_id(x) for x in hard_exclude_user_ids}
+        soft_seen = {_normalize_user_id(x) for x in soft_seen_user_ids}
+        hard_exclude.add(_normalize_user_id(request_user_id))
 
         request_user_key = _resolve_profile_key(self._artifact.profiles, request_user_id)
         warnings: list[str] = []
@@ -100,17 +97,17 @@ class ModelPipeline:
             matches = get_matches(self._artifact, request_user_key, top_n=max(200, limit * 5))
             for row in matches:
                 candidate_raw = str(row["user_id"])
-                candidate_id = _parse_numeric_user_id(candidate_raw)
-                if candidate_id is None or candidate_id in hard_exclude:
+                candidate_key = _normalize_user_id(candidate_raw)
+                if candidate_key in hard_exclude:
                     continue
                 score = _clamp_score(float(row["score"]))
-                if candidate_id in soft_seen:
+                if candidate_key in soft_seen:
                     score = _clamp_score(score - 0.15)
                 if strategy == "high_precision":
                     score = _clamp_score(score + 0.03)
                 if strategy == "exploration":
                     score = _clamp_score(score - 0.05)
-                scored.append(RecommendationItem(candidate_id, score))
+                scored.append(RecommendationItem(candidate_key, score))
             decision_mode = "model"
         else:
             decision_mode = "fallback"
@@ -137,8 +134,8 @@ class ModelPipeline:
     def explain_pair(
         self,
         *,
-        requester_user_id: int,
-        candidate_user_id: int,
+        requester_user_id: str | int,
+        candidate_user_id: str | int,
         max_reasons: int,
     ) -> list[ExplanationSignal]:
         requester_key = _resolve_profile_key(self._artifact.profiles, requester_user_id)
