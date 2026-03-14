@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { isAxiosError } from "axios";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import type { AuthCredentials } from "@/entities/auth/model";
 import { LoginForm } from "@/features/auth/login-form";
@@ -12,16 +13,19 @@ const getErrorMessage = (error: unknown): string => {
     return error;
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
+  if (isAxiosError(error)) {
+    if (error.response?.status === 401) {
+      return "Неверный email или пароль";
+    }
 
-  if (typeof error === "object" && error !== null && "response" in error) {
-    const response = (error as { response?: { data?: { detail?: unknown } } }).response;
-    const detail = response?.data?.detail;
+    const detail = error.response?.data?.detail;
     if (typeof detail === "string") {
       return detail;
     }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
   }
 
   return "Произошла ошибка";
@@ -43,8 +47,12 @@ export default function AuthPage(): ReactElement {
     return (
       <div className="min-h-screen flex items-center justify-center bg-red-50 text-slate-700">
         <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-lg">
-          <h2 className="text-2xl font-semibold text-red-500">Контекст аутентификации не найден</h2>
-          <p className="mt-2">Убедитесь, что используете компонент внутри `AuthProvider`.</p>
+          <h2 className="text-2xl font-semibold text-red-500">
+            Контекст аутентификации не найден
+          </h2>
+          <p className="mt-2">
+            Убедитесь, что используете компонент внутри `AuthProvider`.
+          </p>
         </div>
       </div>
     );
@@ -56,7 +64,7 @@ export default function AuthPage(): ReactElement {
     isLoggingIn,
     loginError,
     isRegistering,
-    registerError
+    registerError,
   } = auth;
 
   const isLoading = isLoggingIn || isRegistering;
@@ -77,8 +85,7 @@ export default function AuthPage(): ReactElement {
       } else {
         await register(credentials);
       }
-    } catch {
-    }
+    } catch {}
   };
 
   return (
@@ -86,7 +93,11 @@ export default function AuthPage(): ReactElement {
       <motion.div
         className="relative w-full max-w-md"
         initial={{ opacity: 0, y: 32, scale: 0.96 }}
-        animate={isVisible ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 32, scale: 0.96 }}
+        animate={
+          isVisible
+            ? { opacity: 1, y: 0, scale: 1 }
+            : { opacity: 0, y: 32, scale: 0.96 }
+        }
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
         <AnimatePresence mode="wait">
