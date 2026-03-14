@@ -8,7 +8,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 DATA_PATH = 'transaction_600_new.csv' 
-LIMIT_USERS = 100
+#LIMIT_USERS = 100
 RANDOM_SEED = 42
 COLLECTION_NAME = "user_profiles"
 client = QdrantClient(url="http://localhost:6333")
@@ -128,7 +128,7 @@ def run_ml_logic():
     df = pd.read_csv(DATA_PATH, usecols=cols)
 
     unique_users = df['party_rk'].unique()
-    sampled_users = unique_users[:LIMIT_USERS]
+    sampled_users = unique_users
     df = df[df['party_rk'].isin(sampled_users)].copy()
     print(f"Выборка: {len(sampled_users)} пользователей, {len(df)} транзакций.")
 
