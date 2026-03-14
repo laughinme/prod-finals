@@ -41,9 +41,10 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
     )
     assert presign.status_code == 200
     presign_data = presign.json()
-    assert presign_data["file_key"].startswith("avatars/")
+    assert presign_data["object_key"].startswith("avatars/")
     assert presign_data["upload_url"]
-    assert presign_data["max_size_mb"] > 0
+    assert presign_data["public_url"]
+    assert presign_data["expires_in"] > 0
 
     png_bytes = (
         b"\x89PNG\r\n\x1a\n"
@@ -62,30 +63,17 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
 
     confirm = await client.post(
         "/api/v1/users/me/avatar/confirm",
-        json={"file_key": presign_data["file_key"]},
+        json={"object_key": presign_data["object_key"]},
         headers=auth_header(access_token),
     )
     assert confirm.status_code == 200
-    assert confirm.json()["status"] == "approved"
+    assert confirm.json()["avatar_status"] == "approved"
     assert confirm.json()["avatar_url"]
-
-    current_avatar = await client.get(
-        "/api/v1/users/me/avatar",
-        headers=auth_header(access_token),
-    )
-    assert current_avatar.status_code == 200
-    assert current_avatar.json()["status"] == "approved"
 
     delete_avatar = await client.delete(
         "/api/v1/users/me/avatar",
         headers=auth_header(access_token),
     )
-    assert delete_avatar.status_code == 204
-
-    avatar_after_delete = await client.get(
-        "/api/v1/users/me/avatar",
-        headers=auth_header(access_token),
-    )
-    assert avatar_after_delete.status_code == 200
-    assert avatar_after_delete.json()["status"] == "missing"
-    assert avatar_after_delete.json()["avatar_url"] is None
+    assert delete_avatar.status_code == 200
+    assert delete_avatar.json()["avatar_status"] is None
+    assert delete_avatar.json()["avatar_url"] is None

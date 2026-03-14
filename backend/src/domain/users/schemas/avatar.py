@@ -1,7 +1,6 @@
-from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AvatarPresignRequest(BaseModel):
@@ -10,11 +9,18 @@ class AvatarPresignRequest(BaseModel):
 
 
 class AvatarPresignResponse(BaseModel):
-    file_key: str = Field(..., min_length=1)
+    object_key: str = Field(..., min_length=1)
     upload_url: str = Field(..., min_length=1)
-    expires_at: datetime
-    max_size_mb: int = Field(..., gt=0)
+    public_url: str = Field(..., min_length=1)
+    expires_in: int = Field(..., gt=0)
 
 
 class AvatarConfirmRequest(BaseModel):
-    file_key: str = Field(..., min_length=1, max_length=1024)
+    object_key: str | None = Field(default=None, min_length=1, max_length=1024)
+    file_key: str | None = Field(default=None, min_length=1, max_length=1024)
+
+    @model_validator(mode="after")
+    def validate_key(self):
+        if not self.object_key and not self.file_key:
+            raise ValueError("object_key is required")
+        return self

@@ -32,6 +32,9 @@ class FakeMediaStorage:
     def create_presigned_upload_url(self, *, bucket: str, key: str, content_type: str, expires_in: int | None = None) -> str:
         return f"http://localhost/{bucket}/{key}?signature=test"
 
+    def build_public_url(self, *, bucket: str, key: str) -> str:
+        return f"http://localhost/{bucket}/{key}"
+
     def get_object_stat(self, *, bucket: str, key: str):
         return SimpleNamespace(size_bytes=1024, content_type="image/jpeg")
 
@@ -65,9 +68,10 @@ async def test_create_avatar_presign_returns_upload_info():
         content_type="image/png",
     )
 
-    assert response.file_key.startswith(f"avatars/{user.id}/")
+    assert response.object_key.startswith(f"avatars/{user.id}/")
     assert response.upload_url.startswith("http://localhost/")
-    assert response.max_size_mb > 0
+    assert response.public_url.startswith("http://")
+    assert response.expires_in > 0
 
 
 @pytest.mark.unit

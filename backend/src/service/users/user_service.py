@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
 from core.config import get_settings
@@ -15,6 +15,7 @@ from database.relational_db import (
     UoW,
 )
 from domain.dating import (
+    AgeRange,
     AvatarModerationStatus,
     AvatarResponse,
     InsightCard,
@@ -68,25 +69,33 @@ class UserService:
         return await self.user_repo.get_by_demo_user_key(demo_user_key)
 
     async def serialize_user(self, user: User) -> UserModel:
-        answer_map = await self._get_quiz_answer_map(user.id)
-        lifestyle_tags = derive_lifestyle_tags(answer_map)
         return UserModel(
             id=user.id,
             email=user.email,
-            display_name=user.resolved_display_name or "",
+            username=user.username or user.resolved_display_name,
+            display_name=user.display_name,
+            avatar_key=user.avatar_key,
+            avatar_url=user.avatar_url,
+            avatar_status=self._build_legacy_avatar_status(user),
+            avatar_rejection_reason=user.avatar_rejection_reason,
             birth_date=user.birth_date,
             age=user.age,
-            city=user.city.name if user.city else None,
+            city={"id": user.city.id, "name": user.city.name} if user.city else None,
             gender=user.gender,
             bio=user.bio,
-            quiz_status=user.quiz_status,
-            profile_status=user.profile_status,
-            recommendation_mode=user.recommendation_mode,
-            search_preferences=self._build_search_preferences(user),
-            avatar=self._build_avatar_response(user),
-            lifestyle_tags=lifestyle_tags,
-            profile_completion_percent=user.profile_completion_percent,
-            can_open_feed=user.can_open_feed,
+            looking_for_genders=list(user.looking_for_genders or []),
+            age_range=AgeRange(**user.age_range) if user.age_range else None,
+            distance_km=user.distance_km,
+            goal=self._build_legacy_goal(user.goal),
+            is_onboarded=user.can_open_feed,
+            onboarding_status=user.onboarding_status,
+            has_min_profile=user.has_min_profile,
+            has_approved_photo=user.has_approved_photo,
+            profile_status=self._build_legacy_profile_status(user),
+            banned=user.banned,
+            role_slugs=user.role_slugs,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
         )
 
     async def get_user_insights(self, user: User) -> UserInsightsResponse:
@@ -130,6 +139,15 @@ class UserService:
     async def patch_user(self, payload: UserPatch, user: User):
         data = payload.model_dump(exclude_none=True)
 
+        if "city_id" in data:
+            if self.city_repo is None:
+                raise CityNotFoundError()
+            city = await self.city_repo.get_by_id(data["city_id"])
+            if city is None:
+                raise CityNotFoundError()
+            user.city_id = city.id
+            data.pop("city_id")
+
         if "city" in data:
             if self.city_repo is None:
                 raise CityNotFoundError()
@@ -155,15 +173,35 @@ class UserService:
             elif user.distance_km is None:
                 user.distance_km = 30
             if prefs.get("goal") is not None:
-                goal = prefs["goal"]
-                user.goal = goal.value if hasattr(goal, "value") else goal
+                user.goal = self._normalize_goal(prefs["goal"])
 
         if "display_name" in data:
             user.display_name = data.pop("display_name").strip() or None
 
+        if "username" in data:
+            value = data.pop("username")
+            user.username = value.strip() or None if isinstance(value, str) else value
+
         if "gender" in data:
             gender = data.pop("gender")
             user.gender = gender.value if hasattr(gender, "value") else gender
+
+        if "looking_for_genders" in data:
+            user.looking_for_genders = [
+                value.value if hasattr(value, "value") else value
+                for value in data.pop("looking_for_genders")
+            ]
+
+        if "age_range" in data:
+            age_range = data.pop("age_range")
+            user.age_range_min = age_range["min"]
+            user.age_range_max = age_range["max"]
+
+        if "distance_km" in data:
+            user.distance_km = data.pop("distance_km")
+
+        if "goal" in data:
+            user.goal = self._normalize_goal(data.pop("goal"))
 
         for field, value in data.items():
             setattr(user, field, value)
@@ -195,10 +233,13 @@ class UserService:
             expires_in=self.settings.STORAGE_PRESIGN_EXPIRES_SEC,
         )
         return AvatarPresignResponse(
-            file_key=object_key,
+            object_key=object_key,
             upload_url=upload_url,
-            expires_at=datetime.now(UTC) + timedelta(seconds=self.settings.STORAGE_PRESIGN_EXPIRES_SEC),
-            max_size_mb=self.settings.MAX_PHOTO_SIZE,
+            public_url=self.media_storage.build_public_url(
+                bucket=self.settings.STORAGE_PUBLIC_BUCKET,
+                key=object_key,
+            ),
+            expires_in=self.settings.STORAGE_PRESIGN_EXPIRES_SEC,
         )
 
     async def confirm_avatar_upload(self, *, user: User, file_key: str) -> AvatarResponse:
@@ -347,6 +388,42 @@ class UserService:
             distance_km=user.distance_km,
             goal=user.goal,
         )
+
+    def _build_legacy_avatar_status(self, user: User) -> str | None:
+        status = getattr(
+            user,
+            "avatar_moderation_status",
+            getattr(user, "avatar_status", AvatarModerationStatus.MISSING.value),
+        )
+        if status == AvatarModerationStatus.PENDING.value:
+            return "pending_moderation"
+        if status == AvatarModerationStatus.APPROVED.value:
+            return "approved"
+        if status == AvatarModerationStatus.REJECTED.value:
+            return "rejected"
+        return None
+
+    def _build_legacy_profile_status(self, user: User) -> str:
+        if user.banned:
+            return "blocked"
+        if user.can_open_feed:
+            return "active"
+        return "restricted"
+
+    def _build_legacy_goal(self, goal: str | None) -> str | None:
+        if goal == "new_friends":
+            return "friendship"
+        if goal == "casual_dates":
+            return "dating"
+        return goal
+
+    def _normalize_goal(self, goal: object) -> str | None:
+        value = goal.value if hasattr(goal, "value") else goal
+        if value == "friendship":
+            return "new_friends"
+        if value == "dating":
+            return "casual_dates"
+        return value
 
     async def _get_quiz_answer_map(self, user_id: UUID) -> dict[str, list[str]]:
         if self.dating_repo is None:
