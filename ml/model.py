@@ -1,14 +1,56 @@
 import pandas as pd
 import numpy as np
+import os
 from catboost import CatBoostClassifier
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
+from qdrant_client import QdrantClient
 
 DATA_PATH = 'transaction_600_new.csv' 
 LIMIT_USERS = 100
 RANDOM_SEED = 42
 
 
+class MlRuntime:
+    def __init__(self):
+        self.status = MlStatus.down
+        
+        # Берем настройки из окружения, которые прописаны в docker-compose
+        self.qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        self.data_path = os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv")
+        self.train_on_start = os.getenv("ML_TRAIN_ON_START", "false").lower() == "true"
+        
+        # Подключаемся к внешнему микросервису Qdrant
+        self.client = QdrantClient(url=self.qdrant_url)
+        self.collection_name = "user_profiles"
+        
+        self.profiles_cache = None
+        self.user_stats = {}
+
+        if self.train_on_start:
+                self._bootstrap()
+                self.status = MlStatus.ok
+        else:
+            self.status = MlStatus.ok 
+
+    def _bootstrap(self):
+        if not os.path.exists(self.data_path):
+            print(f"⚠️ Файл данных не найден: {self.data_path}")
+            return
+
+        # Загружаем данные (используем лимиты из env если нужно)
+        sample_count = int(os.getenv("ML_SAMPLE_USER_COUNT", 100))
+        df = pd.read_csv(self.data_path)
+        
+        # ... (здесь твоя логика CatBoost и создания профилей) ...
+        # profiles_scaled = create_user_profiles(df)
+        
+        # Синхронизация с микросервисом Qdrant
+        self._sync_to_qdrant(profiles_scaled, df)
+
+    def _sync_to_qdrant(self, profiles_df, df_enriched):
+        # Логика загрузки PointStruct в self.client, которую мы писали выше
+        pass
 def create_user_profiles(df, user_col='party_rk', category_col='category_nm', time_col='hour'):
     df = df.copy()
     df[category_col] = df[category_col].fillna('unknown')
