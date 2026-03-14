@@ -38,6 +38,9 @@ else
   exit 1
 fi
 
+echo "Using compose command: ${compose_cmd[*]}"
+"${compose_cmd[@]}" version || true
+
 read_env_value() {
   local name="$1"
   local line
@@ -64,6 +67,38 @@ print_diagnostics() {
   "${compose_cmd[@]}" logs --tail=200 ml-service backend nginx db redis minio minio-init || true
 }
 
+wait_for_backend_health() {
+  local timeout_sec="$1"
+  local deadline
+  local container_id
+  local status
+  local health
+
+  deadline=$((SECONDS + timeout_sec))
+  while (( SECONDS < deadline )); do
+    container_id="$("${compose_cmd[@]}" ps -q backend 2>/dev/null || true)"
+    if [[ -z "$container_id" ]]; then
+      sleep 2
+      continue
+    fi
+
+    status="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null || true)"
+    health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
+
+    if [[ "$status" == "running" && "$health" == "healthy" ]]; then
+      return 0
+    fi
+    if [[ "$status" == "exited" || "$status" == "dead" || "$health" == "unhealthy" ]]; then
+      echo "Backend container is not healthy (status=$status, health=$health)." >&2
+      return 1
+    fi
+    sleep 2
+  done
+
+  echo "Backend health check timeout after ${timeout_sec}s." >&2
+  return 1
+}
+
 if is_truthy "$(read_env_value ML_TRAIN_ON_START)"; then
   if [[ -z "$(read_env_value ML_TRAIN_DATA_URL)" ]]; then
     echo "ML_TRAIN_ON_START=true but ML_TRAIN_DATA_URL is empty in deploy/.env" >&2
@@ -83,10 +118,23 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 180 ml-service backend nginx; then
-  echo "Failed to start application services." >&2
-  print_diagnostics
-  exit 1
+if "${compose_cmd[@]}" up --help 2>/dev/null | grep -q -- '--wait'; then
+  if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 180 ml-service backend nginx; then
+    echo "Failed to start application services." >&2
+    print_diagnostics
+    exit 1
+  fi
+else
+  if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend nginx; then
+    echo "Failed to start application services." >&2
+    print_diagnostics
+    exit 1
+  fi
+  if ! wait_for_backend_health 180; then
+    echo "Backend did not become healthy after startup." >&2
+    print_diagnostics
+    exit 1
+  fi
 fi
 
 "${compose_cmd[@]}" ps
