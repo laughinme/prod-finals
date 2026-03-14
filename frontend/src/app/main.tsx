@@ -23,7 +23,10 @@ Sentry.init({
   integrations: [Sentry.browserTracingIntegration()],
   // Tracing
   tracesSampleRate: 1.0, //  Capture 100% of the transactions
-  tracePropagationTargets: ["localhost", /^https:\/\/yourserver\.io\/api/],
+  tracePropagationTargets: [
+    "localhost",
+    /^https:\/\/team-26-test-vm-6b7c17.pages.prodcontest.ru\/api/,
+  ],
   // Session Replay
   replaysOnErrorSampleRate: 1.0, // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.,
   // Enable logs to be sent to Sentry
