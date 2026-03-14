@@ -18,12 +18,8 @@ from domain.dating import (
     AgeRange,
     AvatarModerationStatus,
     AvatarResponse,
-    InsightCard,
-    InsightStrength,
     SearchPreferences,
-    UserInsightsResponse,
 )
-from domain.dating.quiz_catalog import derive_lifestyle_tags
 from domain.users.schemas.avatar import AvatarPresignResponse
 from domain.users.schemas.profile import UserPatch
 from domain.users.schemas.profile import UserModel
@@ -96,44 +92,6 @@ class UserService:
             role_slugs=user.role_slugs,
             created_at=user.created_at,
             updated_at=user.updated_at,
-        )
-
-    async def get_user_insights(self, user: User) -> UserInsightsResponse:
-        answer_map = await self._get_quiz_answer_map(user.id)
-        tags = derive_lifestyle_tags(answer_map)
-        cards = [
-            InsightCard(
-                code=tag.code,
-                title=tag.label,
-                description="This signal helps improve recommendation quality.",
-                strength=tag.strength,
-            )
-            for tag in tags
-        ]
-
-        if not cards and user.missing_required_fields:
-            cards.append(
-                InsightCard(
-                    code="profile_completion",
-                    title="Complete required profile fields",
-                    description="Adding the basics unlocks more relevant matching.",
-                    strength=InsightStrength.HIGH,
-                )
-            )
-        if not cards:
-            cards.append(
-                InsightCard(
-                    code="more_history",
-                    title="Keep using the feed",
-                    description="More actions help tune your recommendations over time.",
-                    strength=InsightStrength.MEDIUM,
-                )
-            )
-
-        return UserInsightsResponse(
-            profile_completion_percent=user.profile_completion_percent,
-            cards=cards,
-            privacy_note="Insights are based on your profile and optional quiz answers.",
         )
 
     async def patch_user(self, payload: UserPatch, user: User):
@@ -424,12 +382,6 @@ class UserService:
         if value == "dating":
             return "casual_dates"
         return value
-
-    async def _get_quiz_answer_map(self, user_id: UUID) -> dict[str, list[str]]:
-        if self.dating_repo is None:
-            return {}
-        rows = await self.dating_repo.list_quiz_answers(user_id=user_id)
-        return {row.step_key: list(row.answers or []) for row in rows}
 
     # async def _invalidate_permissions_cache(
     #     self,

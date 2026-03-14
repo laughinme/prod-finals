@@ -19,14 +19,12 @@ from .enums import (
     FeedReactionResult,
     FeedState,
     Goal,
-    InsightStrength,
     MatchStatus,
     MessageStatus,
     NextActionType,
     OnboardingStepType,
     ProfileStatus,
     QuizStatus,
-    RecommendationMode,
     ReportCategory,
     SafetySourceContext,
 )
@@ -57,12 +55,6 @@ class AvatarResponse(BaseModel):
     moderation_reason: str | None = None
 
 
-class LifestyleTag(BaseModel):
-    code: str
-    label: str
-    strength: InsightStrength
-
-
 class NextAction(BaseModel):
     type: NextActionType
     title: str
@@ -73,7 +65,6 @@ class NextAction(BaseModel):
 class OnboardingStateResponse(BaseModel):
     quiz_status: QuizStatus
     profile_status: ProfileStatus
-    recommendation_mode: RecommendationMode
     feed_unlocked: bool
     current_step_key: str | None = None
     completed_steps: list[str] = Field(default_factory=list)
@@ -90,14 +81,22 @@ class OnboardingStepOption(BaseModel):
 class OnboardingStep(BaseModel):
     step_key: str
     title: str
+    subtitle: str | None = None
     description: str | None = None
     step_type: OnboardingStepType
+    optional: bool = True
+    multi_select: bool = False
     required_for_feed: bool = False
+    min_answers: int | None = None
+    max_answers: int | None = None
+    range_min: int | None = None
+    range_max: int | None = None
+    range_min_label: str | None = None
+    range_max_label: str | None = None
     options: list[OnboardingStepOption] = Field(default_factory=list)
 
 
 class OnboardingConfigResponse(BaseModel):
-    quiz_optional: bool = True
     steps: list[OnboardingStep] = Field(default_factory=list)
 
 
@@ -108,7 +107,6 @@ class OnboardingAnswersRequest(BaseModel):
 
 class OnboardingAnswersResponse(BaseModel):
     quiz_status: QuizStatus
-    recommendation_mode: RecommendationMode
     next_step_key: str | None = None
     completed: bool
 
@@ -155,7 +153,6 @@ class FeedResponse(BaseModel):
     feed_state: FeedState
     profile_status: ProfileStatus
     quiz_status: QuizStatus
-    recommendation_mode: RecommendationMode
     decision_mode: DecisionMode
     batch_id: UUID | None = None
     generated_at: datetime | None = None
@@ -307,19 +304,6 @@ class ReportResponse(BaseModel):
     also_block_applied: bool
 
 
-class InsightCard(BaseModel):
-    code: str
-    title: str
-    description: str | None = None
-    strength: InsightStrength
-
-
-class UserInsightsResponse(BaseModel):
-    profile_completion_percent: int = Field(..., ge=0, le=100)
-    cards: list[InsightCard] = Field(default_factory=list)
-    privacy_note: str | None = None
-
-
 class AuditEvent(BaseModel):
     event_id: UUID
     event_type: str
@@ -350,8 +334,6 @@ class FeedCandidateContext(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     profile_completion_percent: int = Field(default=0, ge=0, le=100)
-    lifestyle_codes: list[str] = Field(default_factory=list)
-    has_behavioral_profile: bool = False
 
 
 class RankedCandidate(BaseModel):
@@ -389,9 +371,7 @@ class UserViewContext(BaseModel):
     bio: str | None = None
     quiz_status: QuizStatus
     profile_status: ProfileStatus
-    recommendation_mode: RecommendationMode
     search_preferences: SearchPreferences
     avatar: AvatarResponse
-    lifestyle_tags: list[LifestyleTag] = Field(default_factory=list)
     profile_completion_percent: int = Field(..., ge=0, le=100)
     can_open_feed: bool

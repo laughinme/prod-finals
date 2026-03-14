@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post(
     "/skip",
     response_model=OnboardingStateResponse,
-    summary="Skip optional onboarding quiz",
+    summary="Skip onboarding filters for now",
 )
 async def skip_onboarding(
     user: Annotated[User, Depends(auth_user)],

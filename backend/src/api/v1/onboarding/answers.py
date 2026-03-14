@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post(
     "/answers",
     response_model=OnboardingAnswersResponse,
-    summary="Save optional onboarding quiz answers",
+    summary="Save onboarding filter answers",
 )
 async def post_onboarding_answers(
     payload: OnboardingAnswersRequest,

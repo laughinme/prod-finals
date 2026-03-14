@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.config import get_settings
-from domain.dating.enums import AvatarModerationStatus, ProfileStatus, QuizStatus, RecommendationMode
+from domain.dating.enums import AvatarModerationStatus, ProfileStatus, QuizStatus
 from ..table_base import Base
 from ..mixins import TimestampMixin
 
@@ -52,12 +52,6 @@ class User(TimestampMixin, Base):
         server_default=QuizStatus.NOT_STARTED.value,
     )
     quiz_current_step_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    has_behavioral_profile: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=False,
-        server_default="false",
-    )
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
     # Service
@@ -179,14 +173,6 @@ class User(TimestampMixin, Base):
         }:
             return ProfileStatus.AVATAR_REQUIRED.value
         return ProfileStatus.READY.value
-
-    @property
-    def recommendation_mode(self) -> str:
-        if self.has_behavioral_profile and self.quiz_status == QuizStatus.COMPLETED.value:
-            return RecommendationMode.HYBRID.value
-        if self.has_behavioral_profile:
-            return RecommendationMode.BEHAVIORAL.value
-        return RecommendationMode.COLD_START.value
 
     @property
     def can_open_feed(self) -> bool:

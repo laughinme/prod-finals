@@ -25,6 +25,7 @@ from database.relational_db import (
     UserInterface,
 )
 from domain.dating import (
+    AgeRange,
     AuditEntityType,
     AuditEvent,
     AuditEventsQuery,
@@ -68,13 +69,15 @@ from domain.dating import (
     OnboardingStateResponse,
     ProfileStatus,
     QuizStatus,
-    RecommendationMode,
     ReportRequest,
     ReportResponse,
     SafetySourceContext,
     SendMessageRequest,
 )
-from domain.dating.quiz_catalog import get_quiz_steps, get_step
+from domain.dating.quiz_catalog import (
+    get_quiz_steps,
+    get_step,
+)
 
 from .exceptions import (
     AlreadyBlockedError,
@@ -130,7 +133,6 @@ class BaseDatingService:
         return {row.step_key: list(row.answers or []) for row in rows}
 
     async def _build_feed_context(self, user: User) -> FeedCandidateContext:
-        answers = await self._get_answer_map(user.id)
         return FeedCandidateContext(
             user_id=user.id,
             display_name=user.resolved_display_name or "",
@@ -146,22 +148,40 @@ class BaseDatingService:
             bio=user.bio,
             avatar_url=user.avatar_url,
             profile_completion_percent=user.profile_completion_percent,
-            lifestyle_codes=[code for values in answers.values() for code in values],
-            has_behavioral_profile=user.has_behavioral_profile,
         )
+
+    @staticmethod
+    def _missing_profile_basics(user: User) -> list[str]:
+        return [
+            field
+            for field in user.missing_required_fields
+            if not field.startswith("search_preferences.")
+        ]
+
+    @staticmethod
+    def _missing_filter_fields(user: User) -> list[str]:
+        return [
+            field
+            for field in user.missing_required_fields
+            if field.startswith("search_preferences.")
+        ]
 
     def _build_next_action(self, user: User) -> NextAction | None:
         if user.profile_status == ProfileStatus.BLOCKED.value:
             return None
-        if user.profile_status in {
-            ProfileStatus.DRAFT.value,
-            ProfileStatus.REQUIRED_FIELDS_MISSING.value,
-        }:
+        if self._missing_profile_basics(user):
             return NextAction(
                 type=NextActionType.COMPLETE_REQUIRED_FIELDS,
                 title="Complete required profile fields",
                 description="Add the basics needed to unlock the real feed.",
                 cta_label="Complete profile",
+            )
+        if self._missing_filter_fields(user):
+            return NextAction(
+                type=NextActionType.RESUME_QUIZ if user.quiz_status == QuizStatus.IN_PROGRESS.value else NextActionType.START_QUIZ,
+                title="Set your feed filters",
+                description="Answer the onboarding questions that define who should appear in your feed.",
+                cta_label="Continue onboarding" if user.quiz_status == QuizStatus.IN_PROGRESS.value else "Start onboarding",
             )
         if user.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
             return NextAction(
@@ -180,16 +200,16 @@ class BaseDatingService:
         if user.quiz_status == QuizStatus.IN_PROGRESS.value:
             return NextAction(
                 type=NextActionType.RESUME_QUIZ,
-                title="Resume quick quiz",
-                description="Continue the optional quiz to improve recommendation quality.",
+                title="Continue onboarding",
+                description="Finish the remaining feed filters to unlock matching.",
                 cta_label="Resume",
             )
         if user.quiz_status in {QuizStatus.NOT_STARTED.value, QuizStatus.SKIPPED.value}:
             return NextAction(
                 type=NextActionType.START_QUIZ,
-                title="Improve recommendation quality",
-                description="The optional quiz gives the ranking better lifestyle signals.",
-                cta_label="Start quiz",
+                title="Set feed filters",
+                description="Answer the onboarding questions that decide who appears in your feed.",
+                cta_label="Start onboarding",
             )
         return NextAction(
             type=NextActionType.OPEN_FEED,
@@ -219,7 +239,6 @@ class BaseDatingService:
         return OnboardingStateResponse(
             quiz_status=user.quiz_status,
             profile_status=user.profile_status,
-            recommendation_mode=user.recommendation_mode,
             feed_unlocked=user.can_open_feed,
             current_step_key=user.quiz_current_step_key or current_step,
             completed_steps=completed_steps,
@@ -255,22 +274,22 @@ class OnboardingService(BaseDatingService):
         return await self._build_onboarding_state(user)
 
     def get_config(self) -> OnboardingConfigResponse:
-        return OnboardingConfigResponse(quiz_optional=True, steps=get_quiz_steps())
+        return OnboardingConfigResponse(steps=get_quiz_steps())
 
     async def save_answers(self, user: User, payload: OnboardingAnswersRequest) -> OnboardingAnswersResponse:
         step = get_step(payload.step_key)
         if step is None:
             raise BadRequestError("Unknown quiz step")
 
-        allowed_values = {option.value for option in step.options}
-        if any(answer not in allowed_values for answer in payload.answers):
-            raise BadRequestError("Unknown answer passed for quiz step")
+        normalized_answers = self._validate_answers(step, payload.answers)
 
         await self.dating_repo.upsert_quiz_answer(
             user_id=user.id,
             step_key=payload.step_key,
-            answers=list(dict.fromkeys(payload.answers)),
+            answers=normalized_answers,
         )
+
+        self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
 
         answered_steps = {
             row.step_key
@@ -281,19 +300,19 @@ class OnboardingService(BaseDatingService):
 
         user.quiz_status = QuizStatus.COMPLETED.value if completed else QuizStatus.IN_PROGRESS.value
         user.quiz_current_step_key = next_step
+        user.is_onboarded = user.can_open_feed
         await self.add_audit_event(
             event_type="quiz_answers_saved",
             entity_type=AuditEntityType.QUIZ,
             entity_id=str(user.id),
             actor_user_id=user.id,
-            payload={"step_key": payload.step_key, "completed": completed},
+            payload={"step_key": payload.step_key, "answers": normalized_answers, "completed": completed},
         )
         await self.uow.commit()
         await self.uow.session.refresh(user)
 
         return OnboardingAnswersResponse(
             quiz_status=user.quiz_status,
-            recommendation_mode=user.recommendation_mode,
             next_step_key=next_step,
             completed=completed,
         )
@@ -302,6 +321,7 @@ class OnboardingService(BaseDatingService):
         if user.quiz_status != QuizStatus.COMPLETED.value:
             user.quiz_status = QuizStatus.SKIPPED.value
             user.quiz_current_step_key = None
+            user.is_onboarded = user.can_open_feed
             await self.uow.commit()
             await self.uow.session.refresh(user)
         return await self._build_onboarding_state(user)
@@ -319,8 +339,51 @@ class OnboardingService(BaseDatingService):
             await self.uow.session.refresh(user)
         return await self._build_onboarding_state(user)
 
-    async def finish(self, user: User) -> OnboardingStateResponse:
-        return await self._build_onboarding_state(user)
+    def _validate_answers(self, step, answers: list[str]) -> list[str]:
+        normalized = list(dict.fromkeys(answer.strip() for answer in answers if answer and answer.strip()))
+
+        if step.step_type.value == "range":
+            if len(normalized) != 2:
+                raise BadRequestError("Range step requires exactly two values")
+            try:
+                lower = int(normalized[0])
+                upper = int(normalized[1])
+            except ValueError as exc:
+                raise BadRequestError("Range values must be integers") from exc
+            if step.range_min is not None and lower < step.range_min:
+                raise BadRequestError("Range lower bound is too small")
+            if step.range_max is not None and upper > step.range_max:
+                raise BadRequestError("Range upper bound is too large")
+            if lower > upper:
+                raise BadRequestError("Range lower bound must be less than or equal to upper bound")
+            return [str(lower), str(upper)]
+
+        if step.min_answers is not None and len(normalized) < step.min_answers:
+            raise BadRequestError("Not enough answers provided for the step")
+        if step.max_answers is not None and len(normalized) > step.max_answers:
+            raise BadRequestError("Too many answers provided for the step")
+
+        allowed_values = {option.value for option in step.options}
+        if any(answer not in allowed_values for answer in normalized):
+            raise BadRequestError("Unknown answer passed for quiz step")
+        return normalized
+
+    def _apply_quiz_answer_to_user(self, user: User, step_key: str, answers: list[str]) -> None:
+        if step_key == "who_to_meet":
+            user.looking_for_genders = list(answers)
+            if user.distance_km is None:
+                user.distance_km = 30
+            return
+        if step_key == "preferred_age_range":
+            user.age_range_min = int(answers[0])
+            user.age_range_max = int(answers[1])
+            return
+        if step_key == "connection_goal":
+            user.goal = answers[0]
+            return
+        if step_key == "search_radius":
+            user.distance_km = int(answers[0])
+            return
 
 
 class FeedService(BaseDatingService):
@@ -330,7 +393,6 @@ class FeedService(BaseDatingService):
                 feed_state=FeedState.LOCKED,
                 profile_status=user.profile_status,
                 quiz_status=user.quiz_status,
-                recommendation_mode=user.recommendation_mode,
                 decision_mode=DecisionMode.FALLBACK,
                 lock_reason=self._build_lock_reason(user),
                 next_action=self._build_next_action(user),
@@ -351,7 +413,6 @@ class FeedService(BaseDatingService):
                 feed_state=FeedState.DEGRADED,
                 profile_status=user.profile_status,
                 quiz_status=user.quiz_status,
-                recommendation_mode=user.recommendation_mode,
                 decision_mode=DecisionMode.FALLBACK,
                 cards=[],
                 warnings=["feed_generation_failed"],
@@ -363,7 +424,6 @@ class FeedService(BaseDatingService):
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
                 quiz_status=user.quiz_status,
-                recommendation_mode=user.recommendation_mode,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -377,7 +437,6 @@ class FeedService(BaseDatingService):
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
                 quiz_status=user.quiz_status,
-                recommendation_mode=user.recommendation_mode,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -392,7 +451,6 @@ class FeedService(BaseDatingService):
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
                 quiz_status=user.quiz_status,
-                recommendation_mode=user.recommendation_mode,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -405,7 +463,6 @@ class FeedService(BaseDatingService):
             feed_state=FeedState.READY,
             profile_status=user.profile_status,
             quiz_status=user.quiz_status,
-            recommendation_mode=user.recommendation_mode,
             decision_mode=DecisionMode(batch.decision_mode),
             batch_id=batch.id,
             generated_at=batch.created_at,
@@ -435,14 +492,20 @@ class FeedService(BaseDatingService):
 
     async def _create_batch(self, user: User, limit: int) -> RecommendationBatch:
         excluded_ids = await self.dating_repo.list_excluded_target_ids_for_user(user.id)
+        requester_context = await self._build_feed_context(user)
         all_candidates = [
             candidate
             for candidate in await self.dating_repo.list_feed_candidates(requester_id=user.id)
-            if candidate.id not in excluded_ids and candidate.can_open_feed
+            if candidate.id not in excluded_ids
+            and candidate.can_open_feed
+            and self._candidate_passes_filters(
+                requester_context=requester_context,
+                candidate_context=await self._build_feed_context(candidate),
+            )
         ]
 
         ranked = await self.ml_facade.rank(
-            requester=await self._build_feed_context(user),
+            requester=requester_context,
             candidates=[await self._build_feed_context(candidate) for candidate in all_candidates],
             limit=limit,
         )
@@ -474,6 +537,42 @@ class FeedService(BaseDatingService):
 
         await self.uow.commit()
         return batch
+
+    def _candidate_passes_filters(
+        self,
+        *,
+        requester_context: FeedCandidateContext,
+        candidate_context: FeedCandidateContext,
+    ) -> bool:
+        candidate_age = _age_for_birth_date(candidate_context.birth_date, self.local_today())
+        requester_age = _age_for_birth_date(requester_context.birth_date, self.local_today())
+
+        requester_prefs = requester_context.search_preferences
+        candidate_prefs = candidate_context.search_preferences
+
+        if requester_prefs.looking_for_genders and candidate_context.gender not in requester_prefs.looking_for_genders:
+            return False
+        if candidate_prefs.looking_for_genders and requester_context.gender not in candidate_prefs.looking_for_genders:
+            return False
+
+        if requester_prefs.age_range is not None:
+            if candidate_age is None:
+                return False
+            if not (requester_prefs.age_range.min <= candidate_age <= requester_prefs.age_range.max):
+                return False
+        if candidate_prefs.age_range is not None and requester_age is not None:
+            if not (candidate_prefs.age_range.min <= requester_age <= candidate_prefs.age_range.max):
+                return False
+
+        if requester_prefs.goal and candidate_prefs.goal and requester_prefs.goal != candidate_prefs.goal:
+            return False
+
+        # MVP location filtering is city-level because no geo coordinates are stored yet.
+        if requester_prefs.distance_km is not None and requester_context.city and candidate_context.city:
+            if requester_context.city != candidate_context.city:
+                return False
+
+        return True
 
     async def _build_cards(self, items: list[RecommendationItem]) -> list[FeedCard]:
         users_by_id = {
