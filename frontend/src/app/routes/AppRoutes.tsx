@@ -11,6 +11,7 @@ import { useProfile } from "@/features/profile/useProfile";
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
 import ProfileSetupPage from "@/pages/ProfileSetup/ui/ProfileSetupPage";
+import PhotoUploadPage from "@/pages/PhotoUpload/ui/PhotoUploadPage";
 import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
 import MatchPage from "@/pages/Match/ui/MatchPage";
 import ChatPage from "@/pages/Chat/ui/ChatPage";
@@ -81,6 +82,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: "onboarding", element: <OnboardingPage /> },
+      { path: "photo-upload", element: <PhotoUploadPage /> },
       { path: "profile-setup", element: <ProfileSetupPage /> },
       { path: "match", element: <MatchPage /> },
       {
