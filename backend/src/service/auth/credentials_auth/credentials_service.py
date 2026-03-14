@@ -2,14 +2,13 @@ from typing import Literal
 from sqlalchemy.exc import IntegrityError
 
 from core.config import get_settings
-from core.errors import ForbiddenError
 from database.relational_db import (
     RolesInterface,
     UserInterface,
     User,
     UoW,
 )
-from domain.auth import DemoLoginRequest, UserLogin, UserRegister
+from domain.auth import UserLogin, UserRegister
 from domain.auth.enums import DEFAULT_ROLE
 from core.crypto import hash_password, verify_password, needs_rehash
 from service.notifications import NotificationService
@@ -62,7 +61,6 @@ class CredentialsService:
             email=payload.email,
             password_hash=password_hash,
             username=getattr(payload, "username", None),
-            display_name=getattr(payload, "display_name", None) or getattr(payload, "username", None),
         )
         
         try:
@@ -103,22 +101,6 @@ class CredentialsService:
         access, refresh, csrf = await self.token_service.issue_tokens(user, src)
         return user, access, refresh, csrf
 
-    async def demo_login(
-        self,
-        payload: DemoLoginRequest,
-        src: Literal["web", "mobile"],
-    ) -> tuple[User, str, str, str]:
-        if self.settings.APP_STAGE == "prod":
-            raise ForbiddenError("Demo login is disabled in production")
-
-        user = await self.user_repo.get_by_demo_user_key(payload.demo_user_id)
-        if user is None:
-            raise WrongCredentials(detail="Unknown demo user")
-
-        access, refresh, csrf = await self.token_service.issue_tokens(user, src)
-        return user, access, refresh, csrf
-    
-    
     async def logout(self, refresh_token: str) -> None:
         payload = await self.token_service.revoke(refresh_token)
         if payload is None:

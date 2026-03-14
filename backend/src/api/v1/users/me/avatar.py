@@ -38,8 +38,7 @@ async def confirm_avatar_upload(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
 ) -> UserModel:
-    object_key = payload.object_key or payload.file_key
-    await svc.confirm_avatar_upload(user=user, file_key=object_key)
+    await svc.confirm_avatar_upload(user=user, file_key=payload.object_key)
     return await svc.serialize_user(user)
 
 
