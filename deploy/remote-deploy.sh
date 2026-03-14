@@ -28,7 +28,19 @@ print_diagnostics() {
   "${compose_cmd[@]}" logs --tail=200 backend nginx db redis minio minio-init || true
 }
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 150; then
+if ! "${compose_cmd[@]}" up -d --remove-orphans db redis minio; then
+  echo "Failed to start infrastructure services." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-init minio-init; then
+  echo "MinIO bucket initialization failed." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans --wait --wait-timeout 150 backend nginx; then
   echo "Deployment failed. Printing compose diagnostics..." >&2
   print_diagnostics
   exit 1

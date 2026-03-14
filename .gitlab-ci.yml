@@ -72,7 +72,11 @@ deploy:production:
       if [ -n "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
         printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
       else
-        ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" > ~/.ssh/known_hosts
+        if ! ssh-keyscan -T 10 -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" > ~/.ssh/known_hosts; then
+          echo "Failed to fetch SSH host key from $DEPLOY_HOST:$DEPLOY_PORT." >&2
+          echo "Check that DEPLOY_HOST points to the new VM and that SSH on port $DEPLOY_PORT is reachable from GitLab CI." >&2
+          exit 1
+        fi
       fi
     - chmod 600 ~/.ssh/known_hosts
   script:

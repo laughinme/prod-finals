@@ -80,7 +80,6 @@ export default function MatchPage() {
             className="h-14 flex-1 gap-2 rounded-2xl text-lg font-semibold"
             onClick={() => {
               openChat(matchedProfile.id);
-              closeMatch();
               navigate("/chat");
             }}
           >

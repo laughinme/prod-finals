@@ -3,6 +3,7 @@ import HomePage from "@/pages/Home";
 import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import AuthPage from "@/pages/auth/ui/AuthPage";
 import { useAuth } from "@/app/providers/auth/useAuth";
+import { HeaderLayout } from "@/app/layouts/HeaderLayout";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useProfile } from "@/features/profile/useProfile";
 
@@ -77,16 +78,21 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: "onboarding", element: <OnboardingPage /> },
       { path: "profile-setup", element: <ProfileSetupPage /> },
+      { path: "match", element: <MatchPage /> },
       {
-        element: <RequireMatchmakingReady />,
+        element: <HeaderLayout />,
         children: [
-          { path: "discovery", element: <DiscoveryPage /> },
-          { path: "match", element: <MatchPage /> },
-          { path: "chat", element: <ChatPage /> },
+          {
+            element: <RequireMatchmakingReady />,
+            children: [
+              { path: "discovery", element: <DiscoveryPage /> },
+              { path: "chat", element: <ChatPage /> },
+            ]
+          },
+          { path: "profile", element: <ProfilePage /> },
+          { path: "dashboard", element: <DashboardPage /> },
         ]
       },
-      { path: "profile", element: <ProfilePage /> },
-      { path: "dashboard", element: <DashboardPage /> },
     ]
   },
   {
