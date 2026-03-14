@@ -1,65 +1,34 @@
-import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { useNavigate } from "react-router-dom";
 import { Camera, Check, UploadCloud } from "lucide-react";
 
-import {
-  MATCHMAKING_INTERESTS,
-  type MatchmakingDraft,
-} from "@/entities/match-profile/model";
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
+import { MATCHMAKING_INTERESTS } from "@/entities/match-profile/model";
+import { useProfileSetup } from "@/pages/ProfileSetup/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 
 export default function ProfileSetupPage() {
-  const navigate = useNavigate();
-  const { draft, setDraft, completeOnboarding } = useMatchmakingFlow();
-
-  const [step, setStep] = useState(1);
-  const [photoUploaded, setPhotoUploaded] = useState(draft.photoUploaded);
-  const [name, setName] = useState(draft.name);
-  const [age, setAge] = useState(draft.age);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(
-    draft.interests,
-  );
-
-  useEffect(() => {
-    setDraft({
-      photoUploaded,
-      name,
-      age,
-      interests: selectedInterests,
-    });
-  }, [age, name, photoUploaded, selectedInterests, setDraft]);
-
-  const toggleInterest = (interest: string) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests((prevInterests) =>
-        prevInterests.filter((item) => item !== interest),
-      );
-      return;
-    }
-
-    if (selectedInterests.length < 5) {
-      setSelectedInterests((prevInterests) => [...prevInterests, interest]);
-    }
-  };
-
-  const isStep1Valid =
-    photoUploaded && name.trim().length > 1 && age.trim().length > 0;
-  const isStep2Valid = selectedInterests.length >= 3;
-
-  const handleComplete = () => {
-    const nextDraft: MatchmakingDraft = {
-      photoUploaded,
-      name,
-      age,
-      interests: selectedInterests,
-    };
-
-    completeOnboarding(nextDraft);
-    navigate("/discovery", { replace: true });
-  };
+  const {
+    profile,
+    step,
+    photoUploaded,
+    name,
+    age,
+    selectedInterests,
+    avatarPreview,
+    step1Error,
+    fileInputRef,
+    isStep1Valid,
+    isStep2Valid,
+    isSubmittingStep1,
+    avatarUploadStatusLabel,
+    setName,
+    setAge,
+    setStep,
+    toggleInterest,
+    handleAvatarSelection,
+    handleStep1Submit,
+    handleComplete,
+  } = useProfileSetup();
 
   return (
     <div className="flex min-h-screen flex-1 items-center justify-center bg-secondary/20 p-6 md:p-12">
@@ -94,6 +63,13 @@ export default function ProfileSetupPage() {
 
               <div className="flex flex-col items-start gap-8 md:flex-row">
                 <div className="flex flex-col items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarSelection}
+                  />
                   <div
                     className={cn(
                       "relative flex h-40 w-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-full border-2 border-dashed transition-all",
@@ -101,12 +77,12 @@ export default function ProfileSetupPage() {
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary hover:bg-secondary",
                     )}
-                    onClick={() => setPhotoUploaded(true)}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     {photoUploaded ? (
                       <>
                         <img
-                          src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=400&auto=format&fit=crop"
+                          src={avatarPreview ?? profile?.profilePicUrl ?? ""}
                           alt="Avatar"
                           className="h-full w-full object-cover"
                           referrerPolicy="no-referrer"
@@ -127,7 +103,7 @@ export default function ProfileSetupPage() {
                   {photoUploaded && (
                     <span className="flex items-center gap-1 text-sm font-medium text-green-600">
                       <Check className="size-4" />
-                      Загружено
+                      {avatarUploadStatusLabel}
                     </span>
                   )}
                 </div>
@@ -159,13 +135,19 @@ export default function ProfileSetupPage() {
                 </div>
               </div>
 
+              {step1Error ? (
+                <p className="text-sm font-medium text-destructive">
+                  {step1Error}
+                </p>
+              ) : null}
+
               <Button
                 size="lg"
                 className="mt-4 h-14 w-full rounded-2xl text-lg"
-                disabled={!isStep1Valid}
-                onClick={() => setStep(2)}
+                disabled={!isStep1Valid || isSubmittingStep1}
+                onClick={handleStep1Submit}
               >
-                Продолжить
+                {isSubmittingStep1 ? "Сохранение..." : "Продолжить"}
               </Button>
             </motion.div>
           ) : (
