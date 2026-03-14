@@ -13,7 +13,9 @@
         reverse_proxy minio:9000
     }
 
-    root * /srv
-    try_files {path} /index.html
-    file_server
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
 }
