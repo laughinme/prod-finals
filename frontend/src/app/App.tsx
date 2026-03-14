@@ -1,4 +1,5 @@
 import { BrowserRouter } from "react-router-dom";
+import { MatchmakingFlowProvider } from "@/features/matchmaking/model";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { AppRoutes } from "@/app/routes/AppRoutes";
 
@@ -38,7 +39,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <MatchmakingFlowProvider>
+        <AppRoutes />
+      </MatchmakingFlowProvider>
     </BrowserRouter>
   );
 }
