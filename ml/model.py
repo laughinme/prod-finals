@@ -5,11 +5,13 @@ from catboost import CatBoostClassifier
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
 DATA_PATH = 'transaction_600_new.csv' 
 LIMIT_USERS = 100
 RANDOM_SEED = 42
-
+COLLECTION_NAME = "user_profiles"
+client = QdrantClient(url="http://localhost:6333")
 
 class MlRuntime:
     def __init__(self):

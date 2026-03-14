@@ -20,6 +20,7 @@ from ml.service.schemas import (
     RecommendationRequest,
     RecommendationResponse,
     SwipeFeedbackRequest,
+    UserProfileUpdateRequest,
 )
 
 
@@ -229,3 +230,13 @@ async def post_compatibility_explanation(
                 "trace_id": str(payload.trace_id),
             },
         ) from None
+
+
+async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckResponse:
+    # Передаем логику в runtime
+    return runtime.update_user_profile_favorites(
+        user_id=payload.user_id,
+        favorite_categories=payload.favorite_categories,
+        trace_id=payload.trace_id,
+        preferred_hour=payload.preferred_activity_hour
+    )
