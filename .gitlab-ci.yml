@@ -85,13 +85,15 @@ deploy:production:
       cp "$PROD_ENV_FILE" "$DEPLOY_ENV_FILE"
 
       upsert_deploy_env() {
-        local key="$1"
-        local value="${!key:-}"
+        key="$1"
+        eval "value=\${$key-}"
         if [ -z "$value" ]; then
           return
         fi
-        sed -i "/^${key}=/d" "$DEPLOY_ENV_FILE"
-        printf '%s=%s\n' "$key" "$value" >> "$DEPLOY_ENV_FILE"
+        tmp_env_file="${DEPLOY_ENV_FILE}.tmp"
+        grep -v "^${key}=" "$DEPLOY_ENV_FILE" > "$tmp_env_file" || true
+        printf '%s=%s\n' "$key" "$value" >> "$tmp_env_file"
+        mv "$tmp_env_file" "$DEPLOY_ENV_FILE"
       }
 
       upsert_deploy_env ML_TRAIN_DATA_URL
