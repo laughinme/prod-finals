@@ -3,8 +3,21 @@ import HomePage from "@/pages/Home";
 import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import AuthPage from "@/pages/auth/ui/AuthPage";
 import { useAuth } from "@/app/providers/auth/useAuth";
+import { useMatchmakingFlow } from "@/features/matchmaking/model";
+import { useProfile } from "@/features/profile/useProfile";
 
 import DashboardPage from "@/pages/Dashboard";
+import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
+import ProfileSetupPage from "@/pages/ProfileSetup/ui/ProfileSetupPage";
+import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
+import MatchPage from "@/pages/Match/ui/MatchPage";
+import ChatPage from "@/pages/Chat/ui/ChatPage";
+
+const MatchmakingLoadingState = () => (
+  <div className="flex min-h-screen items-center justify-center bg-secondary/20">
+    <p className="text-lg text-muted-foreground">Загрузка сценария...</p>
+  </div>
+);
 
 const RequireAuth = () => {
   const auth = useAuth();
@@ -41,12 +54,37 @@ const RedirectIfAuthenticated = () => {
   return <AuthPage />;
 };
 
+const RequireMatchmakingReady = () => {
+  const { isOnboardingComplete } = useMatchmakingFlow();
+  const { data: profile, isLoading } = useProfile();
+
+  if (isLoading) {
+    return <MatchmakingLoadingState />;
+  }
+
+  if (!profile?.isOnboarded && !isOnboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <Outlet />;
+};
+
 export const routes: RouteObject[] = [
   {
     path: "/",
     element: <RequireAuth />,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "onboarding", element: <OnboardingPage /> },
+      { path: "profile-setup", element: <ProfileSetupPage /> },
+      {
+        element: <RequireMatchmakingReady />,
+        children: [
+          { path: "discovery", element: <DiscoveryPage /> },
+          { path: "match", element: <MatchPage /> },
+          { path: "chat", element: <ChatPage /> },
+        ]
+      },
       { path: "profile", element: <ProfilePage /> },
       { path: "dashboard", element: <DashboardPage /> },
     ]

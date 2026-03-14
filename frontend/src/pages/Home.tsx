@@ -1,11 +1,21 @@
-import { Header } from "@/features/navigation/ui/Header";
+import { Navigate } from "react-router-dom";
+
+import { useMatchmakingFlow } from "@/features/matchmaking/model";
+import { useProfile } from "@/features/profile/useProfile";
 
 export default function HomePage() {
-  return (
-    <div className="min-h-screen bg-background flex flex-col font-sans">
-      <Header />
+  const { data: profile, isLoading } = useProfile();
+  const { isOnboardingComplete } = useMatchmakingFlow();
 
-      <main className="flex-1 p-6" />
-    </div>
-  )
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-secondary/20">
+        <p className="text-lg text-muted-foreground">Подготавливаем сценарий...</p>
+      </div>
+    );
+  }
+
+  const shouldOpenDiscovery = profile?.isOnboarded || isOnboardingComplete;
+
+  return <Navigate to={shouldOpenDiscovery ? "/discovery" : "/onboarding"} replace />;
 }
