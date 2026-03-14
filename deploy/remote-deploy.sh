@@ -64,7 +64,17 @@ is_truthy() {
 print_diagnostics() {
   "${compose_cmd[@]}" ps || true
   echo
-  "${compose_cmd[@]}" logs --tail=200 ml-service backend nginx db redis minio minio-init || true
+  echo "----- ml-service logs -----"
+  "${compose_cmd[@]}" logs --tail=200 ml-service || true
+  echo
+  echo "----- backend logs -----"
+  "${compose_cmd[@]}" logs --tail=120 backend || true
+  echo
+  echo "----- nginx logs -----"
+  "${compose_cmd[@]}" logs --tail=120 nginx || true
+  echo
+  echo "----- infra logs -----"
+  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init || true
 }
 
 wait_for_backend_health() {
@@ -169,13 +179,9 @@ if ! wait_for_service_running nginx 60; then
 fi
 
 if ! wait_for_service_running ml-service 120; then
-  if is_truthy "$(read_env_value ML_TRAIN_REQUIRED)"; then
-    echo "ml-service did not start and ML_TRAIN_REQUIRED=true." >&2
-    print_diagnostics
-    exit 1
-  else
-    echo "WARNING: ml-service is not running, but ML_TRAIN_REQUIRED is not true. Continuing deploy." >&2
-  fi
+  echo "ml-service did not start correctly." >&2
+  print_diagnostics
+  exit 1
 fi
 
 "${compose_cmd[@]}" ps || true

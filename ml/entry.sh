@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$#" -gt 0 ]]; then
+  exec "$@"
+fi
+
 if [[ "${ML_TRAIN_ON_START:-false}" == "true" ]]; then
   echo "ML_TRAIN_ON_START=true -> running training pipeline"
   python -m ml.scripts.train_model

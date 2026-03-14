@@ -96,12 +96,20 @@ deploy:production:
         mv "$tmp_env_file" "$DEPLOY_ENV_FILE"
       }
 
-      upsert_deploy_env ML_TRAIN_DATA_URL
-      upsert_deploy_env ML_TRAIN_ON_START
-      upsert_deploy_env ML_TRAIN_REQUIRED
-      upsert_deploy_env ML_TRAIN_DATA_PATH
+      set_deploy_env_value() {
+        key="$1"
+        value="$2"
+        tmp_env_file="${DEPLOY_ENV_FILE}.tmp"
+        grep -v "^${key}=" "$DEPLOY_ENV_FILE" > "$tmp_env_file" || true
+        printf '%s=%s\n' "$key" "$value" >> "$tmp_env_file"
+        mv "$tmp_env_file" "$DEPLOY_ENV_FILE"
+      }
+
+      # Model training is always manual (outside deploy pipeline).
+      set_deploy_env_value ML_TRAIN_ON_START false
+      set_deploy_env_value ML_TRAIN_REQUIRED false
+
       upsert_deploy_env ML_MODEL_ARTIFACT_PATH
-      upsert_deploy_env ML_TRAIN_DOWNLOAD_TIMEOUT_SEC
 
       if [ "${DEPLOY_AUTH_MODE:-}" = "password" ]; then
         export SSHPASS="$DEPLOY_PASSWORD"

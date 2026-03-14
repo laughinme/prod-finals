@@ -31,16 +31,40 @@ docker compose up -d ml-service
 Service URL: `http://localhost:8081`  
 Auth header: `X-Service-Token: dev-ml-token`
 
-## Train model on deploy/startup
+## Production training flow (manual)
 
-At container startup, training can be enabled with:
+Training is disabled in deploy pipeline and disabled on service startup by default:
 
-- `ML_TRAIN_ON_START=true`
-- `ML_TRAIN_DATA_URL=https://.../train.csv`
+- `ML_TRAIN_ON_START=false`
+- `ML_TRAIN_REQUIRED=false`
 
-The startup script downloads dataset from URL and writes model artifact:
+Recommended flow:
 
-- data path: `ML_TRAIN_DATA_PATH` (default `/app/ml/data/train.csv`)
-- artifact path: `ML_MODEL_ARTIFACT_PATH` (default `/app/ml/artifacts/model.json`)
+1. Deploy app (ML service starts in inference mode).
+2. SSH to VM.
+3. Run manual training script:
 
-In production compose, training-on-start is enabled by default.
+```bash
+cd /opt/chupapis
+bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv"
+```
+
+Optional second argument sets exact model key in S3:
+
+```bash
+bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv" "ml-models/manual-v1.json"
+```
+
+What script does:
+
+- starts MinIO and bucket init
+- downloads dataset from URL
+- trains model (`python -m ml.scripts.train_model`)
+- writes artifact to `/app/ml/artifacts/model.json` (docker volume)
+- uploads artifact to S3/MinIO
+- restarts `ml-service` to load fresh artifact
+
+Upload config for `train_model.py`:
+
+- primary vars: `ML_MODEL_S3_*`
+- fallback vars: `STORAGE_*` (`STORAGE_ENDPOINT_INTERNAL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_PRIVATE_BUCKET`, `STORAGE_REGION`)
