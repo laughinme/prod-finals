@@ -1,18 +1,15 @@
-from typing_extensions import Self
-from pydantic import BaseModel, Field, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserRegister(BaseModel):
-    """Data required for user registration."""
-
     email: EmailStr = Field(..., description="User e-mail")
     password: str = Field(..., description="User password")
-    
-    username: str | None = Field(None, description="User's display name")
-    
+    display_name: str = Field(..., max_length=80, description="Preferred display name")
 
 class UserLogin(BaseModel):
-    """Credentials used for user login."""
-
     email: EmailStr = Field(..., description="User e-mail")
-    password: str = Field(..., description='User password')
+    password: str = Field(..., description="User password")
+
+
+class DemoLoginRequest(BaseModel):
+    demo_user_id: str = Field(..., min_length=1, description="Stable alias of seeded demo user")

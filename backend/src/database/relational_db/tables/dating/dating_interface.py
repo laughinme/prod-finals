@@ -12,6 +12,7 @@ from .dating_tables import (
     InteractionEvent,
     Match,
     Message,
+    OnboardingQuizAnswer,
     OutboxEvent,
     PairState,
     RecommendationBatch,
@@ -105,14 +106,12 @@ class DatingInterface:
         self,
         *,
         actor_user_id: UUID,
-        client_event_id: UUID | None,
+        serve_item_id: UUID,
     ) -> InteractionEvent | None:
-        if client_event_id is None:
-            return None
         return await self.session.scalar(
             select(InteractionEvent).where(
                 InteractionEvent.actor_user_id == actor_user_id,
-                InteractionEvent.client_event_id == client_event_id,
+                InteractionEvent.serve_item_id == serve_item_id,
             )
         )
 
@@ -248,19 +247,51 @@ class DatingInterface:
             )
         )
 
+    async def list_quiz_answers(self, *, user_id: UUID) -> list[OnboardingQuizAnswer]:
+        rows = await self.session.scalars(
+            select(OnboardingQuizAnswer)
+            .where(OnboardingQuizAnswer.user_id == user_id)
+            .order_by(OnboardingQuizAnswer.updated_at.asc(), OnboardingQuizAnswer.step_key.asc())
+        )
+        return list(rows.all())
+
+    async def get_quiz_answer(self, *, user_id: UUID, step_key: str) -> OnboardingQuizAnswer | None:
+        return await self.session.scalar(
+            select(OnboardingQuizAnswer).where(
+                OnboardingQuizAnswer.user_id == user_id,
+                OnboardingQuizAnswer.step_key == step_key,
+            )
+        )
+
+    async def upsert_quiz_answer(
+        self,
+        *,
+        user_id: UUID,
+        step_key: str,
+        answers: list[str],
+    ) -> OnboardingQuizAnswer:
+        record = await self.get_quiz_answer(user_id=user_id, step_key=step_key)
+        if record is None:
+            record = OnboardingQuizAnswer(user_id=user_id, step_key=step_key, answers=answers)
+            self.session.add(record)
+        else:
+            record.answers = answers
+        await self.session.flush()
+        return record
+
     async def list_audit_events(
         self,
         *,
-        entity_type: str,
-        entity_id: str,
+        entity_type: str | None,
+        entity_id: str | None,
         limit: int,
     ) -> list[AuditLog]:
-        rows = await self.session.scalars(
-            select(AuditLog)
-            .where(AuditLog.entity_type == entity_type, AuditLog.entity_id == entity_id)
-            .order_by(AuditLog.created_at.desc())
-            .limit(limit)
-        )
+        stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+        if entity_type is not None:
+            stmt = stmt.where(AuditLog.entity_type == entity_type)
+        if entity_id is not None:
+            stmt = stmt.where(AuditLog.entity_id == entity_id)
+        rows = await self.session.scalars(stmt)
         return list(rows.all())
 
     async def list_excluded_target_ids_for_user(self, user_id: UUID) -> set[UUID]:

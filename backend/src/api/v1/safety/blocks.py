@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post(
     "/blocks",
     response_model=BlockResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="Block a user",
 )
 async def post_block(

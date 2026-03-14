@@ -13,7 +13,7 @@ router = APIRouter()
 @router.post(
     "/reports",
     response_model=ReportResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="Report a user",
 )
 async def post_report(

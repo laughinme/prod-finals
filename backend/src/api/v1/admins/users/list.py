@@ -29,4 +29,7 @@ async def list_users(
         limit=limit,
         cursor=cursor,
     )
-    return CursorPage(items=users, next_cursor=next_cursor)
+    return CursorPage(
+        items=[await svc.serialize_user(user) for user in users],
+        next_cursor=next_cursor,
+    )

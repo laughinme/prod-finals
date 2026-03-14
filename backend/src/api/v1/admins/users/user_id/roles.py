@@ -28,4 +28,4 @@ async def set_roles(
         raise UserNotFoundError()
 
     updated = await svc.admin_assign_roles(target, payload.roles)
-    return updated
+    return await svc.serialize_user(updated)

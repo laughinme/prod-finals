@@ -39,7 +39,7 @@ Demo password for all seeded users:
 
 ```DemoPass123!```
 
-Demo logins:
+Demo logins by email:
 
 - `anna.demo@example.com`
 - `maria.demo@example.com`
@@ -49,5 +49,28 @@ Demo logins:
 - `ivan.demo@example.com`
 - `alisa.demo@example.com`
 - `roman.demo@example.com`
+- `admin.demo@example.com`
+
+Demo aliases for `POST /api/v1/auth/demo-login`:
+
+- `anna`
+- `maria`
+- `dima`
+- `kirill`
+- `olga`
+- `ivan`
+- `alisa`
+- `roman`
+- `admin_demo`
+
+`demo-login` is intended for demo/dev flows and is disabled in `prod`.
+
+## API notes
+
+Success payloads for dating/frontend routes are aligned to `docs/public-api-final.yaml`.
+
+One intentional wire-level deviation remains:
+
+- error responses still use the template `problem+json` envelope with `request_id`, not the final YAML `ErrorResponse` shape.
 
 ---

@@ -27,4 +27,4 @@ async def set_ban(
         raise UserNotFoundError()
     
     updated = await svc.admin_set_ban(target, banned=banned)
-    return updated
+    return await svc.serialize_user(updated)

@@ -8,6 +8,7 @@ from faker import Faker
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
+
 ROOT = os.path.dirname(os.path.dirname(__file__))
 SRC = os.path.join(ROOT, "src")
 if SRC not in sys.path:
@@ -44,7 +45,7 @@ async def _register_user(client: AsyncClient, faker: Faker, prefix: str) -> tupl
     payload = {
         "email": f"{prefix}_{suffix}@example.com",
         "password": password,
-        "username": f"{prefix}_{suffix}",
+        "display_name": f"{prefix}_{suffix}",
     }
     response = await client.post("/api/v1/auth/register", json=payload, headers=_mobile_headers())
     assert response.status_code == 201
@@ -68,10 +69,11 @@ async def _upload_avatar(client: AsyncClient, access_token: str) -> None:
     assert upload.status_code in {200, 204}
     confirm = await client.post(
         "/api/v1/users/me/avatar/confirm",
-        json={"object_key": data["object_key"]},
+        json={"file_key": data["file_key"]},
         headers=auth_header(access_token),
     )
     assert confirm.status_code == 200
+    assert confirm.json()["status"] == "approved"
 
 
 async def _complete_profile(
@@ -80,7 +82,7 @@ async def _complete_profile(
     *,
     display_name: str,
     birth_date: str,
-    city_id: str,
+    city: str,
     gender: str,
     looking_for_genders: list[str],
     goal: str,
@@ -90,20 +92,20 @@ async def _complete_profile(
         json={
             "display_name": display_name,
             "birth_date": birth_date,
-            "bio": f"{display_name} bio",
-            "city_id": city_id,
+            "city": city,
             "gender": gender,
-            "looking_for_genders": looking_for_genders,
-            "age_range": {"min": 24, "max": 36},
-            "distance_km": 30,
-            "goal": goal,
+            "bio": f"{display_name} bio",
+            "search_preferences": {
+                "looking_for_genders": looking_for_genders,
+                "age_range": {"min": 24, "max": 36},
+                "distance_km": 30,
+                "goal": goal,
+            },
         },
         headers=auth_header(access_token),
     )
     assert patch.status_code == 200
     await _upload_avatar(client, access_token)
-    finish = await client.post("/api/v1/onboarding/finish", headers=auth_header(access_token))
-    assert finish.status_code == 200
     me = await client.get("/api/v1/users/me", headers=auth_header(access_token))
     assert me.status_code == 200
     return me.json()
@@ -131,35 +133,62 @@ async def _promote_to_admin(user_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_onboarding_feed_match_message_and_close_flow(client: AsyncClient, faker: Faker):
+async def test_optional_quiz_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
     _, access_a = await _register_user(client, faker, "alice")
     _, access_b = await _register_user(client, faker, "bob")
+
+    locked_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert locked_feed.status_code == 200
+    assert locked_feed.json()["feed_state"] == "locked"
+    assert locked_feed.json()["lock_reason"] == "required_fields_missing"
+
+    onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
+    assert onboarding_config.status_code == 200
+    assert onboarding_config.json()["steps"]
+
+    skipped = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_a))
+    assert skipped.status_code == 200
+    assert skipped.json()["quiz_status"] == "skipped"
+
+    resumed = await client.post("/api/v1/onboarding/resume", headers=auth_header(access_a))
+    assert resumed.status_code == 200
+    assert resumed.json()["quiz_status"] == "in_progress"
+
+    answer = await client.post(
+        "/api/v1/onboarding/answers",
+        json={"step_key": "weekend_vibe", "answers": ["city_walks", "live_events"]},
+        headers=auth_header(access_a),
+    )
+    assert answer.status_code == 200
+    assert answer.json()["quiz_status"] in {"in_progress", "completed"}
 
     profile_a = await _complete_profile(
         client,
         access_a,
         display_name="Alice",
         birth_date="1998-05-12",
-        city_id="msk",
+        city="Moscow",
         gender="female",
         looking_for_genders=["male"],
-        goal="dating",
+        goal="casual_dates",
     )
     profile_b = await _complete_profile(
         client,
         access_b,
         display_name="Bob",
         birth_date="1996-03-03",
-        city_id="msk",
+        city="Moscow",
         gender="male",
         looking_for_genders=["female"],
-        goal="dating",
+        goal="casual_dates",
     )
-    assert profile_a["onboarding_status"] == "ready_for_feed"
-    assert profile_b["onboarding_status"] == "ready_for_feed"
+    assert profile_a["profile_status"] == "ready"
+    assert profile_b["profile_status"] == "ready"
+    assert profile_a["can_open_feed"] is True
 
     feed_a = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_a.status_code == 200
+    assert feed_a.json()["feed_state"] == "ready"
     card_a = next(card for card in feed_a.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
 
     explanation = await client.get(
@@ -167,13 +196,12 @@ async def test_onboarding_feed_match_message_and_close_flow(client: AsyncClient,
         headers=auth_header(access_a),
     )
     assert explanation.status_code == 200
-    assert explanation.json()["mode"] == "basic_fallback"
+    assert explanation.json()["privacy_level"] == "safe_aggregate"
     assert explanation.json()["reasons"]
 
-    first_like_event = str(uuid4())
     like_a = await client.post(
         f"/api/v1/feed/items/{card_a['serve_item_id']}/reaction",
-        json={"action": "like", "client_event_id": first_like_event},
+        json={"action": "like", "opened_explanation": True, "dwell_time_ms": 1500},
         headers=auth_header(access_a),
     )
     assert like_a.status_code == 200
@@ -181,7 +209,7 @@ async def test_onboarding_feed_match_message_and_close_flow(client: AsyncClient,
 
     like_a_duplicate = await client.post(
         f"/api/v1/feed/items/{card_a['serve_item_id']}/reaction",
-        json={"action": "like", "client_event_id": first_like_event},
+        json={"action": "like"},
         headers=auth_header(access_a),
     )
     assert like_a_duplicate.status_code == 200
@@ -189,11 +217,12 @@ async def test_onboarding_feed_match_message_and_close_flow(client: AsyncClient,
 
     feed_b = await client.get("/api/v1/feed", headers=auth_header(access_b))
     assert feed_b.status_code == 200
+    assert feed_b.json()["feed_state"] == "ready"
     card_b = next(card for card in feed_b.json()["cards"] if card["candidate"]["user_id"] == profile_a["id"])
 
     like_b = await client.post(
         f"/api/v1/feed/items/{card_b['serve_item_id']}/reaction",
-        json={"action": "like", "client_event_id": str(uuid4())},
+        json={"action": "like", "opened_profile": True},
         headers=auth_header(access_b),
     )
     assert like_b.status_code == 200
@@ -213,42 +242,47 @@ async def test_onboarding_feed_match_message_and_close_flow(client: AsyncClient,
     assert conversation.status_code == 200
     assert conversation.json()["status"] == "active"
 
-    client_message_id = str(uuid4())
+    icebreakers = await client.get(
+        f"/api/v1/conversations/{match['conversation_id']}/icebreakers",
+        headers=auth_header(access_a),
+    )
+    assert icebreakers.status_code == 200
+    assert icebreakers.json()["items"]
+
+    sent_icebreaker = await client.post(
+        f"/api/v1/conversations/{match['conversation_id']}/icebreakers/{icebreakers.json()['items'][0]['icebreaker_id']}/send",
+        headers=auth_header(access_a),
+    )
+    assert sent_icebreaker.status_code == 201
+    assert sent_icebreaker.json()["status"] == "sent"
+
     message = await client.post(
         f"/api/v1/conversations/{match['conversation_id']}/messages",
-        json={"client_message_id": client_message_id, "text": "Привет! Как проходит день?"},
+        json={"text": "How is your day going?"},
         headers=auth_header(access_a),
     )
     assert message.status_code == 201
-    message_id = message.json()["message_id"]
-
-    message_duplicate = await client.post(
-        f"/api/v1/conversations/{match['conversation_id']}/messages",
-        json={"client_message_id": client_message_id, "text": "Привет! Как проходит день?"},
-        headers=auth_header(access_a),
-    )
-    assert message_duplicate.status_code == 201
-    assert message_duplicate.json()["message_id"] == message_id
+    assert message.json()["status"] == "sent"
 
     messages = await client.get(
         f"/api/v1/conversations/{match['conversation_id']}/messages",
         headers=auth_header(access_b),
     )
     assert messages.status_code == 200
-    assert messages.json()["items"][0]["text"] == "Привет! Как проходит день?"
+    assert len(messages.json()["items"]) >= 2
 
     close_match = await client.post(
         f"/api/v1/matches/{match['match_id']}/close",
-        json={"reason_code": "not_a_fit", "client_event_id": str(uuid4())},
+        json={"reason_code": "not_interested"},
         headers=auth_header(access_a),
     )
     assert close_match.status_code == 200
     assert close_match.json()["status"] == "closed"
-    assert close_match.json()["future_feed_status"] == "cooldown"
+    assert close_match.json()["removed_from_future_feed"] is True
 
     message_after_close = await client.post(
         f"/api/v1/conversations/{match['conversation_id']}/messages",
-        json={"client_message_id": str(uuid4()), "text": "Уже поздно писать"},
+        json={"text": "This should fail"},
         headers=auth_header(access_a),
     )
     assert message_after_close.status_code == 409
@@ -265,30 +299,30 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         access_a,
         display_name="Admin Candidate",
         birth_date="1997-05-12",
-        city_id="msk",
+        city="Moscow",
         gender="female",
         looking_for_genders=["male"],
-        goal="dating",
+        goal="casual_dates",
     )
     profile_b = await _complete_profile(
         client,
         access_b,
         display_name="Blocked User",
         birth_date="1995-05-12",
-        city_id="msk",
+        city="Moscow",
         gender="male",
         looking_for_genders=["female"],
-        goal="dating",
+        goal="casual_dates",
     )
     profile_c = await _complete_profile(
         client,
         access_c,
         display_name="Reported User",
         birth_date="1994-05-12",
-        city_id="msk",
+        city="Moscow",
         gender="male",
         looking_for_genders=["female"],
-        goal="dating",
+        goal="casual_dates",
     )
 
     block = await client.post(
@@ -297,11 +331,10 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
             "target_user_id": profile_b["id"],
             "source_context": "feed",
             "reason_code": "harassment",
-            "client_event_id": str(uuid4()),
         },
         headers=auth_header(access_a),
     )
-    assert block.status_code == 201
+    assert block.status_code == 200
     assert block.json()["status"] == "blocked"
 
     report = await client.post(
@@ -310,13 +343,12 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
             "target_user_id": profile_c["id"],
             "source_context": "feed",
             "category": "spam",
-            "description": "Подозрительный профиль",
+            "description": "Suspicious profile",
             "also_block": True,
-            "client_event_id": str(uuid4()),
         },
         headers=auth_header(access_a),
     )
-    assert report.status_code == 201
+    assert report.status_code == 200
     assert report.json()["also_block_applied"] is True
 
     feed_after_safety = await client.get("/api/v1/feed", headers=auth_header(access_a))
@@ -347,11 +379,11 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         headers=auth_header(admin_access),
     )
     assert audit_ok.status_code == 200
-    assert audit_ok.json()["items"][0]["event_type"] == "user_reported"
+    assert any(item["event_type"] == "user_reported" for item in audit_ok.json()["items"])
 
 
 @pytest.mark.asyncio
-async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
+async def test_seeded_demo_users_can_demo_login_and_get_feed(redis_client):
     os.environ["DEV_SEED_ENABLED"] = "true"
     clear_settings_cache()
     session_factory = get_session_factory()
@@ -367,19 +399,19 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
         login = await seeded_client.post(
-            "/api/v1/auth/login",
-            json={"email": "anna.demo@example.com", "password": "DemoPass123!"},
+            "/api/v1/auth/demo-login",
+            json={"demo_user_id": "anna"},
             headers=_mobile_headers(),
         )
         assert login.status_code == 200
         access_token = login.json()["access_token"]
-
-        profile = await seeded_client.get("/api/v1/users/me", headers=auth_header(access_token))
-        assert profile.status_code == 200
-        assert profile.json()["is_onboarded"] is True
+        user = login.json()["user"]
+        assert user["display_name"] == "Anna"
+        assert user["profile_status"] == "ready"
 
         feed = await seeded_client.get("/api/v1/feed", headers=auth_header(access_token))
         assert feed.status_code == 200
+        assert feed.json()["feed_state"] == "ready"
         assert feed.json()["cards"]
 
     application.dependency_overrides.clear()

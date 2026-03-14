@@ -59,7 +59,7 @@ class RecommendationItem(CreatedAtMixin, Base):
 class InteractionEvent(CreatedAtMixin, Base):
     __tablename__ = "interaction_events"
     __table_args__ = (
-        UniqueConstraint("actor_user_id", "client_event_id", name="uq_interaction_events_actor_client"),
+        UniqueConstraint("actor_user_id", "serve_item_id", name="uq_interaction_events_actor_serve_item"),
         Index("ix_interaction_events_actor_target", "actor_user_id", "target_user_id"),
     )
 
@@ -74,6 +74,19 @@ class InteractionEvent(CreatedAtMixin, Base):
     action: Mapped[str] = mapped_column(String(16), nullable=False)
     source_context: Mapped[str] = mapped_column(String(32), nullable=False, default="feed")
     client_event_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+
+
+class OnboardingQuizAnswer(TimestampMixin, Base):
+    __tablename__ = "onboarding_quiz_answers"
+    __table_args__ = (
+        UniqueConstraint("user_id", "step_key", name="uq_onboarding_quiz_answers_user_step"),
+        Index("ix_onboarding_quiz_answers_user_id", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    step_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    answers: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class PairState(TimestampMixin, Base):

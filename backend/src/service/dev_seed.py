@@ -3,7 +3,7 @@ from datetime import date
 
 from core.config import Settings
 from core.crypto import hash_password
-from database.relational_db import CitiesInterface, RolesInterface, UoW, User, UserInterface
+from database.relational_db import CitiesInterface, DatingInterface, RolesInterface, UoW, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
 from service.media import MediaStorageService
 
@@ -12,108 +12,177 @@ DEMO_PASSWORD = "DemoPass123!"
 
 DEMO_USERS = [
     {
+        "demo_user_key": "anna",
         "email": "anna.demo@example.com",
         "username": "anna",
-        "display_name": "Анна",
+        "display_name": "Anna",
         "birth_date": "1998-05-12",
-        "bio": "Люблю театр, кофе и короткие поездки по выходным.",
+        "bio": "Coffee walks, theater, and short weekend trips.",
         "city_id": "msk",
         "gender": "female",
         "looking_for_genders": ["male"],
         "age_range_min": 25,
         "age_range_max": 34,
         "goal": "serious_relationship",
+        "has_behavioral_profile": True,
+        "quiz_status": "completed",
+        "quiz_answers": {
+            "weekend_vibe": ["city_walks", "live_events"],
+            "social_energy": ["balanced"],
+            "food_mood": ["coffee_spots"],
+            "travel_style": ["planned"],
+        },
     },
     {
+        "demo_user_key": "maria",
         "email": "maria.demo@example.com",
         "username": "maria",
-        "display_name": "Мария",
+        "display_name": "Maria",
         "birth_date": "1997-09-04",
-        "bio": "Выставки, бег и спонтанные ужины в новых местах.",
+        "bio": "Exhibitions, runs, and new restaurants.",
         "city_id": "msk",
         "gender": "female",
         "looking_for_genders": ["male"],
         "age_range_min": 26,
         "age_range_max": 36,
-        "goal": "dating",
+        "goal": "casual_dates",
+        "has_behavioral_profile": False,
+        "quiz_status": "skipped",
+        "quiz_answers": {},
     },
     {
+        "demo_user_key": "dima",
         "email": "dima.demo@example.com",
         "username": "dima",
-        "display_name": "Дима",
+        "display_name": "Dima",
         "birth_date": "1995-01-16",
-        "bio": "Работаю в продукте, люблю спорт и воскресные завтраки.",
+        "bio": "Product work, sport, and long breakfasts.",
         "city_id": "msk",
         "gender": "male",
         "looking_for_genders": ["female"],
         "age_range_min": 24,
         "age_range_max": 33,
         "goal": "serious_relationship",
+        "has_behavioral_profile": True,
+        "quiz_status": "completed",
+        "quiz_answers": {
+            "weekend_vibe": ["outdoors", "coffee_spots"],
+            "social_energy": ["balanced"],
+            "food_mood": ["home_cooking"],
+            "travel_style": ["spontaneous"],
+        },
     },
     {
+        "demo_user_key": "kirill",
         "email": "kirill.demo@example.com",
         "username": "kirill",
-        "display_name": "Кирилл",
+        "display_name": "Kirill",
         "birth_date": "1996-03-28",
-        "bio": "Концерты, сквош и редкие, но очень хорошие путешествия.",
+        "bio": "Concerts, squash, and rare but excellent trips.",
         "city_id": "msk",
         "gender": "male",
         "looking_for_genders": ["female"],
         "age_range_min": 23,
         "age_range_max": 32,
-        "goal": "dating",
+        "goal": "casual_dates",
+        "has_behavioral_profile": False,
+        "quiz_status": "not_started",
+        "quiz_answers": {},
     },
     {
+        "demo_user_key": "olga",
         "email": "olga.demo@example.com",
         "username": "olga",
-        "display_name": "Ольга",
+        "display_name": "Olga",
         "birth_date": "1994-08-21",
-        "bio": "Архитектура, йога и культурные маршруты по городу.",
+        "bio": "Architecture, yoga, and cultural routes.",
         "city_id": "spb",
         "gender": "female",
         "looking_for_genders": ["male"],
         "age_range_min": 28,
         "age_range_max": 38,
-        "goal": "friendship",
+        "goal": "new_friends",
+        "has_behavioral_profile": True,
+        "quiz_status": "completed",
+        "quiz_answers": {
+            "weekend_vibe": ["cozy_home", "city_walks"],
+            "social_energy": ["quiet"],
+            "pet_attitude": ["love_pets"],
+        },
     },
     {
+        "demo_user_key": "ivan",
         "email": "ivan.demo@example.com",
         "username": "ivan",
-        "display_name": "Иван",
+        "display_name": "Ivan",
         "birth_date": "1993-11-09",
-        "bio": "Люблю джаз, настолки и вечерние прогулки.",
+        "bio": "Jazz, board games, and late walks.",
         "city_id": "spb",
         "gender": "male",
         "looking_for_genders": ["female"],
         "age_range_min": 25,
         "age_range_max": 37,
-        "goal": "friendship",
+        "goal": "new_friends",
+        "has_behavioral_profile": True,
+        "quiz_status": "skipped",
+        "quiz_answers": {},
     },
     {
+        "demo_user_key": "alisa",
         "email": "alisa.demo@example.com",
         "username": "alisa",
-        "display_name": "Алиса",
+        "display_name": "Alisa",
         "birth_date": "2000-02-14",
-        "bio": "Учусь ловить баланс между работой, танцами и путешествиями.",
+        "bio": "Work, dance classes, and spontaneous flights.",
         "city_id": "kzn",
         "gender": "female",
-        "looking_for_genders": ["male", "other"],
+        "looking_for_genders": ["male", "non_binary"],
         "age_range_min": 22,
         "age_range_max": 31,
-        "goal": "dating",
+        "goal": "casual_dates",
+        "has_behavioral_profile": False,
+        "quiz_status": "completed",
+        "quiz_answers": {
+            "weekend_vibe": ["live_events", "outdoors"],
+            "social_energy": ["outgoing"],
+        },
     },
     {
+        "demo_user_key": "roman",
         "email": "roman.demo@example.com",
         "username": "roman",
-        "display_name": "Роман",
+        "display_name": "Roman",
         "birth_date": "1999-06-18",
-        "bio": "Горы, велосипеды и спокойные вечера дома.",
+        "bio": "Mountains, bikes, and quiet evenings at home.",
         "city_id": "ekb",
         "gender": "male",
         "looking_for_genders": ["female"],
         "age_range_min": 21,
         "age_range_max": 30,
-        "goal": "dating",
+        "goal": "casual_dates",
+        "has_behavioral_profile": False,
+        "quiz_status": "not_started",
+        "quiz_answers": {},
+    },
+    {
+        "demo_user_key": "admin_demo",
+        "email": "admin.demo@example.com",
+        "username": "admin_demo",
+        "display_name": "Admin Demo",
+        "birth_date": "1992-04-02",
+        "bio": "Admin profile for demo and audit checks.",
+        "city_id": "msk",
+        "gender": "unknown",
+        "looking_for_genders": ["female", "male", "non_binary"],
+        "age_range_min": 21,
+        "age_range_max": 45,
+        "goal": "new_friends",
+        "has_behavioral_profile": True,
+        "quiz_status": "completed",
+        "quiz_answers": {
+            "food_mood": ["coffee_spots", "new_restaurants"],
+        },
+        "roles": ["member", "admin"],
     },
 ]
 
@@ -136,8 +205,10 @@ async def ensure_dev_seed(
     user_repo = UserInterface(uow.session)
     city_repo = CitiesInterface(uow.session)
     role_repo = RolesInterface(uow.session)
+    dating_repo = DatingInterface(uow.session)
 
     member_role = await role_repo.get_by_slug(DEFAULT_ROLE.value)
+    admin_role = await role_repo.get_by_slug("admin")
     if member_role is None:
         return
 
@@ -165,6 +236,10 @@ async def ensure_dev_seed(
         user.age_range_max = payload["age_range_max"]
         user.distance_km = 30
         user.goal = payload["goal"]
+        user.quiz_status = payload["quiz_status"]
+        user.quiz_current_step_key = None
+        user.has_behavioral_profile = payload["has_behavioral_profile"]
+        user.demo_user_key = payload["demo_user_key"]
         user.is_onboarded = True
         user.avatar_status = "approved"
         user.avatar_rejection_reason = None
@@ -180,6 +255,16 @@ async def ensure_dev_seed(
             content_type="image/png",
         )
 
-        await user_repo.assign_roles(user, [member_role])
+        assigned_roles = [member_role]
+        if "roles" in payload and admin_role is not None and "admin" in payload["roles"]:
+            assigned_roles = [member_role, admin_role]
+        await user_repo.assign_roles(user, assigned_roles)
+
+        for step_key, answers in payload.get("quiz_answers", {}).items():
+            await dating_repo.upsert_quiz_answer(
+                user_id=user.id,
+                step_key=step_key,
+                answers=answers,
+            )
 
     await uow.commit()

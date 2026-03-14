@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     
     # Stage / debug
     APP_STAGE: Literal["dev", "prod"] = "dev"
+    APP_VERSION: str = "dev"
     DEBUG: bool | None = None
     LOG_LEVEL: str = "INFO"
     SQL_ECHO: bool = False

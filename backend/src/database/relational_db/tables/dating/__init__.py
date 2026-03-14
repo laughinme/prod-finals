@@ -6,6 +6,7 @@ from .dating_tables import (
     InteractionEvent,
     Match,
     Message,
+    OnboardingQuizAnswer,
     OutboxEvent,
     PairState,
     RecommendationBatch,

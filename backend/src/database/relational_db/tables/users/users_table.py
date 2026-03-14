@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.config import get_settings
-from domain.dating.enums import OnboardingStatus, PhotoModerationStatus, ProfileStatus
+from domain.dating.enums import AvatarModerationStatus, ProfileStatus, QuizStatus, RecommendationMode
 from ..table_base import Base
 from ..mixins import TimestampMixin
 
@@ -28,7 +28,7 @@ class User(TimestampMixin, Base):
     
     # Minimal profile for template
     username: Mapped[str | None] = mapped_column(String, nullable=True)
-    display_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     avatar_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     avatar_rejection_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -45,7 +45,21 @@ class User(TimestampMixin, Base):
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    
+    quiz_status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=QuizStatus.NOT_STARTED.value,
+        server_default=QuizStatus.NOT_STARTED.value,
+    )
+    quiz_current_step_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    has_behavioral_profile: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+
     # Service
     is_onboarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     banned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -101,43 +115,110 @@ class User(TimestampMixin, Base):
         return {"min": self.age_range_min, "max": self.age_range_max}
 
     @property
+    def age(self) -> int | None:
+        if self.birth_date is None:
+            return None
+        today = date.today()
+        years = today.year - self.birth_date.year
+        if (today.month, today.day) < (self.birth_date.month, self.birth_date.day):
+            years -= 1
+        return years
+
+    @property
+    def avatar_moderation_status(self) -> str:
+        if not self.avatar_key:
+            return AvatarModerationStatus.MISSING.value
+        if self.avatar_status == AvatarModerationStatus.REJECTED.value:
+            return AvatarModerationStatus.REJECTED.value
+        if self.avatar_status == AvatarModerationStatus.PENDING.value:
+            return AvatarModerationStatus.PENDING.value
+        if self.avatar_status == AvatarModerationStatus.APPROVED.value:
+            return AvatarModerationStatus.APPROVED.value
+        return AvatarModerationStatus.MISSING.value
+
+    @property
+    def missing_required_fields(self) -> list[str]:
+        missing: list[str] = []
+        if not self.resolved_display_name:
+            missing.append("display_name")
+        if self.birth_date is None:
+            missing.append("birth_date")
+        if self.city_id is None:
+            missing.append("city")
+        if self.gender is None:
+            missing.append("gender")
+        if not self.looking_for_genders:
+            missing.append("search_preferences.looking_for_genders")
+        if self.age_range_min is None or self.age_range_max is None:
+            missing.append("search_preferences.age_range")
+        if self.goal is None:
+            missing.append("search_preferences.goal")
+        return missing
+
+    @property
     def has_min_profile(self) -> bool:
-        return bool(
-            (self.display_name or self.username)
-            and self.birth_date
-            and self.city_id
-            and self.gender
-            and self.looking_for_genders
-            and self.age_range_min is not None
-            and self.age_range_max is not None
-            and self.goal
-        )
+        return not self.missing_required_fields
 
     @property
     def has_approved_photo(self) -> bool:
-        return bool(self.avatar_key and self.avatar_status == PhotoModerationStatus.APPROVED.value)
-
-    @property
-    def onboarding_status(self) -> str:
-        if self.banned:
-            return OnboardingStatus.BLOCKED_FROM_FEED.value
-        if not self.has_min_profile:
-            return OnboardingStatus.PROFILE_INCOMPLETE.value
-        if not self.avatar_key:
-            return OnboardingStatus.PHOTO_REQUIRED.value
-        if self.avatar_status == PhotoModerationStatus.PENDING_MODERATION.value:
-            return OnboardingStatus.PHOTO_PENDING.value
-        if not self.has_approved_photo:
-            return OnboardingStatus.PHOTO_REQUIRED.value
-        return OnboardingStatus.READY_FOR_FEED.value
+        return bool(self.avatar_key and self.avatar_moderation_status == AvatarModerationStatus.APPROVED.value)
 
     @property
     def profile_status(self) -> str:
         if self.banned:
             return ProfileStatus.BLOCKED.value
-        if self.onboarding_status == OnboardingStatus.READY_FOR_FEED.value:
-            return ProfileStatus.ACTIVE.value
-        return ProfileStatus.RESTRICTED.value
+        if len(self.missing_required_fields) == 7:
+            return ProfileStatus.DRAFT.value
+        if self.missing_required_fields:
+            return ProfileStatus.REQUIRED_FIELDS_MISSING.value
+        if self.avatar_moderation_status == AvatarModerationStatus.PENDING.value:
+            return ProfileStatus.AVATAR_PENDING.value
+        if self.avatar_moderation_status in {
+            AvatarModerationStatus.MISSING.value,
+            AvatarModerationStatus.REJECTED.value,
+        }:
+            return ProfileStatus.AVATAR_REQUIRED.value
+        return ProfileStatus.READY.value
+
+    @property
+    def recommendation_mode(self) -> str:
+        if self.has_behavioral_profile and self.quiz_status == QuizStatus.COMPLETED.value:
+            return RecommendationMode.HYBRID.value
+        if self.has_behavioral_profile:
+            return RecommendationMode.BEHAVIORAL.value
+        return RecommendationMode.COLD_START.value
+
+    @property
+    def can_open_feed(self) -> bool:
+        return self.profile_status == ProfileStatus.READY.value
+
+    @property
+    def profile_completion_percent(self) -> int:
+        checks = [
+            bool(self.resolved_display_name),
+            self.birth_date is not None,
+            self.city_id is not None,
+            self.gender is not None,
+            bool(self.looking_for_genders),
+            self.age_range_min is not None and self.age_range_max is not None,
+            self.goal is not None,
+            self.bio is not None and bool(self.bio.strip()),
+            self.has_approved_photo,
+        ]
+        completed = sum(1 for item in checks if item)
+        return int(round(completed / len(checks) * 100))
+
+    @property
+    def onboarding_status(self) -> str:
+        if self.banned:
+            return "blocked_from_feed"
+        if self.profile_status in {ProfileStatus.DRAFT.value, ProfileStatus.REQUIRED_FIELDS_MISSING.value}:
+            return "profile_incomplete"
+        if self.profile_status == ProfileStatus.AVATAR_PENDING.value:
+            return "photo_pending"
+        if self.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
+            return "photo_required"
+        return "ready_for_feed"
 
     def has_roles(self, *slugs: str) -> bool:
         if not slugs:

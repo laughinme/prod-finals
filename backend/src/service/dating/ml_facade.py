@@ -2,23 +2,25 @@ from datetime import date
 
 from domain.dating import (
     CompatibilityExplanationResponse,
-    CompatibilityMode,
     CompatibilityPreview,
     CompatibilityReason,
     CompatibilityReasonCode,
-    FeedDecisionMode,
+    DecisionMode,
+    ExplanationRequest,
+    FeedCandidateContext,
     FeedEmptyState,
     FeedEmptyStateCode,
-    MlCandidateScore,
-    MlReasonSignal,
-    MockExplanationRequest,
-    MockRecommendationRequest,
-    MockRecommendationResponse,
+    Icebreaker,
+    IcebreakersResponse,
+    RankedCandidate,
+    RankedCandidates,
 )
-from domain.users.enums import Gender
+from domain.dating.quiz_catalog import get_option_label
 
 
-def _age_for_birth_date(birth_date: date, today: date) -> int:
+def _age_for_birth_date(birth_date: date | None, today: date) -> int | None:
+    if birth_date is None:
+        return None
     years = today.year - birth_date.year
     if (today.month, today.day) < (birth_date.month, birth_date.day):
         years -= 1
@@ -26,195 +28,259 @@ def _age_for_birth_date(birth_date: date, today: date) -> int:
 
 
 class MlFacade:
-    async def rank(self, payload: MockRecommendationRequest) -> MockRecommendationResponse:
+    async def rank(
+        self,
+        requester: FeedCandidateContext,
+        candidates: list[FeedCandidateContext],
+        limit: int,
+    ) -> RankedCandidates:
         raise NotImplementedError
 
-    async def explain(self, payload: MockExplanationRequest) -> CompatibilityExplanationResponse:
+    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+        raise NotImplementedError
+
+    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
+        raise NotImplementedError
+
+    def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
+        raise NotImplementedError
+
+    def build_icebreakers(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> IcebreakersResponse:
         raise NotImplementedError
 
 
 class MockMlFacade(MlFacade):
-    async def rank(self, payload: MockRecommendationRequest) -> MockRecommendationResponse:
+    async def rank(
+        self,
+        requester: FeedCandidateContext,
+        candidates: list[FeedCandidateContext],
+        limit: int,
+    ) -> RankedCandidates:
         today = date.today()
-        scored: list[MlCandidateScore] = []
-        for candidate in payload.candidates:
-            score = 0.1
-            reason_signals: list[MlReasonSignal] = []
+        scored: list[RankedCandidate] = []
+        for candidate in candidates:
+            score = 0.08
+            reason_codes: list[CompatibilityReasonCode] = []
 
-            reciprocal_gender_fit = bool(
-                payload.requester.gender
-                and candidate.gender
-                and candidate.gender in payload.requester.looking_for_genders
-                and payload.requester.gender in candidate.looking_for_genders
-            )
-            if reciprocal_gender_fit:
-                score += 0.28
-                reason_signals.append(
-                    MlReasonSignal(
-                        code=CompatibilityReasonCode.COMMUNICATION_STYLE_FIT,
-                        strength="high",
-                        confidence=0.86,
-                    )
-                )
+            if requester.city and candidate.city and requester.city == candidate.city:
+                score += 0.20
+                reason_codes.append(CompatibilityReasonCode.CITY_FIT)
 
-            if payload.requester.city_id == candidate.city_id:
+            if self._has_mutual_gender_fit(requester, candidate):
                 score += 0.22
-                reason_signals.append(
-                    MlReasonSignal(
-                        code=CompatibilityReasonCode.LOCALITY_FIT,
-                        strength="high",
-                        confidence=0.82,
-                    )
-                )
+                reason_codes.append(CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT)
 
-            if payload.requester.goal and candidate.goal and payload.requester.goal == candidate.goal:
-                score += 0.18
-                reason_signals.append(
-                    MlReasonSignal(
-                        code=CompatibilityReasonCode.MEETUP_RHYTHM_FIT,
-                        strength="medium",
-                        confidence=0.74,
-                    )
-                )
+            if (
+                requester.search_preferences.goal
+                and candidate.search_preferences.goal
+                and requester.search_preferences.goal == candidate.search_preferences.goal
+            ):
+                score += 0.16
+                reason_codes.append(CompatibilityReasonCode.GOAL_FIT)
 
-            requester_age = _age_for_birth_date(payload.requester.birth_date, today)
+            requester_age = _age_for_birth_date(requester.birth_date, today)
             candidate_age = _age_for_birth_date(candidate.birth_date, today)
-            requester_age_fit = bool(
-                payload.requester.age_range
-                and payload.requester.age_range.min <= candidate_age <= payload.requester.age_range.max
-            )
-            candidate_age_fit = bool(
-                candidate.age_range and candidate.age_range.min <= requester_age <= candidate.age_range.max
-            )
-            if requester_age_fit and candidate_age_fit:
-                score += 0.17
-                reason_signals.append(
-                    MlReasonSignal(
-                        code=CompatibilityReasonCode.LIFESTYLE_SIMILARITY,
-                        strength="medium",
-                        confidence=0.72,
-                    )
-                )
+            if self._has_mutual_age_fit(requester, candidate, requester_age, candidate_age):
+                score += 0.16
+                reason_codes.append(CompatibilityReasonCode.AGE_FIT)
 
-            if payload.requester.bio and candidate.bio:
-                score += 0.08
-                reason_signals.append(
-                    MlReasonSignal(
-                        code=CompatibilityReasonCode.ACTIVITY_OVERLAP,
-                        strength="medium",
-                        confidence=0.69,
-                    )
-                )
+            overlap = sorted(set(requester.lifestyle_codes) & set(candidate.lifestyle_codes))
+            if overlap:
+                score += min(0.18, 0.06 * len(overlap))
+                reason_codes.append(CompatibilityReasonCode.LIFESTYLE_OVERLAP)
 
-            if candidate.has_min_profile and candidate.has_approved_photo:
-                score += 0.07
+            if requester.has_behavioral_profile and candidate.has_behavioral_profile:
+                score += 0.10
+                reason_codes.append(CompatibilityReasonCode.BEHAVIORAL_SIGNAL)
+
+            completion_bonus = min(candidate.profile_completion_percent / 1000, 0.10)
+            if completion_bonus:
+                score += completion_bonus
+                reason_codes.append(CompatibilityReasonCode.PROFILE_QUALITY)
 
             scored.append(
-                MlCandidateScore(
+                RankedCandidate(
                     candidate_user_id=candidate.user_id,
-                    score=min(score, 0.99),
-                    reason_signals=reason_signals[:5] or [
-                        MlReasonSignal(
-                            code=CompatibilityReasonCode.LOCALITY_FIT,
-                            strength="low",
-                            confidence=0.55,
-                        )
-                    ],
+                    score=round(min(score, 0.99), 2),
+                    reason_codes=reason_codes[:4] or [CompatibilityReasonCode.CITY_FIT],
                 )
             )
 
         scored.sort(key=lambda item: item.score, reverse=True)
-        return MockRecommendationResponse(
-            decision_mode=FeedDecisionMode.FALLBACK,
-            candidates=scored[: payload.limit],
+        return RankedCandidates(
+            decision_mode=DecisionMode.FALLBACK,
+            candidates=scored[:limit],
         )
 
-    async def explain(self, payload: MockExplanationRequest) -> CompatibilityExplanationResponse:
-        ranked = await self.rank(
-            MockRecommendationRequest(
-                requester=payload.requester,
-                candidates=[payload.candidate],
-                limit=1,
-            )
-        )
-        candidate = ranked.candidates[0]
-        reasons = [self._build_reason(signal.code, signal.confidence) for signal in candidate.reason_signals[: payload.max_reasons]]
+    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+        ranked = await self.rank(payload.requester, [payload.candidate], limit=1)
+        scored = ranked.candidates[0]
+        reasons = [
+            self._reason_from_code(code, payload.requester, payload.candidate)
+            for code in scored.reason_codes[:3]
+        ]
         return CompatibilityExplanationResponse(
-            serve_item_id=payload.candidate.user_id,  # overwritten by service
+            serve_item_id=payload.serve_item_id,
             candidate_user_id=payload.candidate.user_id,
-            mode=CompatibilityMode.BASIC_FALLBACK,
             reasons=reasons,
+            disclaimer="These explanations use aggregated profile and quiz signals only.",
         )
 
-    def build_preview(self, scored: MlCandidateScore) -> CompatibilityPreview:
-        preview_texts = {
-            CompatibilityReasonCode.LIFESTYLE_SIMILARITY: "У вас похожий ритм жизни и ожидания от знакомства.",
-            CompatibilityReasonCode.ACTIVITY_OVERLAP: "Есть заметное пересечение по повседневным интересам.",
-            CompatibilityReasonCode.COMMUNICATION_STYLE_FIT: "Похоже, вы совпадаете по формату общения и знакомств.",
-            CompatibilityReasonCode.MEETUP_RHYTHM_FIT: "Ваш темп знакомства и офлайн-встреч выглядит совместимым.",
-            CompatibilityReasonCode.LOCALITY_FIT: "Вам будет проще пересечься благодаря близкому ритму города.",
-        }
+    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         reason_codes = [
-            signal.code if isinstance(signal.code, CompatibilityReasonCode) else CompatibilityReasonCode(signal.code)
-            for signal in scored.reason_signals[:5]
+            code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
+            for code in scored.reason_codes
         ]
         primary = reason_codes[0]
+        preview_map = {
+            CompatibilityReasonCode.CITY_FIT: "You are aligned on city rhythm and logistics.",
+            CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
+            CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
+            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
+            CompatibilityReasonCode.LIFESTYLE_OVERLAP: "There is a clear overlap in lifestyle signals.",
+            CompatibilityReasonCode.BEHAVIORAL_SIGNAL: "Behavioral patterns point to a stronger fit.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
+        }
         return CompatibilityPreview(
-            score=round(scored.score, 2),
-            mode=CompatibilityMode.BASIC_FALLBACK,
-            preview=preview_texts[primary],
-            reason_codes=reason_codes,
+            score=scored.score,
+            preview=preview_map[primary],
+            reason_codes=[code.value for code in reason_codes],
             details_available=True,
         )
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
         mapping = {
-            FeedEmptyStateCode.NO_CANDIDATES_NOW: (
-                "Пока нет новых кандидатов",
-                "Попробуйте зайти позже, когда появятся новые совместимые анкеты.",
+            FeedEmptyStateCode.NO_MORE_CANDIDATES_TODAY: (
+                "No more candidates today",
+                "You have seen today's ready cards. Try again later.",
             ),
-            FeedEmptyStateCode.DAILY_BATCH_EXHAUSTED: (
-                "Сегодняшняя выдача закончилась",
-                "Возвращайтесь завтра за новой подборкой.",
+            FeedEmptyStateCode.CANDIDATE_POOL_LOW: (
+                "Candidate pool is low",
+                "We need a bit more signal or more ready profiles to build a stronger batch.",
             ),
-            FeedEmptyStateCode.PHOTO_PENDING: (
-                "Ждём подтверждения фото",
-                "Как только фото станет доступным, выдача откроется автоматически.",
+            FeedEmptyStateCode.SAFETY_FILTERED_ALL: (
+                "Nothing new after safety filters",
+                "Current candidates were filtered out by your previous actions or safety rules.",
             ),
-            FeedEmptyStateCode.PROFILE_INCOMPLETE: (
-                "Профиль ещё не готов",
-                "Заполните обязательные поля профиля, чтобы открыть выдачу.",
+            FeedEmptyStateCode.TRY_AGAIN_TOMORROW: (
+                "Try again tomorrow",
+                "A fresh batch will be prepared later.",
             ),
         }
-        title, message = mapping[code]
-        return FeedEmptyState(code=code, title=title, message=message)
+        title, description = mapping[code]
+        return FeedEmptyState(code=code, title=title, description=description)
 
-    def _build_reason(
+    def build_icebreakers(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> IcebreakersResponse:
+        shared = sorted(set(requester.lifestyle_codes) & set(candidate.lifestyle_codes))
+        items: list[Icebreaker] = []
+        for code in shared[:3]:
+            items.append(
+                Icebreaker(
+                    icebreaker_id=code,
+                    text=f"Ask about {get_option_label(code).lower()}.",
+                    reason=f"Shared lifestyle signal: {get_option_label(code)}",
+                )
+            )
+        if not items:
+            items = [
+                Icebreaker(
+                    icebreaker_id="weekend_opening",
+                    text="What does a great weekend look like for you?",
+                    reason="A safe generic opener for a new conversation.",
+                ),
+                Icebreaker(
+                    icebreaker_id="city_opening",
+                    text="What place in your city would you happily revisit together?",
+                    reason="Works well when both profiles are local.",
+                ),
+                Icebreaker(
+                    icebreaker_id="food_opening",
+                    text="What is your current comfort food or cafe pick?",
+                    reason="Easy first-message topic with low pressure.",
+                ),
+            ]
+        return IcebreakersResponse(items=items[:3])
+
+    def _has_mutual_gender_fit(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> bool:
+        return bool(
+            requester.gender
+            and candidate.gender
+            and candidate.gender in (requester.search_preferences.looking_for_genders or [])
+            and requester.gender in (candidate.search_preferences.looking_for_genders or [])
+        )
+
+    def _has_mutual_age_fit(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+        requester_age: int | None,
+        candidate_age: int | None,
+    ) -> bool:
+        if requester_age is None or candidate_age is None:
+            return False
+        requester_range = requester.search_preferences.age_range
+        candidate_range = candidate.search_preferences.age_range
+        if requester_range is None or candidate_range is None:
+            return False
+        return (
+            requester_range.min <= candidate_age <= requester_range.max
+            and candidate_range.min <= requester_age <= candidate_range.max
+        )
+
+    def _reason_from_code(
         self,
         code: CompatibilityReasonCode,
-        confidence: float,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
     ) -> CompatibilityReason:
         mapping = {
-            CompatibilityReasonCode.LIFESTYLE_SIMILARITY: (
-                "Похожий ритм жизни",
-                "Ваши привычные сценарии досуга и темп жизни достаточно близки.",
+            CompatibilityReasonCode.CITY_FIT: (
+                "Similar city rhythm",
+                "You appear to be in a compatible local context for actually meeting offline.",
+                0.78,
             ),
-            CompatibilityReasonCode.ACTIVITY_OVERLAP: (
-                "Есть пересечение по интересам",
-                "У вас заметно пересекаются устойчивые интересы и форматы отдыха.",
+            CompatibilityReasonCode.AGE_FIT: (
+                "Mutual age fit",
+                "Both profiles fall within each other's preferred age range.",
+                0.76,
             ),
-            CompatibilityReasonCode.COMMUNICATION_STYLE_FIT: (
-                "Похожий стиль знакомства",
-                "Вы оба похожим образом подходите к общению и ожиданиям от контакта.",
+            CompatibilityReasonCode.GOAL_FIT: (
+                "Aligned intentions",
+                "You are looking for a similar type of connection right now.",
+                0.74,
             ),
-            CompatibilityReasonCode.MEETUP_RHYTHM_FIT: (
-                "Совпадает темп встреч",
-                "Ваши ожидания по тому, как быстро переходить к встрече, выглядят совместимыми.",
+            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: (
+                "Preferences align both ways",
+                "Your mutual preferences suggest the match is viable from both sides.",
+                0.81,
             ),
-            CompatibilityReasonCode.LOCALITY_FIT: (
-                "Близкий городской ритм",
-                "У вас похожая география повседневной жизни, поэтому легче пересечься.",
+            CompatibilityReasonCode.LIFESTYLE_OVERLAP: (
+                "Lifestyle overlap",
+                "Optional quiz signals point to overlapping habits and social pace.",
+                0.72,
+            ),
+            CompatibilityReasonCode.BEHAVIORAL_SIGNAL: (
+                "Behavioral signal",
+                "Additional behavioral context increases confidence in this recommendation.",
+                0.69,
+            ),
+            CompatibilityReasonCode.PROFILE_QUALITY: (
+                "Strong profile signal",
+                "The profile contains enough detail to support a more stable recommendation.",
+                0.63,
             ),
         }
-        title, text = mapping[code]
-        return CompatibilityReason(code=code, title=title, text=text, confidence=round(confidence, 2))
+        title, text, confidence = mapping[code]
+        return CompatibilityReason(code=code.value, title=title, text=text, confidence=confidence)

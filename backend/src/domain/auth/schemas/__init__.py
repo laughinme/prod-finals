@@ -1,2 +1,2 @@
-from .basic_auth import UserRegister, UserLogin
-from .tokens import TokenPair, TokenSet
+from .basic_auth import DemoLoginRequest, UserLogin, UserRegister
+from .tokens import TokenPair, TokenPairWithUser, TokenSet

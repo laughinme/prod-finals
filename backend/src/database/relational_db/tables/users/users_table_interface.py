@@ -37,6 +37,13 @@ class UserInterface:
         
         return user
 
+    async def get_by_demo_user_key(self, demo_user_key: str) -> User | None:
+        return await self.session.scalar(
+            select(User)
+            .options(selectinload(User.roles), selectinload(User.city))
+            .where(User.demo_user_key == demo_user_key)
+        )
+
     async def list_by_ids(self, ids: list[UUID]) -> list[User]:
         if not ids:
             return []

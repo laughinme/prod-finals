@@ -10,13 +10,13 @@ from service.dating import OnboardingService, get_onboarding_service
 router = APIRouter()
 
 
-@router.get(
-    "/state",
+@router.post(
+    "/skip",
     response_model=OnboardingStateResponse,
-    summary="Get onboarding state and next required step",
+    summary="Skip optional onboarding quiz",
 )
-async def get_onboarding_state(
+async def skip_onboarding(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[OnboardingService, Depends(get_onboarding_service)],
 ) -> OnboardingStateResponse:
-    return await svc.get_state(user)
+    return await svc.skip(user)

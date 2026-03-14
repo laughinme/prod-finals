@@ -1,63 +1,47 @@
 from datetime import date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from domain.common import TimestampModel
-from domain.dating.enums import Goal, OnboardingStatus, PhotoModerationStatus, ProfileStatus
-from domain.dating.schemas import AgeRange, CityRef
+from domain.dating import (
+    AvatarResponse,
+    SearchPreferences,
+    LifestyleTag,
+    ProfileStatus,
+    QuizStatus,
+    RecommendationMode,
+)
 from domain.users.enums import Gender
 
 
-class UserModel(TimestampModel):
-    """User account representation."""
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+class UserModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
-    id: UUID = Field(...)
-    email: EmailStr = Field(..., description="User e-mail")
-    
-    username: str | None = Field(None, description="User's display name")
-    display_name: str | None = Field(None, description="Preferred display name")
-    avatar_key: str | None = Field(None, description="Storage key of the avatar object")
-    avatar_url: str | None = Field(None, description="Public URL of the avatar object")
-    avatar_status: PhotoModerationStatus | None = None
-    avatar_rejection_reason: str | None = None
+    id: UUID
+    email: str | None = None
+    display_name: str
     birth_date: date | None = None
-    bio: str | None = Field(None, max_length=500)
-    city: CityRef | None = None
+    age: int | None = None
+    city: str | None = None
     gender: Gender | None = None
-    looking_for_genders: list[Gender] = Field(default_factory=list)
-    age_range: AgeRange | None = None
-    distance_km: int | None = Field(None, ge=1, le=300)
-    goal: Goal | None = None
-    
-    is_onboarded: bool
-    onboarding_status: OnboardingStatus
-    has_min_profile: bool
-    has_approved_photo: bool
+    bio: str | None = Field(default=None, max_length=500)
+    quiz_status: QuizStatus
     profile_status: ProfileStatus
-    banned: bool
-    
-    role_slugs: list[str] = Field(default_factory=list, description="User's roles.")
+    recommendation_mode: RecommendationMode
+    search_preferences: SearchPreferences = Field(default_factory=SearchPreferences)
+    avatar: AvatarResponse
+    lifestyle_tags: list[LifestyleTag] = Field(default_factory=list)
+    profile_completion_percent: int = Field(..., ge=0, le=100)
+    can_open_feed: bool
 
 
 class UserPatch(BaseModel):
-    username: str | None = Field(None, description="User's display name", max_length=64)
-    display_name: str | None = Field(None, max_length=64)
+    display_name: str | None = Field(default=None, max_length=80)
     birth_date: date | None = None
-    bio: str | None = Field(None, max_length=500)
-    city_id: str | None = Field(None, max_length=64)
+    city: str | None = None
     gender: Gender | None = None
-    looking_for_genders: list[Gender] | None = Field(None, min_length=1, max_length=3)
-    age_range: AgeRange | None = None
-    distance_km: int | None = Field(None, ge=1, le=300)
-    goal: Goal | None = None
-
-    @model_validator(mode="after")
-    def normalize_lists(self):
-        if self.looking_for_genders is not None:
-            self.looking_for_genders = list(dict.fromkeys(self.looking_for_genders))
-        return self
+    bio: str | None = Field(default=None, max_length=500)
+    search_preferences: SearchPreferences | None = None
 
 
 class UserRolesUpdate(BaseModel):
