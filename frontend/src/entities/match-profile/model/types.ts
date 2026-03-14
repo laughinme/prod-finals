@@ -17,6 +17,22 @@ export type MatchProfileActions = {
   canReport: boolean;
 };
 
+export type MatchProfileExplanationReason = {
+  code: string;
+  title: string;
+  text: string;
+  confidence: number;
+  tag: string | null;
+};
+
+export type MatchProfileExplanation = {
+  profileId: MatchProfileId;
+  candidateUserId: string;
+  privacyLevel: string;
+  reasons: MatchProfileExplanationReason[];
+  disclaimer: string | null;
+};
+
 export type MatchProfile = {
   id: MatchProfileId;
   candidateUserId: string | null;

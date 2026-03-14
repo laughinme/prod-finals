@@ -88,6 +88,21 @@ export type FeedCardDto = {
   actions: FeedCardActionsDto;
 };
 
+export type CompatibilityReasonDto = {
+  code: string;
+  title: string;
+  text: string;
+  confidence: number;
+};
+
+export type CompatibilityExplanationResponseDto = {
+  serve_item_id: string;
+  candidate_user_id: string;
+  privacy_level: string;
+  reasons: CompatibilityReasonDto[];
+  disclaimer: string | null;
+};
+
 export type FeedEmptyStateDto = {
   code: FeedEmptyStateCode;
   title: string;
@@ -114,6 +129,16 @@ export const getFeed = async (limit = 20): Promise<FeedResponseDto> => {
   const response = await apiProtected.get<FeedResponseDto>("/feed", {
     params: { limit },
   });
+
+  return response.data;
+};
+
+export const getFeedItemExplanation = async (
+  serveItemId: string,
+): Promise<CompatibilityExplanationResponseDto> => {
+  const response = await apiProtected.get<CompatibilityExplanationResponseDto>(
+    `/feed/items/${serveItemId}/explanation`,
+  );
 
   return response.data;
 };

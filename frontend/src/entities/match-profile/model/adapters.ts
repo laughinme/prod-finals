@@ -1,6 +1,12 @@
-import type { FeedCardDto, FeedCardActionsDto } from "@/shared/api/feed";
+import type {
+  CompatibilityExplanationResponseDto,
+  FeedCardDto,
+  FeedCardActionsDto,
+} from "@/shared/api/feed";
 
 import type {
+  MatchProfileExplanation,
+  MatchProfileExplanationReason,
   MatchProfile,
   MatchProfileActions,
   MatchProfileReasonCode,
@@ -33,6 +39,12 @@ export const toMatchProfileReasonLabel = (
   code: MatchProfileReasonCode,
 ): string => MATCH_PROFILE_REASON_LABELS[code];
 
+function isMatchProfileReasonCode(
+  code: string,
+): code is MatchProfileReasonCode {
+  return code in MATCH_PROFILE_REASON_LABELS;
+}
+
 export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
   id: dto.serve_item_id,
   candidateUserId: dto.candidate.user_id,
@@ -54,3 +66,25 @@ export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
 
 export const toMatchProfiles = (cards: FeedCardDto[]): MatchProfile[] =>
   cards.map(toMatchProfile);
+
+const toMatchProfileExplanationReason = (
+  reason: CompatibilityExplanationResponseDto["reasons"][number],
+): MatchProfileExplanationReason => ({
+  code: reason.code,
+  title: reason.title,
+  text: reason.text,
+  confidence: reason.confidence,
+  tag: isMatchProfileReasonCode(reason.code)
+    ? toMatchProfileReasonLabel(reason.code)
+    : null,
+});
+
+export const toMatchProfileExplanation = (
+  dto: CompatibilityExplanationResponseDto,
+): MatchProfileExplanation => ({
+  profileId: dto.serve_item_id,
+  candidateUserId: dto.candidate_user_id,
+  privacyLevel: dto.privacy_level,
+  reasons: dto.reasons.map(toMatchProfileExplanationReason),
+  disclaimer: dto.disclaimer,
+});
