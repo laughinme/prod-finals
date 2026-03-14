@@ -2,11 +2,14 @@ import type {
   CompatibilityExplanationResponseDto,
   FeedCardDto,
   FeedCardActionsDto,
+  FeedReactionResponseDto,
 } from "@/shared/api/feed";
 
 import type {
   MatchProfileExplanation,
   MatchProfileExplanationReason,
+  MatchProfileMatchLink,
+  MatchProfileReaction,
   MatchProfile,
   MatchProfileActions,
   MatchProfileReasonCode,
@@ -87,4 +90,19 @@ export const toMatchProfileExplanation = (
   privacyLevel: dto.privacy_level,
   reasons: dto.reasons.map(toMatchProfileExplanationReason),
   disclaimer: dto.disclaimer,
+});
+
+const toMatchProfileMatchLink = (
+  dto: NonNullable<FeedReactionResponseDto["match"]>,
+): MatchProfileMatchLink => ({
+  matchId: dto.match_id,
+  conversationId: dto.conversation_id,
+});
+
+export const toMatchProfileReaction = (
+  dto: FeedReactionResponseDto,
+): MatchProfileReaction => ({
+  result: dto.result,
+  match: dto.match ? toMatchProfileMatchLink(dto.match) : null,
+  nextCardHint: dto.next_card_hint,
 });

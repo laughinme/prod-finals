@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -20,6 +21,7 @@ import {
 } from "@/entities/match-profile/model";
 import { useFeed } from "./useFeed";
 import { useFeedExplanation } from "./useFeedExplanation";
+import { useFeedReaction } from "./useFeedReaction";
 
 type MatchmakingFlowContextValue = {
   currentProfile: MatchProfile | null;
@@ -30,11 +32,12 @@ type MatchmakingFlowContextValue = {
   draft: MatchmakingDraft;
   isOnboardingComplete: boolean;
   isFeedLoading: boolean;
+  isReactionPending: boolean;
   messages: MatchChatMessage[];
   setDraft: (draft: MatchmakingDraft) => void;
   completeOnboarding: (draft: MatchmakingDraft) => void;
-  passCurrentProfile: () => void;
-  likeCurrentProfile: () => { isMatch: boolean; profile: MatchProfile | null };
+  passCurrentProfile: () => Promise<void>;
+  likeCurrentProfile: () => Promise<{ isMatch: boolean; profile: MatchProfile | null }>;
   resetDiscovery: () => void;
   openChat: (profileId: MatchProfileId) => void;
   closeMatch: () => void;
@@ -153,7 +156,9 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const storageKey = getStorageKey(auth?.user?.email as string | null | undefined);
   const { data: feed, isPending: isFeedLoading, refetch: refetchFeed } = useFeed();
+  const feedReactionMutation = useFeedReaction();
   const profiles = feed?.profiles ?? [];
+  const currentProfileSeenAtRef = useRef<number | null>(null);
 
   const [draft, setDraft] = useState<MatchmakingDraft>(EMPTY_MATCHMAKING_DRAFT);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
@@ -194,6 +199,10 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const { data: currentProfileExplanation } = useFeedExplanation(
     baseCurrentProfile?.detailsAvailable ? currentProfileServeItemId : null,
   );
+  useEffect(() => {
+    currentProfileSeenAtRef.current = baseCurrentProfile ? Date.now() : null;
+  }, [baseCurrentProfile?.id]);
+
   const currentProfile = baseCurrentProfile
     ? {
         ...baseCurrentProfile,
@@ -211,8 +220,11 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
           : baseCurrentProfile.tags,
       }
     : null;
-  const matchedProfile = getProfileById(profiles, matchedProfileId);
+  const matchedProfile =
+    (currentProfile && currentProfile.id === matchedProfileId ? currentProfile : null) ??
+    getProfileById(profiles, matchedProfileId);
   const activeChatProfile =
+    (currentProfile && currentProfile.id === activeChatProfileId ? currentProfile : null) ??
     getProfileById(profiles, activeChatProfileId) ??
     getProfileById(profiles, chatProfileIds[0] ?? null) ??
     null;
@@ -226,26 +238,59 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     setIsOnboardingComplete(true);
   };
 
-  const passCurrentProfile = () => {
+  const getCurrentDwellTimeMs = () => {
+    if (!currentProfileSeenAtRef.current) {
+      return null;
+    }
+
+    return Math.max(Date.now() - currentProfileSeenAtRef.current, 0);
+  };
+
+  const dismissProfile = (profileId: MatchProfileId) => {
+    setDismissedProfileIds((prevIds) =>
+      prevIds.includes(profileId) ? prevIds : [...prevIds, profileId],
+    );
+  };
+
+  const passCurrentProfile = async () => {
     if (!currentProfile) {
       return;
     }
 
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(currentProfile.id) ? prevIds : [...prevIds, currentProfile.id],
-    );
+    if (currentProfile.source === "feed" && typeof currentProfile.id === "string") {
+      await feedReactionMutation.mutateAsync({
+        serveItemId: currentProfile.id,
+        action: "pass",
+        openedExplanation: Boolean(currentProfileExplanation),
+        openedProfile: false,
+        dwellTimeMs: getCurrentDwellTimeMs(),
+      });
+    }
+
+    dismissProfile(currentProfile.id);
   };
 
-  const likeCurrentProfile = () => {
+  const likeCurrentProfile = async () => {
     if (!currentProfile) {
       return { isMatch: false, profile: null };
     }
 
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(currentProfile.id) ? prevIds : [...prevIds, currentProfile.id],
-    );
+    let isMatch = false;
 
-    const isMatch = currentProfile.id === profiles[0]?.id;
+    if (currentProfile.source === "feed" && typeof currentProfile.id === "string") {
+      const reaction = await feedReactionMutation.mutateAsync({
+        serveItemId: currentProfile.id,
+        action: "like",
+        openedExplanation: Boolean(currentProfileExplanation),
+        openedProfile: false,
+        dwellTimeMs: getCurrentDwellTimeMs(),
+      });
+
+      isMatch = reaction.result === "matched" && reaction.match !== null;
+    }
+
+    dismissProfile(currentProfile.id);
+
     if (isMatch) {
       setMatchedProfileId(currentProfile.id);
       setActiveChatProfileId(currentProfile.id);
@@ -316,6 +361,7 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
         draft,
         isOnboardingComplete,
         isFeedLoading,
+        isReactionPending: feedReactionMutation.isPending,
         messages,
         setDraft,
         completeOnboarding,

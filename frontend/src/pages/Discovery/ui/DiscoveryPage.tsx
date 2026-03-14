@@ -17,21 +17,38 @@ export default function DiscoveryPage() {
     likeCurrentProfile,
     passCurrentProfile,
     resetDiscovery,
+    isReactionPending,
   } = useMatchmakingFlow();
   const [showReport, setShowReport] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
 
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (isReactionPending) {
+      return;
+    }
+
     setExitX(1000);
-    const result = likeCurrentProfile();
-    if (result.isMatch) {
-      window.setTimeout(() => navigate("/match"), 300);
+    try {
+      const result = await likeCurrentProfile();
+      if (result.isMatch) {
+        window.setTimeout(() => navigate("/match"), 300);
+      }
+    } catch {
+      setExitX(0);
     }
   };
 
-  const handlePass = () => {
+  const handlePass = async () => {
+    if (isReactionPending) {
+      return;
+    }
+
     setExitX(-1000);
-    passCurrentProfile();
+    try {
+      await passCurrentProfile();
+    } catch {
+      setExitX(0);
+    }
   };
 
   return (
@@ -66,8 +83,8 @@ export default function DiscoveryPage() {
             key={`${currentProfile.id}-${isMobile ? "mobile" : "desktop"}`}
             profile={currentProfile}
             isMobile={isMobile}
-            onLike={handleLike}
-            onPass={handlePass}
+            onLike={() => void handleLike()}
+            onPass={() => void handlePass()}
             onOpenReport={() => setShowReport(true)}
             exitX={exitX}
           />
@@ -105,7 +122,7 @@ export default function DiscoveryPage() {
                   className="h-14 w-full justify-start rounded-2xl text-left text-base"
                   onClick={() => {
                     setShowReport(false);
-                    handlePass();
+                    void handlePass();
                   }}
                 >
                   {t("discovery.dont_show_again")}
@@ -115,7 +132,7 @@ export default function DiscoveryPage() {
                   className="h-14 w-full justify-start rounded-2xl text-left text-base text-destructive hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => {
                     setShowReport(false);
-                    handlePass();
+                    void handlePass();
                   }}
                 >
                   {t("discovery.report_profile")}

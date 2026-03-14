@@ -103,6 +103,28 @@ export type CompatibilityExplanationResponseDto = {
   disclaimer: string | null;
 };
 
+export type FeedAction = "like" | "pass" | "hide";
+
+export type FeedReactionRequestDto = {
+  action: FeedAction;
+  opened_explanation?: boolean;
+  opened_profile?: boolean;
+  dwell_time_ms?: number | null;
+};
+
+export type MatchLinkDto = {
+  match_id: string;
+  conversation_id: string;
+};
+
+export type FeedReactionResult = "liked" | "passed" | "hidden" | "matched";
+
+export type FeedReactionResponseDto = {
+  result: FeedReactionResult;
+  match: MatchLinkDto | null;
+  next_card_hint: string | null;
+};
+
 export type FeedEmptyStateDto = {
   code: FeedEmptyStateCode;
   title: string;
@@ -138,6 +160,18 @@ export const getFeedItemExplanation = async (
 ): Promise<CompatibilityExplanationResponseDto> => {
   const response = await apiProtected.get<CompatibilityExplanationResponseDto>(
     `/feed/items/${serveItemId}/explanation`,
+  );
+
+  return response.data;
+};
+
+export const postFeedReaction = async (
+  serveItemId: string,
+  payload: FeedReactionRequestDto,
+): Promise<FeedReactionResponseDto> => {
+  const response = await apiProtected.post<FeedReactionResponseDto>(
+    `/feed/items/${serveItemId}/reaction`,
+    payload,
   );
 
   return response.data;

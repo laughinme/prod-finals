@@ -33,6 +33,21 @@ export type MatchProfileExplanation = {
   disclaimer: string | null;
 };
 
+export type MatchProfileReactionAction = "like" | "pass" | "hide";
+
+export type MatchProfileMatchLink = {
+  matchId: string;
+  conversationId: string;
+};
+
+export type MatchProfileReactionResult = "liked" | "passed" | "hidden" | "matched";
+
+export type MatchProfileReaction = {
+  result: MatchProfileReactionResult;
+  match: MatchProfileMatchLink | null;
+  nextCardHint: string | null;
+};
+
 export type MatchProfile = {
   id: MatchProfileId;
   candidateUserId: string | null;
