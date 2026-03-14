@@ -12,6 +12,7 @@ import { useAuth } from "@/app/providers/auth/useAuth";
 import { HeaderLayout } from "@/app/layouts/HeaderLayout";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useProfile } from "@/features/profile/useProfile";
+import { useQuizCompletion } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
@@ -54,6 +55,7 @@ export const RequireAuth = () => {
 export const RequireMatchmakingReady = () => {
   const { isOnboardingComplete } = useMatchmakingFlow();
   const { data: profile, isLoading } = useProfile();
+  const { isQuizCompletedLocal } = useQuizCompletion();
 
   if (isLoading) {
     return <MatchmakingLoadingState />;
@@ -63,7 +65,7 @@ export const RequireMatchmakingReady = () => {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (!profile?.quizStarted) {
+  if (!profile?.quizStarted && !isQuizCompletedLocal) {
     return <Navigate to="/quiz" replace />;
   }
 

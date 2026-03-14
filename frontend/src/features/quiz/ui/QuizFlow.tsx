@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
 import type { Question } from "@/entities/quiz";
+import { useQuizCompletion } from "@/features/quiz/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -19,6 +20,7 @@ export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth()!;
+  const { markQuizCompleted } = useQuizCompletion();
 
   const quizStarted = user?.quiz_started ?? false;
 
@@ -71,6 +73,7 @@ export function QuizFlow() {
 
   const moveToNext = () => {
     if (isLastQuestion) {
+      markQuizCompleted();
       navigate("/profile-setup", { replace: true });
     } else {
       setCurrentIndex((prev) => prev + 1);
@@ -83,27 +86,28 @@ export function QuizFlow() {
     let finalAnswers = currentAnswer;
 
     if (question.stepType === "range" && finalAnswers.length < 2) {
-      if (question.optional) {
-        moveToNext();
-        return;
+      if (question.optional && finalAnswers.length === 0) {
+        // Handled below by skipMutation
+      } else {
+        const min = question.rangeMin ?? 18;
+        const max = question.rangeMax ?? 99;
+        finalAnswers = [String(min), String(max)];
       }
-      const min = question.rangeMin ?? 18;
-      const max = question.rangeMax ?? 99;
-      finalAnswers = [String(min), String(max)];
-    }
-
-    if (question.optional && finalAnswers.length === 0) {
-      moveToNext();
-      return;
     }
 
     try {
+      if (finalAnswers.length === 0 && question.optional) {
+        moveToNext();
+        return;
+      }
+
       const response = await answerMutation.mutateAsync({
         stepKey: question.stepKey,
         answers: finalAnswers,
       });
 
       if (response.completed || isLastQuestion) {
+        markQuizCompleted();
         navigate("/profile-setup", { replace: true });
       } else if (response.nextStepKey) {
         const nextIndex = steps.findIndex(
@@ -371,6 +375,8 @@ export function QuizFlow() {
                 <Loader2 className="animate-spin" />
               ) : isLastQuestion ? (
                 t("common.finish")
+              ) : currentAnswer.length === 0 ? (
+                "Пропустить"
               ) : (
                 t("common.continue")
               )}
