@@ -82,21 +82,7 @@ export default function AuthPage(): ReactElement {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center px-4 py-12 text-white overflow-hidden">
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.35 }}
-        transition={{ duration: 1.2, ease: "easeOut" }}
-      >
-        <motion.div
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_rgba(0,0,0,0))]"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
-        />
-      </motion.div>
-
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12 text-foreground overflow-hidden">
       <motion.div
         className="relative w-full max-w-md"
         initial={{ opacity: 0, y: 32, scale: 0.96 }}
