@@ -6,7 +6,6 @@ from httpx import AsyncClient
 
 from tests.helpers import auth_header
 
-
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.usefixtures("_integration_state"),
@@ -18,7 +17,7 @@ def _mobile_headers() -> dict[str, str]:
 
 
 @pytest.mark.asyncio
-async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncClient, faker: Faker):
+async def test_avatar_presign_upload_confirm_and_delete_flow(client: AsyncClient, faker: Faker):
     suffix = uuid4().hex[:8]
     credentials = {
         "email": f"avatar_{suffix}@example.com",
@@ -42,9 +41,6 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
     assert presign.status_code == 200
     presign_data = presign.json()
     assert presign_data["object_key"].startswith("avatars/")
-    assert presign_data["upload_url"]
-    assert presign_data["public_url"]
-    assert presign_data["expires_in"] > 0
 
     png_bytes = (
         b"\x89PNG\r\n\x1a\n"
@@ -67,7 +63,7 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
         headers=auth_header(access_token),
     )
     assert confirm.status_code == 200
-    assert confirm.json()["avatar_status"] == "approved"
+    assert confirm.json()["avatar_key"] == presign_data["object_key"]
     assert confirm.json()["avatar_url"]
 
     delete_avatar = await client.delete(
@@ -75,5 +71,4 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
         headers=auth_header(access_token),
     )
     assert delete_avatar.status_code == 200
-    assert delete_avatar.json()["avatar_status"] is None
-    assert delete_avatar.json()["avatar_url"] is None
+    assert delete_avatar.json()["avatar_key"] is None

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 
 import type { MatchmakingDraft } from "@/entities/match-profile/model";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
@@ -11,7 +10,6 @@ import {
 } from "@/features/profile/useProfile";
 
 export function useProfileSetup() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { draft, setDraft, completeOnboarding } = useMatchmakingFlow();
   const { data: profile } = useProfile();
@@ -31,9 +29,7 @@ export function useProfileSetup() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     draft.interests,
   );
-  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(
-    null,
-  );
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
     profile?.profilePicUrl ?? null,
   );
@@ -92,9 +88,7 @@ export function useProfileSetup() {
     }
   };
 
-  const handleAvatarSelection = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleAvatarSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -130,13 +124,12 @@ export function useProfileSetup() {
 
       setStep(2);
     } catch {
-      setStep1Error(t("profile.save_error"));
+      setStep1Error("Не удалось сохранить профиль. Попробуйте ещё раз.");
     }
   };
 
   const handleComplete = () => {
     const nextDraft: MatchmakingDraft = {
-      ...draft,
       photoUploaded,
       name,
       age,
@@ -161,8 +154,8 @@ export function useProfileSetup() {
     isStep2Valid,
     isSubmittingStep1,
     avatarUploadStatusLabel: selectedAvatarFile
-      ? t("profile.ready_to_upload")
-      : t("profile.uploaded"),
+      ? "Готово к загрузке"
+      : "Загружено",
     setName,
     setAge,
     setStep,

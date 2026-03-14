@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -49,7 +48,7 @@ class DummyRepo:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_create_avatar_presign_returns_upload_info():
+async def test_create_avatar_presign_returns_upload_and_public_urls():
     uow = FakeUoW()
     media = FakeMediaStorage()
     svc = UserService(
@@ -70,8 +69,7 @@ async def test_create_avatar_presign_returns_upload_info():
 
     assert response.object_key.startswith(f"avatars/{user.id}/")
     assert response.upload_url.startswith("http://localhost/")
-    assert response.public_url.startswith("http://")
-    assert response.expires_in > 0
+    assert response.public_url.startswith("http://localhost/")
 
 
 @pytest.mark.unit
@@ -92,7 +90,7 @@ async def test_confirm_avatar_upload_rejects_foreign_object_key_prefix():
     with pytest.raises(DomainError) as exc:
         await svc.confirm_avatar_upload(
             user=user,
-            file_key=f"avatars/{uuid4()}/evil.jpg",
+            object_key=f"avatars/{uuid4()}/evil.jpg",
         )
 
     assert exc.value.status_code == 400
@@ -111,28 +109,17 @@ async def test_confirm_and_remove_avatar_updates_user_and_deletes_previous_file(
         media_storage=media,
         cache_repo=None,
     )
-    user = SimpleNamespace(
-        id=uuid4(),
-        avatar_key=f"avatars/{uuid4()}/old.jpg",
-        avatar_status="approved",
-        avatar_rejection_reason=None,
-        avatar_url="http://localhost/media-public/old.jpg",
-        updated_at=datetime.now(UTC),
-        can_open_feed=False,
-    )
+    user = SimpleNamespace(id=uuid4(), avatar_key=f"avatars/{uuid4()}/old.jpg")
     new_key = f"avatars/{user.id}/new.jpg"
 
-    response = await svc.confirm_avatar_upload(user=user, file_key=new_key)
+    await svc.confirm_avatar_upload(user=user, object_key=new_key)
 
     assert user.avatar_key == new_key
-    assert user.avatar_status == "approved"
-    assert response.status == "approved"
     assert uow.commits == 1
     assert media.deleted[-1][1].endswith("old.jpg")
 
     await svc.remove_avatar(user=user)
 
     assert user.avatar_key is None
-    assert user.avatar_status == "missing"
     assert uow.commits == 2
     assert media.deleted[-1][1] == new_key

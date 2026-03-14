@@ -1,21 +1,21 @@
 from typing import Literal
 from sqlalchemy.exc import IntegrityError
 
-from core.config import get_settings
 from database.relational_db import (
     RolesInterface,
     UserInterface,
     User,
     UoW,
 )
-from domain.auth import UserLogin, UserRegister
+from domain.auth import UserRegister, UserLogin
 from domain.auth.enums import DEFAULT_ROLE
+from core.config import Settings
 from core.crypto import hash_password, verify_password, needs_rehash
 from service.notifications import NotificationService
 from .exceptions import AlreadyExists, WrongCredentials
 from ..tokens import TokenService
 
-config = get_settings()
+config = Settings() # pyright: ignore[reportCallIssue]
 
 class CredentialsService:
     def __init__(
@@ -31,7 +31,6 @@ class CredentialsService:
         self.role_repo = role_repo
         self.token_service = token_service
         self.notification_service = notification_service
-        self.settings = get_settings()
         
     @staticmethod
     async def _check_password(password: str, password_hash: str) -> bool:
@@ -53,14 +52,15 @@ class CredentialsService:
         self,
         payload: UserRegister,
         src: Literal['web', 'mobile']
-    ) -> tuple[User, str, str, str]:
+    ) -> tuple[str, str, str]:
         
         password_hash = await self._hash_password(payload.password)
 
         user = User(
             email=payload.email,
             password_hash=password_hash,
-            username=getattr(payload, "username", None),
+            # allow_password_login=True,
+            username=payload.username,
         )
         
         try:
@@ -81,14 +81,14 @@ class CredentialsService:
         )
         
         access, refresh, csrf = await self.token_service.issue_tokens(user, src)
-        return user, access, refresh, csrf
+        return access, refresh, csrf
     
     
     async def login(
         self,
         payload: UserLogin,
         src: Literal['web', 'mobile']
-    ) -> tuple[User, str, str, str]:
+    ) -> tuple[str, str, str]:
         user = await self.user_repo.get_by_email(payload.email)
         if user is None:
             raise WrongCredentials()
@@ -99,8 +99,9 @@ class CredentialsService:
             user.password_hash = await self._hash_password(payload.password)
         
         access, refresh, csrf = await self.token_service.issue_tokens(user, src)
-        return user, access, refresh, csrf
-
+        return access, refresh, csrf
+    
+    
     async def logout(self, refresh_token: str) -> None:
         payload = await self.token_service.revoke(refresh_token)
         if payload is None:

@@ -11,7 +11,6 @@ export type UserDto = {
     profile_pic_url?: string | null;
     bio?: string | null;
     is_onboarded: boolean;
-    quiz_started: boolean;
     banned: boolean;
     role_slugs?: string[];
     roles?: string[];

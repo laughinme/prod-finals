@@ -11,13 +11,12 @@ import {
   CURRENT_USER_PREVIEW,
   EMPTY_MATCHMAKING_DRAFT,
   INITIAL_CHAT_MESSAGES,
+  MOCK_DISCOVERY_PROFILES,
   type CurrentUserPreview,
   type MatchChatMessage,
   type MatchProfile,
-  type MatchProfileId,
   type MatchmakingDraft,
 } from "@/entities/match-profile/model";
-import { useFeed } from "./useFeed";
 
 type MatchmakingFlowContextValue = {
   currentProfile: MatchProfile | null;
@@ -27,17 +26,16 @@ type MatchmakingFlowContextValue = {
   currentUserPreview: CurrentUserPreview;
   draft: MatchmakingDraft;
   isOnboardingComplete: boolean;
-  isFeedLoading: boolean;
   messages: MatchChatMessage[];
   setDraft: (draft: MatchmakingDraft) => void;
   completeOnboarding: (draft: MatchmakingDraft) => void;
   passCurrentProfile: () => void;
   likeCurrentProfile: () => { isMatch: boolean; profile: MatchProfile | null };
   resetDiscovery: () => void;
-  openChat: (profileId: MatchProfileId) => void;
+  openChat: (profileId: number) => void;
   closeMatch: () => void;
-  sendMessage: (profileId: MatchProfileId, text: string) => void;
-  reportProfile: (profileId: MatchProfileId) => void;
+  sendMessage: (profileId: number, text: string) => void;
+  reportProfile: (profileId: number) => void;
 };
 
 type PersistedMatchmakingState = {
@@ -54,13 +52,20 @@ function getInitialPersistedState(): PersistedMatchmakingState {
   };
 }
 
-function cloneMessages(): Partial<Record<MatchProfileId, MatchChatMessage[]>> {
+function cloneProfiles(): MatchProfile[] {
+  return MOCK_DISCOVERY_PROFILES.map((profile) => ({
+    ...profile,
+    tags: [...profile.tags],
+  }));
+}
+
+function cloneMessages(): Record<number, MatchChatMessage[]> {
   return Object.fromEntries(
     Object.entries(INITIAL_CHAT_MESSAGES).map(([profileId, messages]) => [
-      profileId,
+      Number(profileId),
       messages.map((message) => ({ ...message })),
     ]),
-  ) as Partial<Record<MatchProfileId, MatchChatMessage[]>>;
+  );
 }
 
 function getStorageKey(userKey: string | null | undefined): string | null {
@@ -104,15 +109,12 @@ function writePersistedState(storageKey: string | null, state: PersistedMatchmak
   window.localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
-function getProfileById(
-  profiles: MatchProfile[],
-  profileId: MatchProfileId | null,
-): MatchProfile | null {
+function getProfileById(profileId: number | null): MatchProfile | null {
   if (!profileId) {
     return null;
   }
 
-  return profiles.find((profile) => profile.id === profileId) ?? null;
+  return MOCK_DISCOVERY_PROFILES.find((profile) => profile.id === profileId) ?? null;
 }
 
 function getTimeLabel(): string {
@@ -125,24 +127,22 @@ function getTimeLabel(): string {
 export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const storageKey = getStorageKey(auth?.user?.email as string | null | undefined);
-  const { data: feed, isPending: isFeedLoading, refetch: refetchFeed } = useFeed();
-  const profiles = feed?.profiles ?? [];
 
   const [draft, setDraft] = useState<MatchmakingDraft>(EMPTY_MATCHMAKING_DRAFT);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
-  const [dismissedProfileIds, setDismissedProfileIds] = useState<MatchProfileId[]>([]);
-  const [matchedProfileId, setMatchedProfileId] = useState<MatchProfileId | null>(null);
-  const [activeChatProfileId, setActiveChatProfileId] = useState<MatchProfileId | null>(null);
-  const [chatProfileIds, setChatProfileIds] = useState<MatchProfileId[]>([]);
+  const [profiles, setProfiles] = useState<MatchProfile[]>(() => cloneProfiles());
+  const [matchedProfileId, setMatchedProfileId] = useState<number | null>(null);
+  const [activeChatProfileId, setActiveChatProfileId] = useState<number | null>(null);
+  const [chatProfileIds, setChatProfileIds] = useState<number[]>([]);
   const [messagesByProfileId, setMessagesByProfileId] = useState<
-    Partial<Record<MatchProfileId, MatchChatMessage[]>>
+    Record<number, MatchChatMessage[]>
   >(() => cloneMessages());
 
   useEffect(() => {
     const persistedState = readPersistedState(storageKey);
     setDraft(persistedState.draft);
     setIsOnboardingComplete(persistedState.isOnboardingComplete);
-    setDismissedProfileIds([]);
+    setProfiles(cloneProfiles());
     setMatchedProfileId(null);
     setActiveChatProfileId(null);
     setChatProfileIds([]);
@@ -156,17 +156,14 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     });
   }, [draft, isOnboardingComplete, storageKey]);
 
-  const visibleProfiles = profiles.filter(
-    (profile) => !dismissedProfileIds.includes(profile.id),
-  );
-  const currentProfile = visibleProfiles[0] ?? null;
-  const matchedProfile = getProfileById(profiles, matchedProfileId);
+  const currentProfile = profiles[0] ?? null;
+  const matchedProfile = getProfileById(matchedProfileId);
   const activeChatProfile =
-    getProfileById(profiles, activeChatProfileId) ??
-    getProfileById(profiles, chatProfileIds[0] ?? null) ??
+    getProfileById(activeChatProfileId) ??
+    getProfileById(chatProfileIds[0] ?? null) ??
     null;
   const chatProfiles = chatProfileIds
-    .map((profileId) => getProfileById(profiles, profileId))
+    .map((profileId) => getProfileById(profileId))
     .filter((profile): profile is MatchProfile => profile !== null);
   const messages = activeChatProfile ? messagesByProfileId[activeChatProfile.id] ?? [] : [];
 
@@ -176,13 +173,7 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   };
 
   const passCurrentProfile = () => {
-    if (!currentProfile) {
-      return;
-    }
-
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(currentProfile.id) ? prevIds : [...prevIds, currentProfile.id],
-    );
+    setProfiles((prevProfiles) => prevProfiles.slice(1));
   };
 
   const likeCurrentProfile = () => {
@@ -190,11 +181,9 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       return { isMatch: false, profile: null };
     }
 
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(currentProfile.id) ? prevIds : [...prevIds, currentProfile.id],
-    );
+    setProfiles((prevProfiles) => prevProfiles.slice(1));
 
-    const isMatch = currentProfile.id === profiles[0]?.id;
+    const isMatch = currentProfile.id === 1;
     if (isMatch) {
       setMatchedProfileId(currentProfile.id);
       setActiveChatProfileId(currentProfile.id);
@@ -207,12 +196,11 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   };
 
   const resetDiscovery = () => {
-    setDismissedProfileIds([]);
-    void refetchFeed();
+    setProfiles(cloneProfiles());
   };
 
-  const openChat = (profileId: MatchProfileId) => {
-    const profile = getProfileById(profiles, profileId);
+  const openChat = (profileId: number) => {
+    const profile = getProfileById(profileId);
     if (!profile) {
       return;
     }
@@ -225,7 +213,7 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     setMatchedProfileId(null);
   };
 
-  const sendMessage = (profileId: MatchProfileId, text: string) => {
+  const sendMessage = (profileId: number, text: string) => {
     const trimmedText = text.trim();
     if (!trimmedText) {
       return;
@@ -245,10 +233,8 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const reportProfile = (profileId: MatchProfileId) => {
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(profileId) ? prevIds : [...prevIds, profileId],
-    );
+  const reportProfile = (profileId: number) => {
+    setProfiles((prevProfiles) => prevProfiles.filter((profile) => profile.id !== profileId));
     setMatchedProfileId((prevId) => (prevId === profileId ? null : prevId));
     setChatProfileIds((prevIds) => prevIds.filter((id) => id !== profileId));
     setActiveChatProfileId((prevId) => (prevId === profileId ? null : prevId));
@@ -264,7 +250,6 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
         currentUserPreview: CURRENT_USER_PREVIEW,
         draft,
         isOnboardingComplete,
-        isFeedLoading,
         messages,
         setDraft,
         completeOnboarding,

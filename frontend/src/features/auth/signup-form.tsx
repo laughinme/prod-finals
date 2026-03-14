@@ -1,37 +1,36 @@
-import { type ComponentProps, type SubmitEvent } from "react";
-import { useTranslation } from "react-i18next";
-import { HeartHandshake } from "lucide-react";
+import { type ComponentProps, type FormEvent } from "react"
+import { HeartHandshake } from "lucide-react"
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/shared/components/ui/card";
+} from "@/shared/components/ui/card"
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldError,
   FieldLabel,
-} from "@/shared/components/ui/field";
-import { Input } from "@/shared/components/ui/input";
-import { cn } from "@/shared/lib/utils";
+} from "@/shared/components/ui/field"
+import { Input } from "@/shared/components/ui/input"
+import { cn } from "@/shared/lib/utils"
 
 type SignupFormProps = Omit<ComponentProps<"div">, "onSubmit"> & {
-  email: string;
-  password: string;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void | Promise<void>;
-  submitLabel: string;
-  disabled?: boolean;
-  submitDisabled?: boolean;
-  errorMessage?: string | null;
-  onSwitchToLogin: () => void;
-};
+  email: string
+  password: string
+  onEmailChange: (value: string) => void
+  onPasswordChange: (value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
+  submitLabel: string
+  disabled?: boolean
+  submitDisabled?: boolean
+  errorMessage?: string | null
+  onSwitchToLogin: () => void
+}
 
 export function SignupForm({
   className,
@@ -47,26 +46,25 @@ export function SignupForm({
   onSwitchToLogin,
   ...props
 }: SignupFormProps) {
-  const { t } = useTranslation();
-
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div
+      className={cn("flex flex-col gap-6", className)}
+      {...props}
+    >
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-2xl bg-primary">
               <HeartHandshake className="size-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-foreground">
-              T-Match
-            </span>
+            <span className="text-lg font-bold tracking-tight text-foreground">T-Match</span>
           </div>
           <div>
             <CardTitle className="text-xl font-semibold text-foreground">
-              {t("auth.create_account_title")}
+              Create your account
             </CardTitle>
             <CardDescription className="mt-1 text-sm text-muted-foreground">
-              {t("auth.enter_details")}
+              Enter your details to get started
             </CardDescription>
           </div>
         </CardHeader>
@@ -79,7 +77,7 @@ export function SignupForm({
                   htmlFor="email"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t("auth.email")}
+                  Email
                 </FieldLabel>
                 <Input
                   id="email"
@@ -98,7 +96,7 @@ export function SignupForm({
                   htmlFor="password"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t("auth.password")}
+                  Password
                 </FieldLabel>
                 <Input
                   id="password"
@@ -111,7 +109,7 @@ export function SignupForm({
                   className="border-input bg-background text-foreground placeholder:text-muted-foreground"
                 />
                 <FieldDescription className="text-muted-foreground">
-                  {t("auth.password_hint")}
+                  Must be at least 8 characters long.
                 </FieldDescription>
               </Field>
               <Field>
@@ -123,13 +121,13 @@ export function SignupForm({
                   {submitLabel}
                 </Button>
                 <FieldDescription className="text-center text-sm text-muted-foreground">
-                  {t("auth.already_have_account")}{" "}
+                  Already have an account?{" "}
                   <button
                     type="button"
                     onClick={onSwitchToLogin}
                     className="font-medium underline-offset-4 hover:underline text-primary-foreground"
                   >
-                    {t("auth.sign_in")}
+                    Sign in
                   </button>
                 </FieldDescription>
               </Field>
@@ -138,22 +136,16 @@ export function SignupForm({
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center text-sm text-muted-foreground">
-        {t("auth.tos_agreement_auth")}{" "}
-        <a
-          className="font-medium text-foreground hover:underline underline-offset-4"
-          href="#"
-        >
-          {t("auth.tos")}
+        By clicking continue, you agree to our{" "}
+        <a className="font-medium text-foreground hover:underline underline-offset-4" href="#">
+          Terms of Service
         </a>{" "}
-        {t("auth.and")}{" "}
-        <a
-          className="font-medium text-foreground hover:underline underline-offset-4"
-          href="#"
-        >
-          {t("auth.privacy_policy")}
+        and{" "}
+        <a className="font-medium text-foreground hover:underline underline-offset-4" href="#">
+          Privacy Policy
         </a>
         .
       </FieldDescription>
     </div>
-  );
+  )
 }

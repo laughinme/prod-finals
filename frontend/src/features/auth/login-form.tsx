@@ -1,5 +1,4 @@
-import { type ComponentProps, type SubmitEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { type ComponentProps, type FormEvent } from "react";
 import { HeartHandshake } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
@@ -25,7 +24,7 @@ type LoginFormProps = Omit<ComponentProps<"div">, "onSubmit"> & {
   password: string;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void | Promise<void>;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   submitLabel: string;
   disabled?: boolean;
   submitDisabled?: boolean;
@@ -47,8 +46,6 @@ export function LoginForm({
   onSwitchToSignup,
   ...props
 }: LoginFormProps) {
-  const { t } = useTranslation();
-
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="border-border bg-card shadow-sm">
@@ -63,10 +60,10 @@ export function LoginForm({
           </div>
           <div>
             <CardTitle className="text-xl font-semibold text-foreground">
-              {t("auth.welcome_back")}
+              Welcome back
             </CardTitle>
             <CardDescription className="mt-1 text-sm text-muted-foreground">
-              {t("auth.sign_in_description")}
+              Sign in with your email and password
             </CardDescription>
           </div>
         </CardHeader>
@@ -81,7 +78,7 @@ export function LoginForm({
                   htmlFor="email"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t("auth.email")}
+                  Email
                 </FieldLabel>
                 <Input
                   id="email"
@@ -100,7 +97,7 @@ export function LoginForm({
                   htmlFor="password"
                   className="text-sm font-medium text-foreground"
                 >
-                  {t("auth.password")}
+                  Password
                 </FieldLabel>
                 <Input
                   id="password"
@@ -122,13 +119,13 @@ export function LoginForm({
                   {submitLabel}
                 </Button>
                 <FieldDescription className="text-center text-sm text-muted-foreground">
-                  {t("auth.dont_have_account")}{" "}
+                  Don&apos;t have an account?{" "}
                   <button
                     type="button"
                     onClick={onSwitchToSignup}
                     className="font-medium underline-offset-4 hover:underline text-primary-foreground"
                   >
-                    {t("auth.sign_up")}
+                    Sign up
                   </button>
                 </FieldDescription>
               </Field>

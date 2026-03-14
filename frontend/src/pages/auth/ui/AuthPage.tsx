@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import type { AuthCredentials } from "@/entities/auth/model";
@@ -9,8 +8,30 @@ import { SignupForm } from "@/features/auth/signup-form";
 
 type Mode = "login" | "register";
 
+const getErrorMessage = (error: unknown): string => {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (isAxiosError(error)) {
+    if (error.response?.status === 401) {
+      return "Неверный email или пароль";
+    }
+
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string") {
+      return detail;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Произошла ошибка";
+};
+
 export default function AuthPage(): ReactElement {
-  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -22,38 +43,15 @@ export default function AuthPage(): ReactElement {
     setIsVisible(true);
   }, []);
 
-  const getErrorMessage = (error: unknown): string => {
-    if (typeof error === "string") {
-      return error;
-    }
-
-    if (isAxiosError(error)) {
-      if (error.response?.status === 401) {
-        return t("auth.invalid_credentials");
-      }
-
-      const detail = error.response?.data?.detail;
-      if (typeof detail === "string") {
-        return detail;
-      }
-    }
-
-    if (error instanceof Error && error.message) {
-      return error.message;
-    }
-
-    return t("auth.generic_error");
-  };
-
   if (!auth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-red-50 text-slate-700">
         <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-lg">
           <h2 className="text-2xl font-semibold text-red-500">
-            {t("auth.auth_context_not_found")}
+            Контекст аутентификации не найден
           </h2>
           <p className="mt-2">
-            {t("auth.auth_provider_warning")}
+            Убедитесь, что используете компонент внутри `AuthProvider`.
           </p>
         </div>
       </div>
@@ -117,7 +115,7 @@ export default function AuthPage(): ReactElement {
                 onEmailChange={setEmail}
                 onPasswordChange={setPassword}
                 onSubmit={submit}
-                submitLabel={isLoading ? t("common.loading") : t("auth.login")}
+                submitLabel={isLoading ? "Загрузка..." : "Login"}
                 disabled={isLoading}
                 submitDisabled={!canSubmit}
                 errorMessage={errorMessage}
@@ -138,7 +136,7 @@ export default function AuthPage(): ReactElement {
                 onEmailChange={setEmail}
                 onPasswordChange={setPassword}
                 onSubmit={submit}
-                submitLabel={isLoading ? t("common.loading") : t("auth.create_account")}
+                submitLabel={isLoading ? "Загрузка..." : "Create Account"}
                 disabled={isLoading}
                 submitDisabled={!canSubmit}
                 errorMessage={errorMessage}

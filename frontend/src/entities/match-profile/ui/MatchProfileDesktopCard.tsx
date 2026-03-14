@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { Calendar, Heart, Info, MapPin, ShieldAlert, X } from "lucide-react";
 
 import type { MatchProfile } from "../model";
@@ -19,10 +18,6 @@ export function MatchProfileDesktopCard({
   onPass,
   onOpenReport,
 }: MatchProfileDesktopCardProps) {
-  const { t } = useTranslation();
-  const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
-  const hasMeta = Boolean(profile.location || profile.activity);
-
   return (
     <Card className="overflow-hidden rounded-4xl border-border bg-card py-0 shadow-xl md:flex-row">
       <div className="relative h-[50vh] w-full md:h-[70vh] md:w-1/2">
@@ -34,30 +29,28 @@ export function MatchProfileDesktopCard({
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent md:hidden" />
         <div className="absolute right-4 bottom-4 left-4 text-white md:hidden">
-          <h2 className="text-3xl font-bold">{title}</h2>
+          <h2 className="text-3xl font-bold">
+            {profile.name}, {profile.age}
+          </h2>
         </div>
       </div>
 
       <div className="flex w-full flex-col p-8 md:w-1/2 md:p-12">
         <div className="mb-6 hidden items-start justify-between md:flex">
           <div>
-            <h2 className="mb-2 text-4xl font-bold">{title}</h2>
-            {hasMeta ? (
-              <div className="flex items-center gap-4 text-muted-foreground">
-                {profile.location ? (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="size-4" />
-                    {profile.location}
-                  </span>
-                ) : null}
-                {profile.activity ? (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="size-4" />
-                    {profile.activity}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
+            <h2 className="mb-2 text-4xl font-bold">
+              {profile.name}, {profile.age}
+            </h2>
+            <div className="flex items-center gap-4 text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <MapPin className="size-4" />
+                {profile.location}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar className="size-4" />
+                {profile.activity}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col items-end">
@@ -91,7 +84,7 @@ export function MatchProfileDesktopCard({
               <Info className="size-5 text-primary-foreground" />
             </div>
             <div>
-              <h4 className="mb-2 text-lg font-semibold">{t("discovery.why_matched")}</h4>
+              <h4 className="mb-2 text-lg font-semibold">Почему вы совпали?</h4>
               <p className="leading-relaxed text-muted-foreground">
                 {profile.explanation}
               </p>

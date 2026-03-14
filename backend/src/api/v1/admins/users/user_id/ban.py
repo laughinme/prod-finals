@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from core.security import require
 from database.relational_db import User
-from domain.users.schemas.profile import UserModel
+from domain.users import UserModel
 from service.users import UserService, get_user_service
 from service.users.exceptions import UserNotFoundError
 
@@ -27,4 +27,4 @@ async def set_ban(
         raise UserNotFoundError()
     
     updated = await svc.admin_set_ban(target, banned=banned)
-    return await svc.serialize_user(updated)
+    return updated

@@ -1,6 +1,29 @@
-import { Heart, MapPin, ShieldAlert, Sparkles, X } from "lucide-react";
+import {
+  Coffee,
+  Film,
+  Heart,
+  MapPin,
+  ShieldAlert,
+  Sparkles,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
+
+function resolveTagIcon(tag: string): LucideIcon {
+  const normalizedTag = tag.toLowerCase();
+
+  if (normalizedTag.includes("коф")) {
+    return Coffee;
+  }
+
+  if (normalizedTag.includes("кино")) {
+    return Film;
+  }
+
+  return Sparkles;
+}
 
 export function DiscoveryMobileProfileCard({
   profile,
@@ -8,6 +31,8 @@ export function DiscoveryMobileProfileCard({
   onPass,
   onOpenReport,
 }: DiscoveryProfileCardViewProps) {
+  const featuredTags = profile.tags.slice(0, 2);
+
   return (
     <div className="mx-auto w-full max-w-100">
       <div className="relative aspect-4/7 overflow-hidden rounded-4xl bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
@@ -27,6 +52,20 @@ export function DiscoveryMobileProfileCard({
           </div>
 
           <div className="flex gap-2">
+            {featuredTags.map((tag) => {
+              const Icon = resolveTagIcon(tag);
+
+              return (
+                <div
+                  key={tag}
+                  className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md"
+                  title={tag}
+                >
+                  <Icon className="size-5" />
+                </div>
+              );
+            })}
+
             <button
               onClick={onOpenReport}
               className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md transition-colors hover:bg-[#383838]"

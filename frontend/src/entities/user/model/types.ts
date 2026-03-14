@@ -5,7 +5,6 @@ export type User = {
     profilePicUrl: string | null;
     bio: string | null;
     isOnboarded: boolean;
-    quizStarted: boolean;
     banned: boolean;
     roles: string[];
     createdAt: string;

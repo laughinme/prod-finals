@@ -53,7 +53,8 @@ async def refresh_tokens(
         # set fresh cookies
         set_auth_cookies(response, new_refresh, new_csrf)
 
-        return TokenPair(access_token=new_access, refresh_token=new_refresh)
+        # body: only short-lived access token
+        return TokenPair(access_token=new_access, refresh_token=None)
         
     if not creds or creds.scheme.lower() != "bearer":
         raise UnauthorizedError("Missing refresh token")

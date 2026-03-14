@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 
 from core.security import require
 from database.relational_db import User
-from domain.users.schemas.profile import UserModel
+from domain.users import UserModel
 from service.users import UserService, get_user_service
 from domain.common import CursorPage
 
@@ -29,7 +29,4 @@ async def list_users(
         limit=limit,
         cursor=cursor,
     )
-    return CursorPage(
-        items=[await svc.serialize_user(user) for user in users],
-        next_cursor=next_cursor,
-    )
+    return CursorPage(items=users, next_cursor=next_cursor)

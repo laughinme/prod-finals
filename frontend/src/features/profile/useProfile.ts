@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 
 import { getProfile, patchProfile, uploadProfilePicture } from "@/shared/api/profile";
 import type { UserPatchPayload } from "@/entities/user/model";
@@ -17,32 +16,30 @@ export function useProfile() {
 
 export function useUpdateProfile() {
     const qc = useQueryClient();
-    const { t } = useTranslation();
 
     return useMutation({
         mutationFn: (data: UserPatchPayload) => patchProfile(data),
         onSuccess: (updated) => {
             qc.setQueryData(PROFILE_KEY, updated);
-            toast.success(t("profile.update_success"));
+            toast.success("Профиль обновлён");
         },
         onError: () => {
-            toast.error(t("profile.update_error"));
+            toast.error("Не удалось обновить профиль");
         },
     });
 }
 
 export function useUploadAvatar() {
     const qc = useQueryClient();
-    const { t } = useTranslation();
 
     return useMutation({
         mutationFn: (file: File) => uploadProfilePicture(file),
         onSuccess: (updated) => {
             qc.setQueryData(PROFILE_KEY, updated);
-            toast.success(t("profile.photo_update_success"));
+            toast.success("Фото обновлено");
         },
         onError: () => {
-            toast.error(t("profile.photo_upload_error"));
+            toast.error("Не удалось загрузить фото");
         },
     });
 }

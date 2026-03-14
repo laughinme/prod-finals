@@ -5,7 +5,6 @@ from sqlalchemy import select, and_, or_, func, delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..cities import City
 from .users_table import User
 from ..roles import Role, UserRole
 
@@ -21,7 +20,6 @@ class UserInterface:
     async def get_by_id(self, id: UUID | str) -> User | None:
         stmt = (
             select(User)
-            .options(selectinload(User.roles), selectinload(User.city))
             .where(User.id == id)
         )
         user = await self.session.scalar(stmt)
@@ -30,29 +28,10 @@ class UserInterface:
     
     async def get_by_email(self, email: EmailStr) -> User | None:
         user = await self.session.scalar(
-            select(User)
-            .options(selectinload(User.roles), selectinload(User.city))
-            .where(User.email == email)
+            select(User).where(User.email == email)
         )
         
         return user
-
-    async def get_by_demo_user_key(self, demo_user_key: str) -> User | None:
-        return await self.session.scalar(
-            select(User)
-            .options(selectinload(User.roles), selectinload(User.city))
-            .where(User.demo_user_key == demo_user_key)
-        )
-
-    async def list_by_ids(self, ids: list[UUID]) -> list[User]:
-        if not ids:
-            return []
-        rows = await self.session.scalars(
-            select(User)
-            .options(selectinload(User.roles), selectinload(User.city))
-            .where(User.id.in_(ids))
-        )
-        return list(rows.all())
 
     async def admin_list_users(
         self,

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
   MessageCircle,
   MoreVertical,
@@ -16,7 +15,6 @@ import { cn } from "@/shared/lib/utils";
 
 export default function ChatPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const {
     activeChatProfile,
     chatProfiles,
@@ -51,28 +49,29 @@ export default function ChatPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
             <MessageCircle className="size-10 text-primary" />
           </div>
-          <h1 className="mb-3 text-3xl font-bold">{t("chat.no_active_chats")}</h1>
+          <h1 className="mb-3 text-3xl font-bold">Пока нет активных диалогов</h1>
           <p className="mb-8 max-w-md text-muted-foreground">
-            {t("chat.no_active_chats_description")}
+            Когда случится мэтч, переписка появится здесь. Пока можно вернуться
+            к рекомендациям.
           </p>
           <Button
             size="lg"
             className="h-14 rounded-2xl px-8 text-base font-semibold"
             onClick={() => navigate("/discovery")}
           >
-            {t("chat.back_to_discovery")}
+            Вернуться к знакомствам
           </Button>
         </main>
       ) : (
         <main className="flex flex-1 overflow-hidden bg-background">
           <div className="hidden w-80 flex-col border-r border-border bg-card md:flex">
             <div className="border-b border-border p-4">
-              <h2 className="mb-4 text-xl font-bold">{t("chat.messages_title")}</h2>
+              <h2 className="mb-4 text-xl font-bold">Сообщения</h2>
               <div className="relative">
                 <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder={t("chat.search_placeholder")}
+                  placeholder="Поиск..."
                   className="w-full rounded-lg bg-secondary py-2 pr-4 pl-9 text-sm outline-none transition-all focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -132,7 +131,7 @@ export default function ChatPage() {
                     {activeChatProfile.name}
                   </h3>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {t("chat.match_score_short", { score: activeChatProfile.matchScore })} • {t("chat.recent_active")}
+                    Совпадение {activeChatProfile.matchScore}% • Был(а) недавно
                   </p>
                 </div>
               </div>
@@ -160,13 +159,13 @@ export default function ChatPage() {
                           setShowMenu(false);
                           reportProfile(activeChatProfile.id);
                           window.alert(
-                            t("chat.report_sent"),
+                            "Жалоба отправлена. Пользователь заблокирован.",
                           );
                           navigate("/discovery");
                         }}
                       >
                         <ShieldAlert className="size-4" />
-                        {t("chat.report_block")}
+                        Пожаловаться / Заблокировать
                       </button>
                     </motion.div>
                   )}
@@ -213,7 +212,7 @@ export default function ChatPage() {
                       handleSend();
                     }
                   }}
-                  placeholder={t("chat.write_message_placeholder")}
+                  placeholder="Написать сообщение..."
                   className="flex-1 rounded-xl border border-transparent bg-secondary px-4 py-4 text-[15px] outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary"
                 />
                 <Button

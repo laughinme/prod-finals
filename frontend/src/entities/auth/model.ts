@@ -11,7 +11,6 @@ export interface AuthTokens {
 
 export interface AuthUser {
   email: string;
-  quiz_started?: boolean;
   [key: string]: unknown;
 }
 
