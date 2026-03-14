@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from core.security import auth_user
 from database.relational_db import User
 from domain.dating import CompatibilityExplanationResponse, FeedResponse
-from service.dating import FeedService, get_feed_service
+from service.feed import FeedService, get_feed_service
 
 router = APIRouter()
 

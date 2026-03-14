@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path
 from core.security import auth_user
 from database.relational_db import User
 from domain.dating import ConversationResponse
-from service.dating import ConversationService, get_conversation_service
+from service.conversations import ConversationService, get_conversation_service
 
 router = APIRouter()
 

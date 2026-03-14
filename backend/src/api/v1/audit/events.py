@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from core.security import require
 from database.relational_db import User
 from domain.dating import AuditEventsQuery, AuditEventsResponse
-from service.dating import AuditService, get_audit_service
+from service.audit import AuditService, get_audit_service
 
 router = APIRouter()
 

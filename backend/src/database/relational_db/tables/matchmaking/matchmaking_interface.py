@@ -5,24 +5,16 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
-from .dating_tables import (
-    AuditLog,
-    Block,
-    Conversation,
-    InteractionEvent,
-    Match,
-    Message,
-    OnboardingQuizAnswer,
-    OutboxEvent,
-    PairState,
-    RecommendationBatch,
-    RecommendationItem,
-    Report,
-)
+from ..audit import AuditLog, OutboxEvent
+from ..conversations import Conversation, Message
+from ..feed import InteractionEvent, RecommendationBatch, RecommendationItem
+from ..matches import Match, PairState
+from ..onboarding import OnboardingQuizAnswer
+from ..safety import Block, Report
 from ..users import User
 
 
-class DatingInterface:
+class MatchmakingInterface:
     def __init__(self, session: AsyncSession):
         self.session = session
 

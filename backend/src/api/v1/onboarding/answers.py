@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from core.security import auth_user
 from database.relational_db import User
 from domain.dating import OnboardingAnswersRequest, OnboardingAnswersResponse
-from service.dating import OnboardingService, get_onboarding_service
+from service.onboarding import OnboardingService, get_onboarding_service
 
 router = APIRouter()
 

@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from domain.dating import AgeRange, FeedCandidateContext, SearchPreferences
-from service.dating.ml_facade import MockMlFacade
+from service.matchmaking.ml_facade import MockMlFacade
 
 
 @pytest.mark.unit

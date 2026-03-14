@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path
 from core.security import auth_user
 from database.relational_db import User
 from domain.dating import CloseMatchRequest, CloseMatchResponse
-from service.dating import MatchService, get_match_service
+from service.matches import MatchService, get_match_service
 
 router = APIRouter()
 

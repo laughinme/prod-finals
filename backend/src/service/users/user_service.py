@@ -7,8 +7,8 @@ from core.config import get_settings
 from database.redis import CacheRepo
 from database.relational_db import (
     CitiesInterface,
-    DatingInterface,
     LanguagesInterface,
+    MatchmakingInterface,
     RolesInterface,
     User,
     UserInterface,
@@ -45,13 +45,13 @@ class UserService:
         role_repo: RolesInterface,
         media_storage: MediaStorageService,
         city_repo: CitiesInterface | None = None,
-        dating_repo: DatingInterface | None = None,
+        matchmaking_repo: MatchmakingInterface | None = None,
         cache_repo: CacheRepo | None = None,
     ):
         self.uow = uow
         self.user_repo = user_repo
         self.city_repo = city_repo
-        self.dating_repo = dating_repo
+        self.matchmaking_repo = matchmaking_repo
         self.lang_repo = lang_repo
         self.role_repo = role_repo
         self.media_storage = media_storage

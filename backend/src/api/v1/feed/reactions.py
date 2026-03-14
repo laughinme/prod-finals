@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path
 from core.security import auth_user
 from database.relational_db import User
 from domain.dating import FeedReactionRequest, FeedReactionResponse
-from service.dating import InteractionService, get_interaction_service
+from service.feed import InteractionService, get_interaction_service
 
 router = APIRouter()
 
