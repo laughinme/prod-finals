@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import * as Sentry from "@sentry/react";
 
 import type { MatchmakingDraft } from "@/entities/match-profile/model";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
@@ -129,7 +130,8 @@ export function useProfileSetup() {
       }
 
       setStep(2);
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error);
       setStep1Error(t("profile.save_error"));
     }
   };

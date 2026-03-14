@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -8,11 +6,11 @@ import {
 } from "react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
+import * as Sentry from "@sentry/react";
 import {
   CURRENT_USER_PREVIEW,
   EMPTY_MATCHMAKING_DRAFT,
   INITIAL_CHAT_MESSAGES,
-  type CurrentUserPreview,
   type MatchProfileExplanationReason,
   type MatchChatMessage,
   type MatchProfile,
@@ -22,35 +20,8 @@ import {
 import { useFeed } from "./useFeed";
 import { useFeedExplanation } from "./useFeedExplanation";
 import { useFeedReaction } from "./useFeedReaction";
-
-type MatchmakingFlowContextValue = {
-  currentProfile: MatchProfile | null;
-  matchedProfile: MatchProfile | null;
-  activeChatProfile: MatchProfile | null;
-  chatProfiles: MatchProfile[];
-  currentUserPreview: CurrentUserPreview;
-  draft: MatchmakingDraft;
-  isOnboardingComplete: boolean;
-  isFeedLoading: boolean;
-  isReactionPending: boolean;
-  messages: MatchChatMessage[];
-  setDraft: (draft: MatchmakingDraft) => void;
-  completeOnboarding: (draft: MatchmakingDraft) => void;
-  passCurrentProfile: () => Promise<void>;
-  likeCurrentProfile: () => Promise<{ isMatch: boolean; profile: MatchProfile | null }>;
-  resetDiscovery: () => void;
-  openChat: (profileId: MatchProfileId) => void;
-  closeMatch: () => void;
-  sendMessage: (profileId: MatchProfileId, text: string) => void;
-  reportProfile: (profileId: MatchProfileId) => void;
-};
-
-type PersistedMatchmakingState = {
-  draft: MatchmakingDraft;
-  isOnboardingComplete: boolean;
-};
-
-const MatchmakingFlowContext = createContext<MatchmakingFlowContextValue | null>(null);
+import { MatchmakingFlowContext } from "./useMatchmakingFlow";
+import type { PersistedMatchmakingState } from "./types";
 
 function getInitialPersistedState(): PersistedMatchmakingState {
   return {
@@ -60,12 +31,26 @@ function getInitialPersistedState(): PersistedMatchmakingState {
 }
 
 function cloneMessages(): Partial<Record<MatchProfileId, MatchChatMessage[]>> {
-  return Object.fromEntries(
-    Object.entries(INITIAL_CHAT_MESSAGES).map(([profileId, messages]) => [
-      profileId,
-      messages.map((message) => ({ ...message })),
-    ]),
-  ) as Partial<Record<MatchProfileId, MatchChatMessage[]>>;
+  const result: Partial<Record<MatchProfileId, MatchChatMessage[]>> = {};
+
+  (
+    Object.entries(INITIAL_CHAT_MESSAGES) as [
+      string,
+      MatchChatMessage[] | undefined,
+    ][]
+  ).forEach(([profileId, messages]) => {
+    if (messages) {
+      // If the ID was a number in the original record, it will be a string here due to Object.entries
+      // We can keep it as a string or try to parse it, but for a Record key it's generally fine
+      result[profileId as unknown as MatchProfileId] = messages.map(
+        (message) => ({
+          ...message,
+        }),
+      );
+    }
+  });
+
+  return result;
 }
 
 function getStorageKey(userKey: string | null | undefined): string | null {
@@ -76,7 +61,9 @@ function getStorageKey(userKey: string | null | undefined): string | null {
   return `t-match:mock-flow:${userKey}`;
 }
 
-function readPersistedState(storageKey: string | null): PersistedMatchmakingState {
+function readPersistedState(
+  storageKey: string | null,
+): PersistedMatchmakingState {
   if (typeof window === "undefined" || !storageKey) {
     return getInitialPersistedState();
   }
@@ -87,21 +74,28 @@ function readPersistedState(storageKey: string | null): PersistedMatchmakingStat
       return getInitialPersistedState();
     }
 
-    const parsedValue = JSON.parse(rawValue) as Partial<PersistedMatchmakingState>;
+    const parsedValue = JSON.parse(
+      rawValue,
+    ) as Partial<PersistedMatchmakingState>;
     return {
       draft: {
         ...EMPTY_MATCHMAKING_DRAFT,
         ...parsedValue.draft,
-        interests: parsedValue.draft?.interests ?? EMPTY_MATCHMAKING_DRAFT.interests,
+        interests:
+          parsedValue.draft?.interests ?? EMPTY_MATCHMAKING_DRAFT.interests,
       },
       isOnboardingComplete: parsedValue.isOnboardingComplete ?? false,
     };
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error);
     return getInitialPersistedState();
   }
 }
 
-function writePersistedState(storageKey: string | null, state: PersistedMatchmakingState) {
+function writePersistedState(
+  storageKey: string | null,
+  state: PersistedMatchmakingState,
+) {
   if (typeof window === "undefined" || !storageKey) {
     return;
   }
@@ -154,17 +148,28 @@ function getExplanationText(
 
 export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
-  const storageKey = getStorageKey(auth?.user?.email as string | null | undefined);
-  const { data: feed, isPending: isFeedLoading, refetch: refetchFeed } = useFeed();
+  const storageKey = getStorageKey(
+    auth?.user?.email as string | null | undefined,
+  );
+  const {
+    data: feed,
+    isPending: isFeedLoading,
+    refetch: refetchFeed,
+  } = useFeed();
   const feedReactionMutation = useFeedReaction();
   const profiles = feed?.profiles ?? [];
   const currentProfileSeenAtRef = useRef<number | null>(null);
 
   const [draft, setDraft] = useState<MatchmakingDraft>(EMPTY_MATCHMAKING_DRAFT);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
-  const [dismissedProfileIds, setDismissedProfileIds] = useState<MatchProfileId[]>([]);
-  const [matchedProfileId, setMatchedProfileId] = useState<MatchProfileId | null>(null);
-  const [activeChatProfileId, setActiveChatProfileId] = useState<MatchProfileId | null>(null);
+  const [isOnboardingComplete, setIsOnboardingComplete] =
+    useState<boolean>(false);
+  const [dismissedProfileIds, setDismissedProfileIds] = useState<
+    MatchProfileId[]
+  >([]);
+  const [matchedProfileId, setMatchedProfileId] =
+    useState<MatchProfileId | null>(null);
+  const [activeChatProfileId, setActiveChatProfileId] =
+    useState<MatchProfileId | null>(null);
   const [chatProfileIds, setChatProfileIds] = useState<MatchProfileId[]>([]);
   const [messagesByProfileId, setMessagesByProfileId] = useState<
     Partial<Record<MatchProfileId, MatchChatMessage[]>>
@@ -193,7 +198,8 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   );
   const baseCurrentProfile = visibleProfiles[0] ?? null;
   const currentProfileServeItemId =
-    baseCurrentProfile?.source === "feed" && typeof baseCurrentProfile.id === "string"
+    baseCurrentProfile?.source === "feed" &&
+    typeof baseCurrentProfile.id === "string"
       ? baseCurrentProfile.id
       : null;
   const { data: currentProfileExplanation } = useFeedExplanation(
@@ -201,7 +207,7 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   );
   useEffect(() => {
     currentProfileSeenAtRef.current = baseCurrentProfile ? Date.now() : null;
-  }, [baseCurrentProfile?.id]);
+  }, [baseCurrentProfile]);
 
   const currentProfile = baseCurrentProfile
     ? {
@@ -221,17 +227,22 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       }
     : null;
   const matchedProfile =
-    (currentProfile && currentProfile.id === matchedProfileId ? currentProfile : null) ??
-    getProfileById(profiles, matchedProfileId);
+    (currentProfile && currentProfile.id === matchedProfileId
+      ? currentProfile
+      : null) ?? getProfileById(profiles, matchedProfileId);
   const activeChatProfile =
-    (currentProfile && currentProfile.id === activeChatProfileId ? currentProfile : null) ??
+    (currentProfile && currentProfile.id === activeChatProfileId
+      ? currentProfile
+      : null) ??
     getProfileById(profiles, activeChatProfileId) ??
     getProfileById(profiles, chatProfileIds[0] ?? null) ??
     null;
   const chatProfiles = chatProfileIds
     .map((profileId) => getProfileById(profiles, profileId))
     .filter((profile): profile is MatchProfile => profile !== null);
-  const messages = activeChatProfile ? messagesByProfileId[activeChatProfile.id] ?? [] : [];
+  const messages = activeChatProfile
+    ? messagesByProfileId[activeChatProfile.id] ?? []
+    : [];
 
   const completeOnboarding = (nextDraft: MatchmakingDraft) => {
     setDraft(nextDraft);
@@ -257,7 +268,10 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (currentProfile.source === "feed" && typeof currentProfile.id === "string") {
+    if (
+      currentProfile.source === "feed" &&
+      typeof currentProfile.id === "string"
+    ) {
       await feedReactionMutation.mutateAsync({
         serveItemId: currentProfile.id,
         action: "pass",
@@ -277,7 +291,10 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
 
     let isMatch = false;
 
-    if (currentProfile.source === "feed" && typeof currentProfile.id === "string") {
+    if (
+      currentProfile.source === "feed" &&
+      typeof currentProfile.id === "string"
+    ) {
       const reaction = await feedReactionMutation.mutateAsync({
         serveItemId: currentProfile.id,
         action: "like",
@@ -295,7 +312,9 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       setMatchedProfileId(currentProfile.id);
       setActiveChatProfileId(currentProfile.id);
       setChatProfileIds((prevIds) =>
-        prevIds.includes(currentProfile.id) ? prevIds : [currentProfile.id, ...prevIds],
+        prevIds.includes(currentProfile.id)
+          ? prevIds
+          : [currentProfile.id, ...prevIds],
       );
     }
 
@@ -314,7 +333,9 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     }
 
     setActiveChatProfileId(profileId);
-    setChatProfileIds((prevIds) => (prevIds.includes(profileId) ? prevIds : [profileId, ...prevIds]));
+    setChatProfileIds((prevIds) =>
+      prevIds.includes(profileId) ? prevIds : [profileId, ...prevIds],
+    );
   };
 
   const closeMatch = () => {
@@ -327,17 +348,16 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const newMessage: MatchChatMessage = {
+      id: Date.now(),
+      text: trimmedText,
+      sender: "me",
+      time: getTimeLabel(),
+    };
+
     setMessagesByProfileId((prevMessages) => ({
       ...prevMessages,
-      [profileId]: [
-        ...(prevMessages[profileId] ?? []),
-        {
-          id: Date.now(),
-          text: trimmedText,
-          sender: "me",
-          time: getTimeLabel(),
-        },
-      ],
+      [profileId]: [...(prevMessages[profileId] ?? []), newMessage],
     }));
   };
 
@@ -377,14 +397,4 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       {children}
     </MatchmakingFlowContext.Provider>
   );
-}
-
-export function useMatchmakingFlow() {
-  const context = useContext(MatchmakingFlowContext);
-
-  if (!context) {
-    throw new Error("useMatchmakingFlow must be used within a MatchmakingFlowProvider.");
-  }
-
-  return context;
 }

@@ -61,6 +61,7 @@ export function SwipeableCard({
 
   return (
     <motion.div
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {...(bind() as any)}
       style={{
         x,

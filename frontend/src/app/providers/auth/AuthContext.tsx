@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
+import * as Sentry from "@sentry/react";
 import * as api from "@/shared/api/auth";
 import {
   refreshAccessToken,
@@ -32,7 +34,8 @@ const writeSkipSessionRestoreFlag = (value: boolean): void => {
     } else {
       window.sessionStorage.removeItem(SKIP_SESSION_RESTORE_STORAGE_KEY);
     }
-  } catch {
+  } catch (error) {
+    Sentry.captureException(error);
   }
 };
 
@@ -148,12 +151,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setAccessToken(newAccessToken);
           setSkipSessionRestore(false);
         }
-      } catch {
+      } catch (error) {
+        // Only report to Sentry if it's not a normal 401 when the session is just expired
+        if (!isAxiosError(error) || error.response?.status !== 401) {
+          Sentry.captureException(error);
+        }
       } finally {
         setIsRestoringSession(false);
       }
     })();
-  }, []);
+  }, [setSkipSessionRestore]);
 
   const value: AuthContextValue = {
     user: !isError && user ? user : null,

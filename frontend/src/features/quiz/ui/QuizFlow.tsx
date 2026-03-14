@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import * as Sentry from "@sentry/react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
 import type { Question } from "@/entities/quiz";
@@ -126,6 +127,7 @@ export function QuizFlow() {
         moveToNext();
       }
     } catch (error) {
+      Sentry.captureException(error);
       console.error("Failed to save answers", error);
     }
   };

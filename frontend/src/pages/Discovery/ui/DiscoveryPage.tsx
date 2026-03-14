@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Coffee, ShieldAlert } from "lucide-react";
+import * as Sentry from "@sentry/react";
 
 import { useMatchmakingFlow, SwipeableCard } from "@/features/matchmaking";
 import { Button } from "@/shared/components/ui/button";
@@ -33,7 +34,8 @@ export default function DiscoveryPage() {
       if (result.isMatch) {
         window.setTimeout(() => navigate("/match"), 300);
       }
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error);
       setExitX(0);
     }
   };
@@ -46,7 +48,8 @@ export default function DiscoveryPage() {
     setExitX(-1000);
     try {
       await passCurrentProfile();
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error);
       setExitX(0);
     }
   };

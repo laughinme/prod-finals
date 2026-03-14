@@ -6,6 +6,7 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig
 } from "axios";
+import * as Sentry from "@sentry/react";
 import type { AuthTokens } from "@/entities/auth/model";
 import { withBasePath } from "@/shared/lib/utils";
 import { resolveCsrfToken } from "../lib/csrf";
@@ -129,7 +130,10 @@ apiProtected.interceptors.response.use(
         }
 
         notifyUnauthorized();
-      } catch {
+      } catch (error) {
+        if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+          Sentry.captureException(error);
+        }
         notifyUnauthorized();
       }
     }

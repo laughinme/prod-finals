@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import * as Sentry from "@sentry/react";
 
 import { getProfile, patchProfile, uploadProfilePicture } from "@/shared/api/profile";
 import type { UserPatchPayload } from "@/entities/user/model";
@@ -25,7 +26,8 @@ export function useUpdateProfile() {
             qc.setQueryData(PROFILE_KEY, updated);
             toast.success(t("profile.update_success"));
         },
-        onError: () => {
+        onError: (error) => {
+            Sentry.captureException(error);
             toast.error(t("profile.update_error"));
         },
     });
@@ -41,7 +43,8 @@ export function useUploadAvatar() {
             qc.setQueryData(PROFILE_KEY, updated);
             toast.success(t("profile.photo_update_success"));
         },
-        onError: () => {
+        onError: (error) => {
+            Sentry.captureException(error);
             toast.error(t("profile.photo_upload_error"));
         },
     });

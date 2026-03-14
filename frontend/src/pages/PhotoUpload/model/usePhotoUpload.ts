@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import * as Sentry from "@sentry/react";
 
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useUploadAvatar } from "@/features/profile/useProfile";
@@ -110,7 +111,8 @@ export function usePhotoUpload() {
         setDraft({ ...draft, photoUploaded: true });
         navigate("/quiz", { replace: true });
       }, 1500);
-    } catch {
+    } catch (error) {
+      Sentry.captureException(error);
       clearInterval(progressInterval);
       setProgress(0);
       setUploadState("preview");
