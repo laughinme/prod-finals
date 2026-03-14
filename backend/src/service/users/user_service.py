@@ -128,8 +128,6 @@ class UserService:
                 user.age_range_max = prefs["age_range"]["max"]
             if prefs.get("distance_km") is not None:
                 user.distance_km = prefs["distance_km"]
-            elif user.distance_km is None:
-                user.distance_km = 30
             if prefs.get("goal") is not None:
                 user.goal = self._normalize_goal(prefs["goal"])
 
@@ -163,9 +161,6 @@ class UserService:
 
         for field, value in data.items():
             setattr(user, field, value)
-
-        if user.distance_km is None and user.looking_for_genders:
-            user.distance_km = 30
 
         user.is_onboarded = user.can_open_feed
             

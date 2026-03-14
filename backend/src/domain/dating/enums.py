@@ -8,16 +8,7 @@ class AvatarModerationStatus(str, Enum):
     REJECTED = "rejected"
 
 
-class QuizStatus(str, Enum):
-    NOT_STARTED = "not_started"
-    IN_PROGRESS = "in_progress"
-    SKIPPED = "skipped"
-    COMPLETED = "completed"
-
-
 class ProfileStatus(str, Enum):
-    DRAFT = "draft"
-    REQUIRED_FIELDS_MISSING = "required_fields_missing"
     AVATAR_REQUIRED = "avatar_required"
     AVATAR_PENDING = "avatar_pending"
     READY = "ready"
@@ -34,20 +25,12 @@ class FeedState(str, Enum):
 class FeedLockReason(str, Enum):
     AVATAR_REQUIRED = "avatar_required"
     AVATAR_PENDING = "avatar_pending"
-    REQUIRED_FIELDS_MISSING = "required_fields_missing"
     BLOCKED = "blocked"
 
 
 class DecisionMode(str, Enum):
     MODEL = "model"
     FALLBACK = "fallback"
-
-
-class NextActionType(str, Enum):
-    UPLOAD_AVATAR = "upload_avatar"
-    COMPLETE_REQUIRED_FIELDS = "complete_required_fields"
-    OPEN_FEED = "open_feed"
-    WAIT_FOR_MODERATION = "wait_for_moderation"
 
 
 class OnboardingStepType(str, Enum):

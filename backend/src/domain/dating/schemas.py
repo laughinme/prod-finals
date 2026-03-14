@@ -21,10 +21,8 @@ from .enums import (
     Goal,
     MatchStatus,
     MessageStatus,
-    NextActionType,
     OnboardingStepType,
     ProfileStatus,
-    QuizStatus,
     ReportCategory,
     SafetySourceContext,
 )
@@ -53,23 +51,6 @@ class AvatarResponse(BaseModel):
     status: AvatarModerationStatus
     uploaded_at: datetime | None = None
     moderation_reason: str | None = None
-
-
-class NextAction(BaseModel):
-    type: NextActionType
-    title: str
-    description: str | None = None
-    cta_label: str | None = None
-
-
-class OnboardingStateResponse(BaseModel):
-    quiz_status: QuizStatus
-    profile_status: ProfileStatus
-    feed_unlocked: bool
-    current_step_key: str | None = None
-    completed_steps: list[str] = Field(default_factory=list)
-    missing_required_fields: list[str] = Field(default_factory=list)
-    next_action: NextAction | None = None
 
 
 class OnboardingStepOption(BaseModel):
@@ -106,9 +87,8 @@ class OnboardingAnswersRequest(BaseModel):
 
 
 class OnboardingAnswersResponse(BaseModel):
-    quiz_status: QuizStatus
-    next_step_key: str | None = None
-    completed: bool
+    step_key: str
+    saved: bool = True
 
 
 class FeedCandidate(BaseModel):
@@ -152,13 +132,11 @@ class FeedEmptyState(BaseModel):
 class FeedResponse(BaseModel):
     feed_state: FeedState
     profile_status: ProfileStatus
-    quiz_status: QuizStatus
     decision_mode: DecisionMode
     batch_id: UUID | None = None
     generated_at: datetime | None = None
     expires_at: datetime | None = None
     lock_reason: FeedLockReason | None = None
-    next_action: NextAction | None = None
     cards: list[FeedCard] = Field(default_factory=list)
     empty_state: FeedEmptyState | None = None
     warnings: list[str] = Field(default_factory=list)
@@ -369,7 +347,6 @@ class UserViewContext(BaseModel):
     city: str | None = None
     gender: Gender | None = None
     bio: str | None = None
-    quiz_status: QuizStatus
     profile_status: ProfileStatus
     search_preferences: SearchPreferences
     avatar: AvatarResponse
