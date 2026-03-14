@@ -9,7 +9,7 @@ from uuid import UUID
 
 from ml.learn.model import artifact_from_json_bytes
 from ml.learn.pipeline import ModelPipeline, bootstrap_pipeline
-from qdrant_client import QdrantClient # Не забудь добавить в импорты
+from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 import numpy as np
 
@@ -294,35 +294,31 @@ class MlRuntime:
 
         all_categories = self._pipeline.all_categories
         
-        # 1. Проверяем, есть ли юзер в базе/пайплайне (Теплый он или Холодный?)
-        # Тут зависит от того, как у вас хранится история (в БД или в pandas DataFrame внутри pipeline)
+
+
         is_warm = self._pipeline.has_user_history(user_id) 
 
-        # 2. Формируем "сырой" вектор распределения категорий
+
         raw_vector = np.zeros(len(all_categories))
         
         if not is_warm:
-            # ХОЛОДНЫЙ ЮЗЕР
-            # Равномерно размазываем вес (1.0) по выбранным категориям
+
+
             weight_per_cat = 1.0 / len(favorite_categories)
             for idx, cat in enumerate(all_categories):
                 if cat in favorite_categories:
                     raw_vector[idx] = weight_per_cat
             
-            # Ставим дефолтный час активности (например, 14:00), если не передали
+
             hour = preferred_hour if preferred_hour is not None else 14.0
             
         else:
-            # ТЕПЛЫЙ ЮЗЕР
-            # Берем его текущее распределение трат (сумма = 1.0)
             existing_vector, existing_hour = self._pipeline.get_raw_user_profile(user_id)
             
-            # СМЕШИВАНИЕ (Blending)
-            # Например, даем 70% веса реальной истории и 30% веса тому, что он выбрал руками
             history_weight = 0.7
             favorites_weight = 0.3
             
-            # Делаем вектор из ручного выбора
+
             fav_vector = np.zeros(len(all_categories))
             weight_per_cat = 1.0 / len(favorite_categories)
             for idx, cat in enumerate(all_categories):
@@ -332,18 +328,16 @@ class MlRuntime:
             # Смешиваем
             raw_vector = (existing_vector * history_weight) + (fav_vector * favorites_weight)
             
-            # Оставляем его реальный средний час активности
+
             hour = existing_hour
 
-        # 3. Добавляем час активности в конец вектора
         final_raw_features = np.append(raw_vector, hour)
 
-        # 4. ВАЖНО: Масштабируем вектор! 
-        # Т.к. в model.py вы используете StandardScaler, Qdrant ждет масштабированные фичи.
-        # Scaler должен быть сохранен во время обучения и загружен в pipeline!
+
+
+
         scaled_vector = self._pipeline.scaler.transform([final_raw_features])[0]
 
-        # 5. Сохраняем/Обновляем вектор в Qdrant
         collection_name = "user_profiles" # Вынести в settings
         
         self._qdrant_client.upsert(

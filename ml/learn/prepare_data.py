@@ -40,6 +40,9 @@ def transaction_from_mapping(row: Mapping[str, Any]) -> Transaction:
     user_id = str(row.get("party_rk", "")).strip()
     if not user_id:
         raise ValueError("party_rk is required.")
+        
+    if user_id.isdigit():
+        user_id = f"user-{user_id}"
 
     return Transaction(
         user_id=user_id,

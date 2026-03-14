@@ -5,17 +5,15 @@ from sklearn.preprocessing import StandardScaler
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 import config
-import joblib # для сохранения модели
+import joblib 
 import uuid
 from qdrant_client.models import PointStruct
 
 
 def string_to_uuid(string: str) -> str:
-    # Генерируем стабильный UUID на основе хеша party_rk
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, string))
 
 def run_ingestion():
-    # client = QdrantClient(url=config.QDRANT_URL)
     client = QdrantClient(host="qdrant", port=6333)
     
     print("1. Загрузка и очистка данных...")
@@ -84,7 +82,7 @@ def run_ingestion():
     )
     points = [
     PointStruct(
-        id=string_to_uuid(str(rk)), # Теперь ID в Qdrant — это UUID
+        id=string_to_uuid(str(rk)),
         vector=row.values.tolist(),
         payload={
             "party_rk": str(rk),
