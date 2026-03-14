@@ -25,4 +25,29 @@ After these steps you can run the app locally with uvicorn:
 
 ```uvicorn main:app --host 0.0.0.0 --port 8080 --log-level debug --reload```
 
+## Demo seed
+
+Backend can bootstrap demo dating profiles for frontend development.
+
+Set:
+
+```DEV_SEED_ENABLED=true```
+
+When enabled outside prod, startup seeds demo users with completed onboarding and approved avatars.
+
+Demo password for all seeded users:
+
+```DemoPass123!```
+
+Demo logins:
+
+- `anna.demo@example.com`
+- `maria.demo@example.com`
+- `dima.demo@example.com`
+- `kirill.demo@example.com`
+- `olga.demo@example.com`
+- `ivan.demo@example.com`
+- `alisa.demo@example.com`
+- `roman.demo@example.com`
+
 ---
