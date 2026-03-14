@@ -193,9 +193,6 @@ deploy/secrets/
 !frontend/src/shared/lib/
 !frontend/src/shared/lib/**
 .vercel
+/ml/catboost_info
+/ml/transaction_600_new.csv
 
-
-
-
-
-ml
