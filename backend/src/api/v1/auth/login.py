@@ -5,8 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from core.errors import UnauthorizedError
 from core.http.cookies import clear_auth_cookies, set_auth_cookies
 from service.auth import CredentialsService, get_credentials_service
-from domain.auth import DemoLoginRequest, TokenPair, TokenPairWithUser, UserLogin
-from service.users import UserService, get_user_service
+from domain.auth import TokenPair, UserLogin
 
 router = APIRouter()
 security = HTTPBearer(
@@ -34,30 +33,6 @@ async def login_user(
         return TokenPair(access_token=access, refresh_token=None)
 
     return TokenPair(access_token=access, refresh_token=refresh)
-
-
-@router.post(
-    path="/demo-login",
-    response_model=TokenPairWithUser,
-    summary="Demo-only login using seeded user aliases",
-)
-async def demo_login(
-    response: Response,
-    payload: DemoLoginRequest,
-    svc: Annotated[CredentialsService, Depends(get_credentials_service)],
-    user_svc: Annotated[UserService, Depends(get_user_service)],
-    client: Literal["web", "mobile"] = Header("web", alias="X-Client"),
-) -> TokenPairWithUser:
-    user, access, refresh, csrf = await svc.demo_login(payload, client)
-
-    if client == "web":
-        set_auth_cookies(response, refresh, csrf)
-
-    return TokenPairWithUser(
-        access_token=access,
-        refresh_token=refresh,
-        user=await user_svc.serialize_user(user),
-    )
 
 
 @router.post(

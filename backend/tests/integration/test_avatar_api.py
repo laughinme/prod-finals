@@ -23,7 +23,7 @@ async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncCl
     credentials = {
         "email": f"avatar_{suffix}@example.com",
         "password": faker.password(length=12),
-        "display_name": f"avatar_{suffix}",
+        "username": f"avatar_{suffix}",
     }
 
     register = await client.post(

@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from domain.common import TimestampModel
-from domain.dating.schemas import AgeRange, SearchPreferences
+from domain.dating.schemas import AgeRange
 from domain.users.enums import Gender
 
 
@@ -43,17 +43,15 @@ class UserModel(TimestampModel):
 
 class UserPatch(BaseModel):
     username: str | None = Field(None, description="User's display name", max_length=64)
-    display_name: str | None = Field(None, max_length=80)
+    display_name: str | None = Field(None, max_length=64)
     birth_date: date | None = None
     bio: str | None = Field(None, max_length=500)
     city_id: str | None = Field(None, max_length=64)
-    city: str | None = Field(None, max_length=128)
     gender: Gender | None = None
     looking_for_genders: list[Gender] | None = Field(None, min_length=1, max_length=3)
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None
-    search_preferences: SearchPreferences | None = None
 
     @model_validator(mode="after")
     def normalize_lists(self):
