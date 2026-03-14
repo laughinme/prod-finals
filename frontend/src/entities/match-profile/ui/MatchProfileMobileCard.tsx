@@ -1,12 +1,9 @@
 import {
-  Coffee,
-  Film,
   Heart,
   MapPin,
   ShieldAlert,
   Sparkles,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -19,20 +16,6 @@ interface MatchProfileMobileCardProps {
   onOpenReport: () => void;
 }
 
-function resolveTagIcon(tag: string): LucideIcon {
-  const normalizedTag = tag.toLowerCase();
-
-  if (normalizedTag.includes("коф")) {
-    return Coffee;
-  }
-
-  if (normalizedTag.includes("кино")) {
-    return Film;
-  }
-
-  return Sparkles;
-}
-
 export function MatchProfileMobileCard({
   profile,
   onLike,
@@ -40,7 +23,7 @@ export function MatchProfileMobileCard({
   onOpenReport,
 }: MatchProfileMobileCardProps) {
   const { t } = useTranslation();
-  const featuredTags = profile.tags.slice(0, 2);
+  const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
 
   return (
     <div className="mx-auto w-full max-w-100">
@@ -74,13 +57,15 @@ export function MatchProfileMobileCard({
         <div className="absolute right-6 bottom-6 left-6 flex flex-col gap-5 sm:right-8 sm:bottom-8 sm:left-8">
           <div>
             <h2 className="mb-2 text-[32px] leading-tight font-extrabold tracking-tight text-white sm:text-[36px]">
-              {profile.name}, {profile.age}
+              {title}
             </h2>
 
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-300 sm:text-base">
-              <MapPin className="size-5" />
-              <span>{profile.location}</span>
-            </div>
+            {profile.location ? (
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-300 sm:text-base">
+                <MapPin className="size-5" />
+                <span>{profile.location}</span>
+              </div>
+            ) : null}
           </div>
 
           <p className="text-sm leading-relaxed text-gray-200 sm:text-base">

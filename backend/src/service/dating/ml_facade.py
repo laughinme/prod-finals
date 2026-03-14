@@ -110,7 +110,7 @@ class MockMlFacade(MlFacade):
         ranked = await self.rank(payload.requester, [payload.candidate], limit=1)
         scored = ranked.candidates[0]
         reasons = [
-            self._reason_from_code(code, payload.requester, payload.candidate)
+            self._reason_from_code(code)
             for code in scored.reason_codes[:3]
         ]
         return CompatibilityExplanationResponse(
@@ -137,7 +137,6 @@ class MockMlFacade(MlFacade):
             score=scored.score,
             preview=preview_map[primary],
             reason_codes=[code.value for code in reason_codes],
-            details_available=True,
         )
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
@@ -217,12 +216,7 @@ class MockMlFacade(MlFacade):
             and candidate_range.min <= requester_age <= candidate_range.max
         )
 
-    def _reason_from_code(
-        self,
-        code: CompatibilityReasonCode,
-        requester: FeedCandidateContext,
-        candidate: FeedCandidateContext,
-    ) -> CompatibilityReason:
+    def _reason_from_code(self, code: CompatibilityReasonCode) -> CompatibilityReason:
         mapping = {
             CompatibilityReasonCode.CITY_FIT: (
                 "Similar city rhythm",
