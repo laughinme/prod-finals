@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useAuth } from "@/app/providers/auth/useAuth";
 import {
   CURRENT_USER_PREVIEW,
   EMPTY_MATCHMAKING_DRAFT,
@@ -42,9 +43,14 @@ type PersistedMatchmakingState = {
   isOnboardingComplete: boolean;
 };
 
-const STORAGE_KEY = "t-match:mock-flow";
-
 const MatchmakingFlowContext = createContext<MatchmakingFlowContextValue | null>(null);
+
+function getInitialPersistedState(): PersistedMatchmakingState {
+  return {
+    draft: EMPTY_MATCHMAKING_DRAFT,
+    isOnboardingComplete: false,
+  };
+}
 
 function cloneProfiles(): MatchProfile[] {
   return MOCK_DISCOVERY_PROFILES.map((profile) => ({
@@ -62,21 +68,23 @@ function cloneMessages(): Record<number, MatchChatMessage[]> {
   );
 }
 
-function readPersistedState(): PersistedMatchmakingState {
-  if (typeof window === "undefined") {
-    return {
-      draft: EMPTY_MATCHMAKING_DRAFT,
-      isOnboardingComplete: false,
-    };
+function getStorageKey(userKey: string | null | undefined): string | null {
+  if (!userKey) {
+    return null;
+  }
+
+  return `t-match:mock-flow:${userKey}`;
+}
+
+function readPersistedState(storageKey: string | null): PersistedMatchmakingState {
+  if (typeof window === "undefined" || !storageKey) {
+    return getInitialPersistedState();
   }
 
   try {
-    const rawValue = window.localStorage.getItem(STORAGE_KEY);
+    const rawValue = window.localStorage.getItem(storageKey);
     if (!rawValue) {
-      return {
-        draft: EMPTY_MATCHMAKING_DRAFT,
-        isOnboardingComplete: false,
-      };
+      return getInitialPersistedState();
     }
 
     const parsedValue = JSON.parse(rawValue) as Partial<PersistedMatchmakingState>;
@@ -89,19 +97,16 @@ function readPersistedState(): PersistedMatchmakingState {
       isOnboardingComplete: parsedValue.isOnboardingComplete ?? false,
     };
   } catch {
-    return {
-      draft: EMPTY_MATCHMAKING_DRAFT,
-      isOnboardingComplete: false,
-    };
+    return getInitialPersistedState();
   }
 }
 
-function writePersistedState(state: PersistedMatchmakingState) {
-  if (typeof window === "undefined") {
+function writePersistedState(storageKey: string | null, state: PersistedMatchmakingState) {
+  if (typeof window === "undefined" || !storageKey) {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  window.localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
 function getProfileById(profileId: number | null): MatchProfile | null {
@@ -120,10 +125,11 @@ function getTimeLabel(): string {
 }
 
 export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
-  const [draft, setDraft] = useState<MatchmakingDraft>(() => readPersistedState().draft);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(
-    () => readPersistedState().isOnboardingComplete,
-  );
+  const auth = useAuth();
+  const storageKey = getStorageKey(auth?.user?.email as string | null | undefined);
+
+  const [draft, setDraft] = useState<MatchmakingDraft>(EMPTY_MATCHMAKING_DRAFT);
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean>(false);
   const [profiles, setProfiles] = useState<MatchProfile[]>(() => cloneProfiles());
   const [matchedProfileId, setMatchedProfileId] = useState<number | null>(null);
   const [activeChatProfileId, setActiveChatProfileId] = useState<number | null>(null);
@@ -133,11 +139,22 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   >(() => cloneMessages());
 
   useEffect(() => {
-    writePersistedState({
+    const persistedState = readPersistedState(storageKey);
+    setDraft(persistedState.draft);
+    setIsOnboardingComplete(persistedState.isOnboardingComplete);
+    setProfiles(cloneProfiles());
+    setMatchedProfileId(null);
+    setActiveChatProfileId(null);
+    setChatProfileIds([]);
+    setMessagesByProfileId(cloneMessages());
+  }, [storageKey]);
+
+  useEffect(() => {
+    writePersistedState(storageKey, {
       draft,
       isOnboardingComplete,
     });
-  }, [draft, isOnboardingComplete]);
+  }, [draft, isOnboardingComplete, storageKey]);
 
   const currentProfile = profiles[0] ?? null;
   const matchedProfile = getProfileById(matchedProfileId);
