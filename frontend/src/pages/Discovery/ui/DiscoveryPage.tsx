@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Coffee, ShieldAlert } from "lucide-react";
 
 import { useMatchmakingFlow, SwipeableCard } from "@/features/matchmaking";
@@ -10,6 +11,7 @@ import { useIsMobile } from "@/shared/hooks/use-mobile";
 export default function DiscoveryPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const {
     currentProfile,
     likeCurrentProfile,
@@ -46,10 +48,9 @@ export default function DiscoveryPage() {
             <div className="mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-card shadow-sm">
               <Coffee className="size-12 text-muted-foreground" />
             </div>
-            <h2 className="mb-4 text-3xl font-bold">На сегодня всё</h2>
+            <h2 className="mb-4 text-3xl font-bold">{t("discovery.no_more_today")}</h2>
             <p className="mb-8 max-w-md text-lg text-muted-foreground">
-              Мы анализируем новые данные о вашем образе жизни, чтобы подобрать
-              идеальные совпадения.
+              {t("discovery.analyzing_habits")}
             </p>
             <Button
               size="lg"
@@ -57,7 +58,7 @@ export default function DiscoveryPage() {
               className="rounded-2xl"
               onClick={resetDiscovery}
             >
-              Обновить рекомендации
+              {t("discovery.refresh_recommendations")}
             </Button>
           </motion.div>
         ) : (
@@ -91,12 +92,11 @@ export default function DiscoveryPage() {
                 <div className="rounded-xl bg-destructive/10 p-3">
                   <ShieldAlert className="size-6 text-destructive" />
                 </div>
-                <h3 className="text-2xl font-bold">Безопасность</h3>
+                <h3 className="text-2xl font-bold">{t("discovery.safety")}</h3>
               </div>
 
               <p className="mb-8 text-muted-foreground">
-                Мы следим за тем, чтобы общение было комфортным. Выберите
-                действие для этого профиля.
+                {t("discovery.safety_description")}
               </p>
 
               <div className="space-y-3">
@@ -108,7 +108,7 @@ export default function DiscoveryPage() {
                     handlePass();
                   }}
                 >
-                  Больше не показывать
+                  {t("discovery.dont_show_again")}
                 </Button>
                 <Button
                   variant="outline"
@@ -118,14 +118,14 @@ export default function DiscoveryPage() {
                     handlePass();
                   }}
                 >
-                  Пожаловаться на профиль
+                  {t("discovery.report_profile")}
                 </Button>
                 <Button
                   variant="ghost"
                   className="mt-4 h-14 w-full rounded-2xl text-base"
                   onClick={() => setShowReport(false)}
                 >
-                  Отмена
+                  {t("common.cancel")}
                 </Button>
               </div>
             </motion.div>

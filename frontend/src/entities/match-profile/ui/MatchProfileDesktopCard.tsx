@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Calendar, Heart, Info, MapPin, ShieldAlert, X } from "lucide-react";
 
 import type { MatchProfile } from "../model";
@@ -18,6 +19,8 @@ export function MatchProfileDesktopCard({
   onPass,
   onOpenReport,
 }: MatchProfileDesktopCardProps) {
+  const { t } = useTranslation();
+
   return (
     <Card className="overflow-hidden rounded-4xl border-border bg-card py-0 shadow-xl md:flex-row">
       <div className="relative h-[50vh] w-full md:h-[70vh] md:w-1/2">
@@ -84,7 +87,7 @@ export function MatchProfileDesktopCard({
               <Info className="size-5 text-primary-foreground" />
             </div>
             <div>
-              <h4 className="mb-2 text-lg font-semibold">Почему вы совпали?</h4>
+              <h4 className="mb-2 text-lg font-semibold">{t("discovery.why_matched")}</h4>
               <p className="leading-relaxed text-muted-foreground">
                 {profile.explanation}
               </p>

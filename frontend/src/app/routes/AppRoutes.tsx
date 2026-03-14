@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation, useRoutes, type Location, type RouteObject } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import HomePage from "@/pages/Home";
 import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import AuthPage from "@/pages/auth/ui/AuthPage";
@@ -14,11 +15,14 @@ import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
 import MatchPage from "@/pages/Match/ui/MatchPage";
 import ChatPage from "@/pages/Chat/ui/ChatPage";
 
-const MatchmakingLoadingState = () => (
-  <div className="flex min-h-screen items-center justify-center bg-secondary/20">
-    <p className="text-lg text-muted-foreground">Загрузка сценария...</p>
-  </div>
-);
+const MatchmakingLoadingState = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary/20">
+      <p className="text-lg text-muted-foreground">{t("common.loading_scenario")}</p>
+    </div>
+  );
+};
 
 const RequireAuth = () => {
   const auth = useAuth();

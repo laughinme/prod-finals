@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import type { MatchmakingDraft } from "@/entities/match-profile/model";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
@@ -10,6 +11,7 @@ import {
 } from "@/features/profile/useProfile";
 
 export function useProfileSetup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { draft, setDraft, completeOnboarding } = useMatchmakingFlow();
   const { data: profile } = useProfile();
@@ -124,7 +126,7 @@ export function useProfileSetup() {
 
       setStep(2);
     } catch {
-      setStep1Error("Не удалось сохранить профиль. Попробуйте ещё раз.");
+      setStep1Error(t("profile.save_error"));
     }
   };
 
@@ -154,8 +156,8 @@ export function useProfileSetup() {
     isStep2Valid,
     isSubmittingStep1,
     avatarUploadStatusLabel: selectedAvatarFile
-      ? "Готово к загрузке"
-      : "Загружено",
+      ? t("profile.ready_to_upload")
+      : t("profile.uploaded"),
     setName,
     setAge,
     setStep,
