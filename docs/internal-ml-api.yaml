@@ -1,0 +1,809 @@
+openapi: 3.1.0
+x-stoplight:
+  id: tjd4ulo9ofe5o
+info:
+  title: T-Match Internal ML API (Backend <-> ML Service)
+  version: 1.0.0
+  summary: 'Внутренний контракт для ранжирования, explanations и feedback.'
+  description: |
+    Внутренний контракт между main backend и ML service.
+
+    Нормы разграничения:
+    1. Main backend владеет бизнес-состоянием контакта, мэтчами, чатами, блоками, жалобами и правилом повторного показа.
+    2. ML service владеет scoring, reason codes, quality/degradation signals и ingestion feedback.
+    3. ML service НЕ возвращает готовый свободный пользовательский текст; он возвращает reason codes и template keys.
+    4. Feedback в ML отправляется асинхронно через outbox/worker, чтобы сбой ML не ломал основной пользовательский сценарий.
+servers:
+  - url: 'http://ml-service:8080'
+    description: ML service
+security:
+  - serviceToken: []
+tags:
+  - name: health
+    description: Состояние ML-компонента и деградации
+  - name: recommendations
+    description: Ранжирование кандидатов
+  - name: feedback
+    description: Feedback-события для обучения и аналитики
+  - name: explanations
+    description: Безопасные объяснения в виде reason codes
+paths:
+  /v1/health:
+    get:
+      tags:
+        - health
+      summary: Проверить состояние ML service
+      operationId: getMlHealth
+      responses:
+        '200':
+          description: ML service доступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MlHealthResponse'
+              example:
+                status: degraded
+                timestamp: '2026-03-13T19:00:00Z'
+                decision_mode: fallback_only
+                model_version: ranker_2026_03_13_v4
+                features_version: features_v12
+                checks:
+                  ranker_loaded: true
+                  explainer_loaded: true
+                  feedback_ingest: true
+                warnings:
+                  - candidate_pool_low
+        '503':
+          description: ML service недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-stoplight:
+        id: q3nszwmhwmic4
+  /v1/recommendations:
+    post:
+      tags:
+        - recommendations
+      summary: Построить ранжированный список кандидатов для пользователя
+      operationId: postRecommendations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+            example:
+              trace_id: 33f117f8-7347-4c0d-80f8-2bce0a1b34e5
+              request_user_id: 1
+              limit: 12
+              strategy: balanced
+              hard_filters:
+                age_min: 24
+                age_max: 32
+                city_id: msk
+                distance_km: 20
+                genders:
+                  - male
+              exclusion:
+                hard_exclude_user_ids:
+                  - 2
+                  - 3
+                  - 4
+                soft_seen_user_ids:
+                  - 5
+                  - 6
+                  - 7
+              context:
+                request_ts: '2026-03-13T19:00:00Z'
+                session_id: sess_123
+                locale: ru-RU
+                timezone: Europe/Moscow
+                client: web
+                decision_policy: daily_batch
+      responses:
+        '200':
+          description: Кандидаты ранжированы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+              example:
+                trace_id: 33f117f8-7347-4c0d-80f8-2bce0a1b34e5
+                generated_at: '2026-03-13T19:00:00Z'
+                model_version: ranker_2026_03_13_v4
+                features_version: features_v12
+                decision_mode: model
+                warnings: []
+                candidates:
+                  - candidate_user_id: 42
+                    score: 0.84
+                    reason_signals:
+                      - code: lifestyle_similarity
+                        strength: high
+                        confidence: 0.81
+                      - code: activity_overlap
+                        strength: medium
+                        confidence: 0.74
+                    policy_flags: []
+        '400':
+          description: Некорректный payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Невалидный service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Запрос не может быть обработан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-stoplight:
+        id: ntaeaazev3izc
+  /v1/interactions/swipe:
+    post:
+      tags:
+        - feedback
+      summary: Передать feedback по действию в выдаче или safety flow
+      operationId: postSwipeFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwipeFeedbackRequest'
+            example:
+              trace_id: 3180e6d4-3d06-4dcb-8b53-5cde2b4e58c9
+              event_id: d90e0d5c-d3d7-4a77-8c3e-5d4ca7042c59
+              actor_user_id: 1
+              target_user_id: 42
+              action: hide
+              shown_rank: 3
+              shown_score: 0.84
+              shown_at: '2026-03-13T19:00:10Z'
+              acted_at: '2026-03-13T19:00:16Z'
+              source_context: feed
+      responses:
+        '202':
+          description: Feedback принят асинхронно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AckResponse'
+        '400':
+          description: Некорректный payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Невалидный service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-stoplight:
+        id: 25jea4xgwlpt8
+  /v1/interactions/match-outcome:
+    post:
+      tags:
+        - feedback
+      summary: Передать outcome после мэтча
+      operationId: postMatchOutcome
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchOutcomeRequest'
+            example:
+              trace_id: 5431c647-233d-47a4-84ec-ef1d70df4d8d
+              event_id: d7e3ae66-2e70-4375-b0f0-55cab6b0b3cb
+              match_id: ccf67468-f759-4725-bef8-b2442e1741e1
+              user_a_id: 1
+              user_b_id: 42
+              outcome: first_message_sent
+              happened_at: '2026-03-13T19:05:00Z'
+      responses:
+        '202':
+          description: Outcome принят асинхронно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AckResponse'
+        '400':
+          description: Некорректный payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Невалидный service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-stoplight:
+        id: fnvfg6nr3rccr
+  /v1/explanations/compatibility:
+    post:
+      tags:
+        - explanations
+      summary: Получить safe explanation signals по паре пользователей
+      operationId: postCompatibilityExplanation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompatibilityExplanationRequest'
+            example:
+              trace_id: 5d9d2c4e-98a5-42cf-a6f7-4a2c81f892e4
+              requester_user_id: 1
+              candidate_user_id: 42
+              channel: feed
+              locale: ru-RU
+              max_reasons: 3
+      responses:
+        '200':
+          description: Reason signals построены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompatibilityExplanationResponse'
+              example:
+                trace_id: 5d9d2c4e-98a5-42cf-a6f7-4a2c81f892e4
+                candidate_user_id: 42
+                privacy_level: safe_aggregate
+                reasons:
+                  - code: lifestyle_similarity
+                    template_key: compat.lifestyle_similarity.high
+                    strength: high
+                    confidence: 0.81
+                  - code: activity_overlap
+                    template_key: compat.activity_overlap.medium
+                    strength: medium
+                    confidence: 0.74
+                privacy_checks:
+                  - aggregate_only
+                  - no_raw_merchants
+                  - no_amounts
+        '400':
+          description: Некорректный payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Невалидный service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Пара пользователей не найдена в контексте ML
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-stoplight:
+        id: x3lkkohv0tdzy
+components:
+  securitySchemes:
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+  schemas:
+    MlHealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - timestamp
+        - decision_mode
+        - model_version
+        - features_version
+        - checks
+        - warnings
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - down
+        timestamp:
+          type: string
+          format: date-time
+        decision_mode:
+          type: string
+          enum:
+            - model
+            - fallback_only
+        model_version:
+          type: string
+        features_version:
+          type: string
+        checks:
+          type: object
+          additionalProperties: false
+          required:
+            - ranker_loaded
+            - explainer_loaded
+            - feedback_ingest
+          properties:
+            ranker_loaded:
+              type: boolean
+            explainer_loaded:
+              type: boolean
+            feedback_ingest:
+              type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+      x-stoplight:
+        id: 4ai7vv2jk86m6
+    RecommendationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - request_user_id
+        - limit
+        - context
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        request_user_id:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 12
+        strategy:
+          type: string
+          enum:
+            - balanced
+            - high_precision
+            - exploration
+          default: balanced
+        hard_filters:
+          $ref: '#/components/schemas/HardFilters'
+        exclusion:
+          $ref: '#/components/schemas/ExclusionSet'
+        context:
+          $ref: '#/components/schemas/RecommendationContext'
+      x-stoplight:
+        id: ocv09kt2wdhar
+    HardFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        age_min:
+          type: integer
+          minimum: 18
+          maximum: 99
+        age_max:
+          type: integer
+          minimum: 18
+          maximum: 99
+        city_id:
+          type: string
+        distance_km:
+          type: integer
+          minimum: 1
+          maximum: 300
+        genders:
+          type: array
+          items:
+            type: string
+          maxItems: 5
+      x-stoplight:
+        id: qrsbp26lhhb5x
+    ExclusionSet:
+      type: object
+      additionalProperties: false
+      properties:
+        hard_exclude_user_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          maxItems: 20000
+        soft_seen_user_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          maxItems: 20000
+      x-stoplight:
+        id: 5dl6vvy49ap5w
+    RecommendationContext:
+      type: object
+      additionalProperties: false
+      required:
+        - request_ts
+        - client
+        - decision_policy
+      properties:
+        request_ts:
+          type: string
+          format: date-time
+        session_id:
+          type: string
+        locale:
+          type: string
+          example: ru-RU
+        timezone:
+          type: string
+          example: Europe/Moscow
+        client:
+          type: string
+          enum:
+            - ios
+            - android
+            - web
+        decision_policy:
+          type: string
+          enum:
+            - daily_batch
+      x-stoplight:
+        id: 6cwg5ddqy6wsm
+    RecommendationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - generated_at
+        - model_version
+        - features_version
+        - decision_mode
+        - warnings
+        - candidates
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        generated_at:
+          type: string
+          format: date-time
+        model_version:
+          type: string
+        features_version:
+          type: string
+        decision_mode:
+          type: string
+          enum:
+            - model
+            - fallback
+        warnings:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        candidates:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/RecommendationCandidate'
+      x-stoplight:
+        id: 8laxvpgr83f0t
+    ReasonSignal:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - strength
+      properties:
+        code:
+          type: string
+          enum:
+            - lifestyle_similarity
+            - activity_overlap
+            - communication_style_fit
+            - meetup_rhythm_fit
+            - locality_fit
+            - novelty_boost
+        strength:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+      x-stoplight:
+        id: 7yipipgz5cosn
+    RecommendationCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        - candidate_user_id
+        - score
+        - reason_signals
+        - policy_flags
+      properties:
+        candidate_user_id:
+          type: integer
+          format: int64
+        score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        score_components:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        reason_signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReasonSignal'
+          minItems: 1
+          maxItems: 5
+        policy_flags:
+          type: array
+          items:
+            type: string
+            enum:
+              - cooldown_candidate
+              - low_profile_quality
+              - sparse_behavioral_data
+          maxItems: 10
+      x-stoplight:
+        id: wfcqs9dhzvnjf
+    SwipeFeedbackRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - event_id
+        - actor_user_id
+        - target_user_id
+        - action
+        - acted_at
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        actor_user_id:
+          type: integer
+          format: int64
+        target_user_id:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum:
+            - like
+            - pass
+            - hide
+            - block
+            - report
+        shown_rank:
+          type: integer
+          minimum: 1
+          maximum: 100
+        shown_score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        shown_at:
+          type: string
+          format: date-time
+        acted_at:
+          type: string
+          format: date-time
+        source_context:
+          type: string
+          enum:
+            - feed
+            - conversation
+            - match_list
+            - safety_sheet
+          default: feed
+      x-stoplight:
+        id: vn615hcgceiyk
+    MatchOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - event_id
+        - match_id
+        - user_a_id
+        - user_b_id
+        - outcome
+        - happened_at
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+          format: uuid
+        match_id:
+          type: string
+          format: uuid
+        user_a_id:
+          type: integer
+          format: int64
+        user_b_id:
+          type: integer
+          format: int64
+        outcome:
+          type: string
+          enum:
+            - match_created
+            - first_message_sent
+            - mutual_conversation_started
+            - first_reply_within_24h
+            - conversation_closed
+            - block_after_match
+            - report_after_match
+        happened_at:
+          type: string
+          format: date-time
+      x-stoplight:
+        id: 646xyvhqs280h
+    CompatibilityExplanationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - requester_user_id
+        - candidate_user_id
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        requester_user_id:
+          type: integer
+          format: int64
+        candidate_user_id:
+          type: integer
+          format: int64
+        channel:
+          type: string
+          enum:
+            - feed
+            - match
+            - conversation
+          default: feed
+        locale:
+          type: string
+          default: ru-RU
+        max_reasons:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 3
+      x-stoplight:
+        id: fzu8q5we8x2ta
+    ExplanationReason:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - template_key
+        - strength
+      properties:
+        code:
+          type: string
+          enum:
+            - lifestyle_similarity
+            - activity_overlap
+            - communication_style_fit
+            - meetup_rhythm_fit
+            - locality_fit
+        template_key:
+          type: string
+        strength:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+      x-stoplight:
+        id: f5myc7phy9tdt
+    CompatibilityExplanationResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - trace_id
+        - candidate_user_id
+        - privacy_level
+        - reasons
+        - privacy_checks
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+        candidate_user_id:
+          type: integer
+          format: int64
+        privacy_level:
+          type: string
+          enum:
+            - safe_aggregate
+        reasons:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExplanationReason'
+          minItems: 1
+          maxItems: 5
+        privacy_checks:
+          type: array
+          items:
+            type: string
+            enum:
+              - aggregate_only
+              - no_raw_merchants
+              - no_amounts
+              - no_raw_mcc_dump
+          maxItems: 10
+      x-stoplight:
+        id: b3kalksfk7ykq
+    AckResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - received_at
+      properties:
+        status:
+          type: string
+          enum:
+            - accepted
+        received_at:
+          type: string
+          format: date-time
+      x-stoplight:
+        id: p6hs34t1lswx3
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error_code
+        - message
+        - trace_id
+      properties:
+        error_code:
+          type: string
+          example: invalid_request
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        trace_id:
+          type: string
+          format: uuid
+      x-stoplight:
+        id: e8jl2t974jzw2

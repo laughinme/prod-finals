@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     
     # Auth Settings    
     JWT_SECRET: str
-    JWT_ALGO: Literal["HS256", "HS384", "HS512"] = "HS256"
+    JWT_ALGO: str = "HS256"
     ACCESS_TTL: int = 60 * 15
     REFRESH_TTL: int = 60 * 60 * 24 * 7
     CSRF_HMAC_KEY: bytes = b"change-me"

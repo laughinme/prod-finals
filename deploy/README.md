@@ -8,12 +8,13 @@ This repository now contains a simple single-VM deployment path for Spirit/GitLa
 - GitLab injects those variables into pipeline jobs.
 - The deploy job copies files to the target VM and runs `docker compose` there.
 - Variables are not written into your application `.env` automatically. The pipeline does that explicitly.
+- The backend now reads `deploy/.env` directly through Compose `env_file`, so production settings live in one place instead of a long YAML variable map.
 
 ## Why there is a separate production compose file
 
 `docker-compose.yml` is still development-oriented and hardcodes local defaults like `APP_STAGE=dev`, local database URLs, and local MinIO credentials.
 
-`docker-compose.prod.yml` reads everything from `deploy/.env`.
+`docker-compose.prod.yml` uses `deploy/.env` as the single source of truth for backend settings and only keeps small service-specific mappings for infrastructure containers.
 
 ## Variables to create in Spirit
 
@@ -45,6 +46,7 @@ If you leave scope as `*`, the variable is available to all jobs.
 
 - `backend/.env` -> `PROD_ENV_FILE`
 - `JWT_SECRET` now lives inside that env file, so отдельные JWT key files больше не нужны.
+- `JWT_ALGO` should now be one of `HS256`, `HS384`, `HS512`. If `RS256` is left in the prod env, auth requests will fail when the app tries to issue JWTs with a shared secret.
 
 `backend/secrets/db.txt` is still not used by the application code right now, so it does not need to be deployed unless you start reading it in code later.
 
@@ -71,10 +73,30 @@ Then reconnect so the docker group is applied.
 3. Run the manual job `deploy:production`.
 4. The job syncs the repo to the VM.
 5. The job uploads `deploy/.env`.
-6. The job runs `bash deploy/remote-deploy.sh` on the VM.
+6. The job runs `bash deploy/remote-deploy.sh` on the VM and waits until services are healthy.
 
 ## Notes
 
 - Frontend is built inside the nginx image during deployment.
 - Keep `VITE_API_BASE_URL=` empty in production if frontend and backend are served from one domain through nginx.
 - Backend migrations run automatically from `backend/entry.sh` when the backend container starts.
+- A plain `502 Bad Gateway` on `/api/*` usually means nginx is up but the `backend` container never became healthy or exited during startup.
+
+## Quick debugging on the VM
+
+Connect with the SSH command from Spirit, then run:
+
+```bash
+cd /opt/chupapis
+docker compose --env-file deploy/.env -f docker-compose.prod.yml ps
+docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f backend
+docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f nginx
+docker compose --env-file deploy/.env -f docker-compose.prod.yml exec backend sh
+```
+
+What to look for first:
+
+- `DATABASE_URL` or `REDIS_URL` pointing to `localhost` instead of `db` / `redis`.
+- Short or missing `JWT_SECRET`.
+- `JWT_ALGO=RS256` left over after switching to shared-secret JWT signing.
+- Alembic migration errors from `backend/entry.sh`.
