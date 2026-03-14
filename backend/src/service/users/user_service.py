@@ -5,8 +5,10 @@ from uuid import UUID
 from core.config import get_settings
 # from core.rbac import permissions_cache_key
 from database.redis import CacheRepo
-from domain.users import UserPatch, AvatarPresignResponse
+from domain.users.schemas.avatar import AvatarPresignResponse
+from domain.users.schemas.profile import UserPatch
 from database.relational_db import (
+    CitiesInterface,
     LanguagesInterface,
     RolesInterface,
     UserInterface,
@@ -18,6 +20,7 @@ from .exceptions import (
     AvatarObjectNotFoundError,
     AvatarTooLargeError,
     AvatarUnsupportedContentTypeError,
+    CityNotFoundError,
     InvalidAvatarObjectKeyError,
     InvalidCursorError,
     UnknownRolesError,
@@ -33,10 +36,12 @@ class UserService:
         lang_repo: LanguagesInterface,
         role_repo: RolesInterface,
         media_storage: MediaStorageService,
+        city_repo: CitiesInterface | None = None,
         cache_repo: CacheRepo | None = None,
     ):
         self.uow = uow
         self.user_repo = user_repo
+        self.city_repo = city_repo
         self.lang_repo = lang_repo
         self.role_repo = role_repo
         self.media_storage = media_storage
@@ -48,9 +53,40 @@ class UserService:
         
     async def patch_user(self, payload: UserPatch, user: User):
         data = payload.model_dump(exclude_none=True)
-        
+
+        if "city_id" in data:
+            if self.city_repo is None:
+                raise CityNotFoundError()
+            city = await self.city_repo.get_by_id(data["city_id"])
+            if city is None:
+                raise CityNotFoundError()
+            user.city_id = city.id
+            data.pop("city_id")
+
+        if "age_range" in data:
+            age_range = data.pop("age_range")
+            user.age_range_min = age_range["min"]
+            user.age_range_max = age_range["max"]
+
+        if "display_name" in data:
+            user.display_name = data.pop("display_name")
+
+        if "looking_for_genders" in data:
+            user.looking_for_genders = [value.value if hasattr(value, "value") else value for value in data.pop("looking_for_genders")]
+
+        if "gender" in data:
+            gender = data.pop("gender")
+            user.gender = gender.value if hasattr(gender, "value") else gender
+
+        if "goal" in data:
+            goal = data.pop("goal")
+            user.goal = goal.value if hasattr(goal, "value") else goal
+
         for field, value in data.items():
             setattr(user, field, value)
+
+        if user.distance_km is None and user.has_min_profile:
+            user.distance_km = 30
             
         await self.uow.commit()
             
@@ -108,6 +144,8 @@ class UserService:
 
         previous_avatar_key = user.avatar_key
         user.avatar_key = object_key
+        user.avatar_status = "approved"
+        user.avatar_rejection_reason = None
         await self.uow.commit()
         await self.uow.session.refresh(user)
 
@@ -125,6 +163,7 @@ class UserService:
 
         avatar_key = user.avatar_key
         user.avatar_key = None
+        user.avatar_status = None
         await self.uow.commit()
         await self.uow.session.refresh(user)
 

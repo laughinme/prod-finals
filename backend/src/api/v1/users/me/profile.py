@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from database.relational_db import User
-from domain.users import UserModel, UserPatch
+from domain.users.schemas.profile import UserModel, UserPatch
 from core.security import auth_user
 from service.users import UserService, get_user_service
 

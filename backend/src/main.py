@@ -13,9 +13,10 @@ from core.error_handling import register_exception_handlers
 from core.middlewares import RequestTracingMiddleware
 from core.rate_limit import init_rate_limiters
 from database.redis import close_redis, init_redis
-from database.relational_db import dispose_engine, get_session_factory, wait_for_db
+from database.relational_db import UoW, dispose_engine, get_session_factory, wait_for_db
 from scheduler import init_scheduler, stop_scheduler
 from service.media import get_media_storage_service
+from service.dev_seed import ensure_dev_seed
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,14 @@ def create_app(
             if settings.STORAGE_AUTO_CREATE_BUCKETS:
                 storage = get_media_storage_service()
                 await asyncio.to_thread(storage.ensure_buckets)
+            else:
+                storage = get_media_storage_service()
+
+            if settings.DEV_SEED_ENABLED and settings.APP_STAGE != "prod":
+                session_factory = get_session_factory(settings)
+                async with session_factory() as session:
+                    async with UoW(session) as uow:
+                        await ensure_dev_seed(uow=uow, storage=storage, settings=settings)
 
             should_run_scheduler = (
                 settings.SCHEDULER_ENABLED if enable_scheduler is None else enable_scheduler

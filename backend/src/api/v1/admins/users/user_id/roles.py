@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Path
 
 from core.security import require
 from database.relational_db import User
-from domain.users import UserModel, UserRolesUpdate
+from domain.users.schemas.profile import UserModel, UserRolesUpdate
 from service.users import UserService, get_user_service
 from service.users.exceptions import UserNotFoundError
 

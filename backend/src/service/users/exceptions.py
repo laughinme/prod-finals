@@ -52,3 +52,8 @@ class UnknownRolesError(NotFoundError):
 class UserNotFoundError(NotFoundError):
     error_code = "USER_NOT_FOUND"
     default_detail = "User not found"
+
+
+class CityNotFoundError(NotFoundError):
+    error_code = "CITY_NOT_FOUND"
+    default_detail = "City not found"

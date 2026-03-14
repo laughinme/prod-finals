@@ -4,12 +4,8 @@ from fastapi import APIRouter, Depends
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.users import (
-    AvatarConfirmRequest,
-    AvatarPresignRequest,
-    AvatarPresignResponse,
-    UserModel,
-)
+from domain.users.schemas.avatar import AvatarConfirmRequest, AvatarPresignRequest, AvatarPresignResponse
+from domain.users.schemas.profile import UserModel
 from service.users import UserService, get_user_service
 
 router = APIRouter()

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     SQL_ECHO: bool = False
     SCHEDULER_ENABLED: bool = False
+    APP_TIMEZONE: str = "Europe/Moscow"
+    FEED_DAILY_LIMIT: int = 12
+    PAIR_COOLDOWN_DAYS: int = 30
+    DEV_SEED_ENABLED: bool = False
 
     # API settings
     API_PORT: int = 8080
