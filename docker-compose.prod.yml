@@ -1,12 +1,22 @@
 services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
   ml-service:
     build:
       context: .
       dockerfile: ml/Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-ml-service
+    depends_on:
+      - qdrant
     environment:
       API_HOST: 0.0.0.0
       API_PORT: 8080
+      QDRANT_URL: http://qdrant:6333
       ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-change-me-ml-token}
       ML_SAMPLE_USER_COUNT: ${ML_SAMPLE_USER_COUNT:-120}
       ML_SAMPLE_TX_PER_USER: ${ML_SAMPLE_TX_PER_USER:-20}
@@ -157,3 +167,4 @@ volumes:
   minio_data:
   ml_artifacts:
   ml_data:
+  qdrant_data:
