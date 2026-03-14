@@ -18,7 +18,8 @@
     "discovery": "Discovery",
     "messages": "Messages",
     "dashboard": "Dashboard",
-    "slogan": "reliable dating preview"
+    "slogan": "reliable dating preview",
+    "to": "to"
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",

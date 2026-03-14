@@ -18,7 +18,8 @@
     "discovery": "Знакомства",
     "messages": "Сообщения",
     "dashboard": "Дашборд",
-    "slogan": "Сервис знакомств"
+    "slogan": "Сервис знакомств",
+    "to": "До"
   },
   "auth": {
     "invalid_credentials": "Неверный email или пароль",

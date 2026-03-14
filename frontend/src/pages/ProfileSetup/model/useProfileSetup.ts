@@ -31,7 +31,9 @@ export function useProfileSetup() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>(
     draft.interests,
   );
-  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(
+    null,
+  );
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
     profile?.profilePicUrl ?? null,
   );
@@ -90,7 +92,9 @@ export function useProfileSetup() {
     }
   };
 
-  const handleAvatarSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelection = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -132,6 +136,7 @@ export function useProfileSetup() {
 
   const handleComplete = () => {
     const nextDraft: MatchmakingDraft = {
+      ...draft,
       photoUploaded,
       name,
       age,

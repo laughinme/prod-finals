@@ -4,7 +4,6 @@ import { usePhotoUpload } from "@/pages/PhotoUpload/model";
 import { PhotoUploadBackground } from "./PhotoUploadBackground";
 import { PhotoUploadIdleState } from "./PhotoUploadIdleState";
 import { PhotoUploadPreviewState } from "./PhotoUploadPreviewState";
-import { Button } from "@/shared/components/ui/button";
 
 export default function PhotoUploadPage() {
   const {

@@ -20,15 +20,14 @@ function App() {
     );
   }
 
-  const {
-    isUserLoading,
-    isRestoringSession
-  } = authData;
+  const { isUserLoading, isRestoringSession } = authData;
 
   if (isRestoringSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-lg text-slate-500">{t("common.restoring_session")}</p>
+        <p className="text-lg text-slate-500">
+          {t("common.restoring_session")}
+        </p>
       </div>
     );
   }

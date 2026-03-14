@@ -59,7 +59,7 @@ export default function ProfilePage() {
 
   return (
     <div className="relative flex-1">
-      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
+      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
 
       <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-40 pb-12 lg:px-6 sm:pt-56">
         {isLoading && <ProfileSkeleton />}
@@ -122,7 +122,11 @@ export default function ProfilePage() {
 
                 <div className="flex items-center text-muted-foreground">
                   <IconCalendar className="mr-3 size-4" />
-                  <span>{t("profile.online_since", { date: formatDate(profile.createdAt) })}</span>
+                  <span>
+                    {t("profile.online_since", {
+                      date: formatDate(profile.createdAt),
+                    })}
+                  </span>
                 </div>
 
                 <div className="flex items-center text-muted-foreground">
