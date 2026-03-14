@@ -1,36 +1,36 @@
-import { type ComponentProps, type FormEvent } from "react"
-import { HeartHandshake } from "lucide-react"
+import { type ComponentProps, type FormEvent } from "react";
+import { HeartHandshake } from "lucide-react";
 
-import { Button } from "@/shared/components/ui/button"
+import { Button } from "@/shared/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/shared/components/ui/card"
+} from "@/shared/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldError,
   FieldLabel,
-} from "@/shared/components/ui/field"
-import { Input } from "@/shared/components/ui/input"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/components/ui/field";
+import { Input } from "@/shared/components/ui/input";
+import { cn } from "@/shared/lib/utils";
 
 type LoginFormProps = Omit<ComponentProps<"div">, "onSubmit"> & {
-  email: string
-  password: string
-  onEmailChange: (value: string) => void
-  onPasswordChange: (value: string) => void
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
-  submitLabel: string
-  disabled?: boolean
-  submitDisabled?: boolean
-  errorMessage?: string | null
-  onSwitchToSignup: () => void
-}
+  email: string;
+  password: string;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  submitLabel: string;
+  disabled?: boolean;
+  submitDisabled?: boolean;
+  errorMessage?: string | null;
+  onSwitchToSignup: () => void;
+};
 
 export function LoginForm({
   className,
@@ -47,17 +47,16 @@ export function LoginForm({
   ...props
 }: LoginFormProps) {
   return (
-    <div
-      className={cn("flex flex-col gap-6", className)}
-      {...props}
-    >
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="space-y-4 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-2xl bg-primary">
               <HeartHandshake className="size-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-foreground">T-Match</span>
+            <span className="text-lg font-bold tracking-tight text-foreground">
+              T-Match
+            </span>
           </div>
           <div>
             <CardTitle className="text-xl font-semibold text-foreground">
@@ -71,7 +70,9 @@ export function LoginForm({
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
             <FieldGroup>
-              {errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
+              <div className="flex justify-center">
+                {errorMessage ? <FieldError>{errorMessage}</FieldError> : null}
+              </div>
               <Field>
                 <FieldLabel
                   htmlFor="email"
@@ -133,5 +134,5 @@ export function LoginForm({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
