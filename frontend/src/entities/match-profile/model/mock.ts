@@ -2,6 +2,7 @@ import type {
   CurrentUserPreview,
   MatchChatMessage,
   MatchProfile,
+  MatchProfileId,
   MatchmakingDraft,
 } from "./types";
 
@@ -81,7 +82,7 @@ export const MOCK_DISCOVERY_PROFILES: MatchProfile[] = [
   },
 ];
 
-export const INITIAL_CHAT_MESSAGES: Record<number, MatchChatMessage[]> = {
+export const INITIAL_CHAT_MESSAGES: Partial<Record<MatchProfileId, MatchChatMessage[]>> = {
   1: [
     {
       id: 1,
