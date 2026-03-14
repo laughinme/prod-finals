@@ -169,7 +169,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     locked_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert locked_feed.status_code == 200
     assert locked_feed.json()["feed_state"] == "locked"
-    assert locked_feed.json()["lock_reason"] == "required_fields_missing"
+    assert locked_feed.json()["lock_reason"] == "avatar_required"
 
     onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
     assert onboarding_config.status_code == 200
@@ -179,21 +179,13 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert steps["preferred_age_range"]["step_type"] == "range"
     assert steps["search_radius"]["required_for_feed"] is False
 
-    skipped = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_a))
-    assert skipped.status_code == 200
-    assert skipped.json()["quiz_status"] == "skipped"
-
-    resumed = await client.post("/api/v1/onboarding/resume", headers=auth_header(access_a))
-    assert resumed.status_code == 200
-    assert resumed.json()["quiz_status"] == "in_progress"
-
     answer = await client.post(
         "/api/v1/onboarding/answers",
         json={"step_key": "who_to_meet", "answers": ["male"]},
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
-    assert answer.json()["quiz_status"] in {"in_progress", "completed"}
+    assert answer.json() == {"step_key": "who_to_meet", "saved": True}
 
     profile_a = await _complete_profile(
         client,
@@ -219,11 +211,6 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         city_id="spb",
         gender="male",
     )
-
-    feed_still_locked = await client.get("/api/v1/feed", headers=auth_header(access_a))
-    assert feed_still_locked.status_code == 200
-    assert feed_still_locked.json()["feed_state"] == "ready"
-    assert feed_still_locked.json()["next_action"] is None
 
     await _answer_onboarding_filters(
         client,
@@ -252,11 +239,6 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         goal="serious_relationship",
         radius_km=30,
     )
-
-    state_a = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
-    assert state_a.status_code == 200
-    assert state_a.json()["feed_unlocked"] is True
-    assert state_a.json()["missing_required_fields"] == []
 
     me_a = await client.get("/api/v1/users/me", headers=auth_header(access_a))
     me_b = await client.get("/api/v1/users/me", headers=auth_header(access_b))

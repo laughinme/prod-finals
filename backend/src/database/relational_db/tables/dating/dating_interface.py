@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -45,6 +45,21 @@ class DatingInterface:
             )
         )
         return await self.session.scalar(stmt)
+
+    async def reset_batch_for_date(
+        self,
+        *,
+        user_id: UUID,
+        batch_date: date,
+    ) -> None:
+        batch = await self.get_active_batch_for_date(user_id=user_id, batch_date=batch_date)
+        if batch is None:
+            return
+        await self.session.execute(
+            delete(RecommendationItem).where(RecommendationItem.batch_id == batch.id)
+        )
+        await self.session.execute(delete(RecommendationBatch).where(RecommendationBatch.id == batch.id))
+        await self.session.flush()
 
     async def list_batch_items(self, batch_id: UUID) -> list[RecommendationItem]:
         rows = await self.session.scalars(

@@ -3,7 +3,7 @@ from datetime import date
 
 from core.config import Settings
 from core.crypto import hash_password
-from database.relational_db import CitiesInterface, DatingInterface, RolesInterface, UoW, User, UserInterface
+from database.relational_db import CitiesInterface, RolesInterface, UoW, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
 from service.media import MediaStorageService
 
@@ -24,13 +24,6 @@ DEMO_USERS = [
         "age_range_min": 25,
         "age_range_max": 34,
         "goal": "serious_relationship",
-        "quiz_status": "completed",
-        "quiz_answers": {
-            "who_to_meet": ["male"],
-            "preferred_age_range": ["25", "34"],
-            "connection_goal": ["serious_relationship"],
-            "search_radius": ["30"],
-        },
     },
     {
         "demo_user_key": "maria",
@@ -45,8 +38,6 @@ DEMO_USERS = [
         "age_range_min": 26,
         "age_range_max": 36,
         "goal": "casual_dates",
-        "quiz_status": "skipped",
-        "quiz_answers": {},
     },
     {
         "demo_user_key": "dima",
@@ -61,13 +52,6 @@ DEMO_USERS = [
         "age_range_min": 24,
         "age_range_max": 33,
         "goal": "serious_relationship",
-        "quiz_status": "completed",
-        "quiz_answers": {
-            "who_to_meet": ["female"],
-            "preferred_age_range": ["24", "33"],
-            "connection_goal": ["serious_relationship"],
-            "search_radius": ["30"],
-        },
     },
     {
         "demo_user_key": "kirill",
@@ -82,8 +66,6 @@ DEMO_USERS = [
         "age_range_min": 23,
         "age_range_max": 32,
         "goal": "casual_dates",
-        "quiz_status": "not_started",
-        "quiz_answers": {},
     },
     {
         "demo_user_key": "olga",
@@ -98,13 +80,6 @@ DEMO_USERS = [
         "age_range_min": 28,
         "age_range_max": 38,
         "goal": "new_friends",
-        "quiz_status": "completed",
-        "quiz_answers": {
-            "who_to_meet": ["male"],
-            "preferred_age_range": ["28", "38"],
-            "connection_goal": ["new_friends"],
-            "search_radius": ["30"],
-        },
     },
     {
         "demo_user_key": "ivan",
@@ -119,8 +94,6 @@ DEMO_USERS = [
         "age_range_min": 25,
         "age_range_max": 37,
         "goal": "new_friends",
-        "quiz_status": "skipped",
-        "quiz_answers": {},
     },
     {
         "demo_user_key": "alisa",
@@ -135,13 +108,6 @@ DEMO_USERS = [
         "age_range_min": 22,
         "age_range_max": 31,
         "goal": "casual_dates",
-        "quiz_status": "completed",
-        "quiz_answers": {
-            "who_to_meet": ["male", "other"],
-            "preferred_age_range": ["22", "31"],
-            "connection_goal": ["casual_dates"],
-            "search_radius": ["30"],
-        },
     },
     {
         "demo_user_key": "roman",
@@ -156,8 +122,6 @@ DEMO_USERS = [
         "age_range_min": 21,
         "age_range_max": 30,
         "goal": "casual_dates",
-        "quiz_status": "not_started",
-        "quiz_answers": {},
     },
     {
         "demo_user_key": "admin_demo",
@@ -172,13 +136,6 @@ DEMO_USERS = [
         "age_range_min": 21,
         "age_range_max": 45,
         "goal": "new_friends",
-        "quiz_status": "completed",
-        "quiz_answers": {
-            "who_to_meet": ["female", "male", "other"],
-            "preferred_age_range": ["21", "45"],
-            "connection_goal": ["new_friends"],
-            "search_radius": ["30"],
-        },
         "roles": ["member", "admin"],
     },
 ]
@@ -202,8 +159,6 @@ async def ensure_dev_seed(
     user_repo = UserInterface(uow.session)
     city_repo = CitiesInterface(uow.session)
     role_repo = RolesInterface(uow.session)
-    dating_repo = DatingInterface(uow.session)
-
     member_role = await role_repo.get_by_slug(DEFAULT_ROLE.value)
     admin_role = await role_repo.get_by_slug("admin")
     if member_role is None:
@@ -233,8 +188,6 @@ async def ensure_dev_seed(
         user.age_range_max = payload["age_range_max"]
         user.distance_km = 30
         user.goal = payload["goal"]
-        user.quiz_status = payload["quiz_status"]
-        user.quiz_current_step_key = None
         user.demo_user_key = payload["demo_user_key"]
         user.is_onboarded = True
         user.avatar_status = "approved"
@@ -255,12 +208,5 @@ async def ensure_dev_seed(
         if "roles" in payload and admin_role is not None and "admin" in payload["roles"]:
             assigned_roles = [member_role, admin_role]
         await user_repo.assign_roles(user, assigned_roles)
-
-        for step_key, answers in payload.get("quiz_answers", {}).items():
-            await dating_repo.upsert_quiz_answer(
-                user_id=user.id,
-                step_key=step_key,
-                answers=answers,
-            )
 
     await uow.commit()

@@ -61,14 +61,10 @@ from domain.dating import (
     MatchStatus,
     MessageResponse,
     MessageStatus,
-    NextAction,
-    NextActionType,
     OnboardingAnswersRequest,
     OnboardingAnswersResponse,
     OnboardingConfigResponse,
-    OnboardingStateResponse,
     ProfileStatus,
-    QuizStatus,
     ReportRequest,
     ReportResponse,
     SafetySourceContext,
@@ -128,10 +124,6 @@ class BaseDatingService:
     def now(self) -> datetime:
         return datetime.now(UTC)
 
-    async def _get_answer_map(self, user_id) -> dict[str, list[str]]:
-        rows = await self.dating_repo.list_quiz_answers(user_id=user_id)
-        return {row.step_key: list(row.answers or []) for row in rows}
-
     async def _build_feed_context(self, user: User) -> FeedCandidateContext:
         return FeedCandidateContext(
             user_id=user.id,
@@ -150,72 +142,14 @@ class BaseDatingService:
             profile_completion_percent=user.profile_completion_percent,
         )
 
-    @staticmethod
-    def _missing_profile_basics(user: User) -> list[str]:
-        return [
-            field
-            for field in user.missing_required_fields
-            if not field.startswith("search_preferences.")
-        ]
-
-    def _build_next_action(self, user: User) -> NextAction | None:
-        if user.profile_status == ProfileStatus.BLOCKED.value:
-            return None
-        if self._missing_profile_basics(user):
-            return NextAction(
-                type=NextActionType.COMPLETE_REQUIRED_FIELDS,
-                title="Complete required profile fields",
-                description="Add the basics needed to unlock the real feed.",
-                cta_label="Complete profile",
-            )
-        if user.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
-            return NextAction(
-                type=NextActionType.UPLOAD_AVATAR,
-                title="Upload an avatar",
-                description="An approved avatar is required before the feed opens.",
-                cta_label="Upload avatar",
-            )
-        if user.profile_status == ProfileStatus.AVATAR_PENDING.value:
-            return NextAction(
-                type=NextActionType.WAIT_FOR_MODERATION,
-                title="Wait for moderation",
-                description="Your avatar is being reviewed.",
-                cta_label="Okay",
-            )
-        return NextAction(
-            type=NextActionType.OPEN_FEED,
-            title="Open feed",
-            description="Your profile is ready for browsing.",
-            cta_label="Open feed",
-        )
-
     def _build_lock_reason(self, user: User) -> FeedLockReason | None:
         if user.profile_status == ProfileStatus.BLOCKED.value:
             return FeedLockReason.BLOCKED
-        if user.profile_status in {
-            ProfileStatus.DRAFT.value,
-            ProfileStatus.REQUIRED_FIELDS_MISSING.value,
-        }:
-            return FeedLockReason.REQUIRED_FIELDS_MISSING
         if user.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return FeedLockReason.AVATAR_PENDING
         if user.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
             return FeedLockReason.AVATAR_REQUIRED
         return None
-
-    async def _build_onboarding_state(self, user: User) -> OnboardingStateResponse:
-        answers = await self._get_answer_map(user.id)
-        completed_steps = [step.step_key for step in get_quiz_steps() if step.step_key in answers]
-        current_step = next((step.step_key for step in get_quiz_steps() if step.step_key not in answers), None)
-        return OnboardingStateResponse(
-            quiz_status=user.quiz_status,
-            profile_status=user.profile_status,
-            feed_unlocked=user.can_open_feed,
-            current_step_key=user.quiz_current_step_key or current_step,
-            completed_steps=completed_steps,
-            missing_required_fields=user.missing_required_fields,
-            next_action=self._build_next_action(user),
-        )
 
     async def add_audit_event(
         self,
@@ -241,9 +175,6 @@ class BaseDatingService:
 
 
 class OnboardingService(BaseDatingService):
-    async def get_state(self, user: User) -> OnboardingStateResponse:
-        return await self._build_onboarding_state(user)
-
     def get_config(self) -> OnboardingConfigResponse:
         return OnboardingConfigResponse(steps=get_quiz_steps())
 
@@ -253,62 +184,22 @@ class OnboardingService(BaseDatingService):
             raise BadRequestError("Unknown quiz step")
 
         normalized_answers = self._validate_answers(step, payload.answers)
-
-        await self.dating_repo.upsert_quiz_answer(
-            user_id=user.id,
-            step_key=payload.step_key,
-            answers=normalized_answers,
-        )
-
         self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
-
-        answered_steps = {
-            row.step_key
-            for row in await self.dating_repo.list_quiz_answers(user_id=user.id)
-        }
-        next_step = next((item.step_key for item in get_quiz_steps() if item.step_key not in answered_steps), None)
-        completed = next_step is None
-
-        user.quiz_status = QuizStatus.COMPLETED.value if completed else QuizStatus.IN_PROGRESS.value
-        user.quiz_current_step_key = next_step
         user.is_onboarded = user.can_open_feed
+        await self.dating_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
         await self.add_audit_event(
-            event_type="quiz_answers_saved",
+            event_type="onboarding_answer_saved",
             entity_type=AuditEntityType.QUIZ,
             entity_id=str(user.id),
             actor_user_id=user.id,
-            payload={"step_key": payload.step_key, "answers": normalized_answers, "completed": completed},
+            payload={"step_key": payload.step_key, "answers": normalized_answers},
         )
         await self.uow.commit()
         await self.uow.session.refresh(user)
 
         return OnboardingAnswersResponse(
-            quiz_status=user.quiz_status,
-            next_step_key=next_step,
-            completed=completed,
+            step_key=payload.step_key,
         )
-
-    async def skip(self, user: User) -> OnboardingStateResponse:
-        if user.quiz_status != QuizStatus.COMPLETED.value:
-            user.quiz_status = QuizStatus.SKIPPED.value
-            user.quiz_current_step_key = None
-            user.is_onboarded = user.can_open_feed
-            await self.uow.commit()
-            await self.uow.session.refresh(user)
-        return await self._build_onboarding_state(user)
-
-    async def resume(self, user: User) -> OnboardingStateResponse:
-        if user.quiz_status != QuizStatus.COMPLETED.value:
-            answered_steps = {
-                row.step_key
-                for row in await self.dating_repo.list_quiz_answers(user_id=user.id)
-            }
-            next_step = next((item.step_key for item in get_quiz_steps() if item.step_key not in answered_steps), None)
-            user.quiz_status = QuizStatus.IN_PROGRESS.value
-            user.quiz_current_step_key = next_step or get_quiz_steps()[0].step_key
-            await self.uow.commit()
-            await self.uow.session.refresh(user)
-        return await self._build_onboarding_state(user)
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
         normalized = list(dict.fromkeys(answer.strip() for answer in answers if answer and answer.strip()))
@@ -342,8 +233,6 @@ class OnboardingService(BaseDatingService):
     def _apply_quiz_answer_to_user(self, user: User, step_key: str, answers: list[str]) -> None:
         if step_key == "who_to_meet":
             user.looking_for_genders = list(answers)
-            if user.distance_km is None:
-                user.distance_km = 30
             return
         if step_key == "preferred_age_range":
             user.age_range_min = int(answers[0])
@@ -363,10 +252,8 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.LOCKED,
                 profile_status=user.profile_status,
-                quiz_status=user.quiz_status,
                 decision_mode=DecisionMode.FALLBACK,
                 lock_reason=self._build_lock_reason(user),
-                next_action=self._build_next_action(user),
                 cards=[],
             )
 
@@ -383,7 +270,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.DEGRADED,
                 profile_status=user.profile_status,
-                quiz_status=user.quiz_status,
                 decision_mode=DecisionMode.FALLBACK,
                 cards=[],
                 warnings=["feed_generation_failed"],
@@ -394,7 +280,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                quiz_status=user.quiz_status,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -407,7 +292,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                quiz_status=user.quiz_status,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -421,7 +305,6 @@ class FeedService(BaseDatingService):
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
                 profile_status=user.profile_status,
-                quiz_status=user.quiz_status,
                 decision_mode=DecisionMode(batch.decision_mode),
                 batch_id=batch.id,
                 generated_at=batch.created_at,
@@ -433,7 +316,6 @@ class FeedService(BaseDatingService):
         return FeedResponse(
             feed_state=FeedState.READY,
             profile_status=user.profile_status,
-            quiz_status=user.quiz_status,
             decision_mode=DecisionMode(batch.decision_mode),
             batch_id=batch.id,
             generated_at=batch.created_at,

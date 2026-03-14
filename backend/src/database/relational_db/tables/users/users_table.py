@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.config import get_settings
-from domain.dating.enums import AvatarModerationStatus, ProfileStatus, QuizStatus
+from domain.dating.enums import AvatarModerationStatus, ProfileStatus
 from ..table_base import Base
 from ..mixins import TimestampMixin
 
@@ -45,13 +45,6 @@ class User(TimestampMixin, Base):
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    quiz_status: Mapped[str] = mapped_column(
-        String(32),
-        nullable=False,
-        default=QuizStatus.NOT_STARTED.value,
-        server_default=QuizStatus.NOT_STARTED.value,
-    )
-    quiz_current_step_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
     # Service
@@ -132,20 +125,11 @@ class User(TimestampMixin, Base):
 
     @property
     def missing_required_fields(self) -> list[str]:
-        missing: list[str] = []
-        if not self.resolved_display_name:
-            missing.append("display_name")
-        if self.birth_date is None:
-            missing.append("birth_date")
-        if self.city_id is None:
-            missing.append("city")
-        if self.gender is None:
-            missing.append("gender")
-        return missing
+        return []
 
     @property
     def has_min_profile(self) -> bool:
-        return not self.missing_required_fields
+        return True
 
     @property
     def has_approved_photo(self) -> bool:
@@ -155,10 +139,6 @@ class User(TimestampMixin, Base):
     def profile_status(self) -> str:
         if self.banned:
             return ProfileStatus.BLOCKED.value
-        if len(self.missing_required_fields) == 7:
-            return ProfileStatus.DRAFT.value
-        if self.missing_required_fields:
-            return ProfileStatus.REQUIRED_FIELDS_MISSING.value
         if self.avatar_moderation_status == AvatarModerationStatus.PENDING.value:
             return ProfileStatus.AVATAR_PENDING.value
         if self.avatar_moderation_status in {
@@ -192,8 +172,6 @@ class User(TimestampMixin, Base):
     def onboarding_status(self) -> str:
         if self.banned:
             return "blocked_from_feed"
-        if self.profile_status in {ProfileStatus.DRAFT.value, ProfileStatus.REQUIRED_FIELDS_MISSING.value}:
-            return "profile_incomplete"
         if self.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return "photo_pending"
         if self.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
