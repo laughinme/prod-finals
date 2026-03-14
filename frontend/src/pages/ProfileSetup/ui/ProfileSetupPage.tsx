@@ -57,11 +57,12 @@ export default function ProfileSetupPage() {
               <div>
                 <h2 className="mb-2 text-3xl font-bold">Создание профиля</h2>
                 <p className="text-muted-foreground">
-                  Расскажите немного о себе. Фото и базовое описание обязательны.
+                  Расскажите немного о себе. Фото и базовое описание
+                  обязательны.
                 </p>
               </div>
 
-              <div className="flex flex-col items-start gap-8 md:flex-row">
+              <div className="flex flex-col items-center gap-8 md:flex-row">
                 <div className="flex flex-col items-center gap-3">
                   <input
                     ref={fileInputRef}
