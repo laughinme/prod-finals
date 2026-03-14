@@ -45,6 +45,7 @@ class User(TimestampMixin, Base):
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    quiz_started: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
     # Service
@@ -130,16 +131,6 @@ class User(TimestampMixin, Base):
     @property
     def has_min_profile(self) -> bool:
         return True
-
-    @property
-    def quiz_completed(self) -> bool:
-        return bool(
-            self.looking_for_genders
-            and self.age_range_min is not None
-            and self.age_range_max is not None
-            and self.distance_km is not None
-            and self.goal is not None
-        )
 
     @property
     def has_approved_photo(self) -> bool:

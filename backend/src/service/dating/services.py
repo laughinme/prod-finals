@@ -185,6 +185,7 @@ class OnboardingService(BaseDatingService):
 
         normalized_answers = self._validate_answers(step, payload.answers)
         self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
+        user.quiz_started = True
         user.is_onboarded = user.can_open_feed
         await self.dating_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
         await self.add_audit_event(
@@ -199,7 +200,7 @@ class OnboardingService(BaseDatingService):
 
         return OnboardingAnswersResponse(
             step_key=payload.step_key,
-            quiz_completed=user.quiz_completed,
+            quiz_started=user.quiz_started,
         )
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:

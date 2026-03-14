@@ -89,7 +89,7 @@ class OnboardingAnswersRequest(BaseModel):
 class OnboardingAnswersResponse(BaseModel):
     step_key: str
     saved: bool = True
-    quiz_completed: bool = False
+    quiz_started: bool = True
 
 
 class FeedCandidate(BaseModel):

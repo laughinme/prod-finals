@@ -185,7 +185,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
-    assert answer.json() == {"step_key": "who_to_meet", "saved": True}
+    assert answer.json() == {"step_key": "who_to_meet", "saved": True, "quiz_started": True}
 
     profile_a = await _complete_profile(
         client,
@@ -246,6 +246,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert me_b.status_code == 200
     assert me_a.json()["goal"] == "dating"
     assert me_a.json()["looking_for_genders"] == ["male"]
+    assert me_a.json()["quiz_started"] is True
     assert me_a.json()["profile_status"] == "active"
     assert me_b.json()["profile_status"] == "active"
     assert me_a.json()["is_onboarded"] is True
@@ -258,9 +259,17 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert profile_c["id"] not in candidate_ids_a
     card_a = next(card for card in feed_a.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
 
+    explanation = await client.get(
+        f"/api/v1/feed/items/{card_a['serve_item_id']}/explanation",
+        headers=auth_header(access_a),
+    )
+    assert explanation.status_code == 200
+    assert explanation.json()["privacy_level"] == "safe_aggregate"
+    assert explanation.json()["reasons"]
+
     like_a = await client.post(
         f"/api/v1/feed/items/{card_a['serve_item_id']}/reaction",
-        json={"action": "like", "dwell_time_ms": 1500},
+        json={"action": "like", "opened_explanation": True, "dwell_time_ms": 1500},
         headers=auth_header(access_a),
     )
     assert like_a.status_code == 200
@@ -301,6 +310,20 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert conversation.status_code == 200
     assert conversation.json()["status"] == "active"
 
+    icebreakers = await client.get(
+        f"/api/v1/conversations/{match['conversation_id']}/icebreakers",
+        headers=auth_header(access_a),
+    )
+    assert icebreakers.status_code == 200
+    assert icebreakers.json()["items"]
+
+    sent_icebreaker = await client.post(
+        f"/api/v1/conversations/{match['conversation_id']}/icebreakers/{icebreakers.json()['items'][0]['icebreaker_id']}/send",
+        headers=auth_header(access_a),
+    )
+    assert sent_icebreaker.status_code == 201
+    assert sent_icebreaker.json()["status"] == "sent"
+
     message = await client.post(
         f"/api/v1/conversations/{match['conversation_id']}/messages",
         json={"text": "How is your day going?"},
@@ -314,7 +337,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_b),
     )
     assert messages.status_code == 200
-    assert len(messages.json()["items"]) >= 1
+    assert len(messages.json()["items"]) >= 2
 
     close_match = await client.post(
         f"/api/v1/matches/{match['match_id']}/close",
