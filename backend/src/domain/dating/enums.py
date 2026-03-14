@@ -46,8 +46,6 @@ class DecisionMode(str, Enum):
 class NextActionType(str, Enum):
     UPLOAD_AVATAR = "upload_avatar"
     COMPLETE_REQUIRED_FIELDS = "complete_required_fields"
-    START_QUIZ = "start_quiz"
-    RESUME_QUIZ = "resume_quiz"
     OPEN_FEED = "open_feed"
     WAIT_FOR_MODERATION = "wait_for_moderation"
 
@@ -148,4 +146,3 @@ class AuditEntityType(str, Enum):
     BLOCK = "block"
     REPORT = "report"
     QUIZ = "quiz"
-
