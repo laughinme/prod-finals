@@ -1,5 +1,9 @@
 import { Link } from "react-router-dom";
-import { IconLogout, IconUserCircle } from "@tabler/icons-react";
+import {
+    IconLayoutDashboard,
+    IconLogout,
+    IconUserCircle,
+} from "@tabler/icons-react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { useProfile } from "@/features/profile/useProfile";
@@ -24,12 +28,13 @@ export function HeaderUserMenu() {
     const { data: profile, isLoading } = useProfile();
 
     if (isLoading) {
-        return <Skeleton className="h-8 w-8 rounded-full" />;
+        return <Skeleton className="h-11 w-32 rounded-full" />;
     }
 
-    if (!profile) return null;
+    const email = profile?.email ?? auth?.user?.email ?? "profile@t-match.local";
+    const name = profile?.username || email;
+    const avatarUrl = profile?.profilePicUrl ?? null;
 
-    const name = profile.username || profile.email;
     const initials = name
         .split(/[\s@]+/)
         .slice(0, 2)
@@ -40,14 +45,22 @@ export function HeaderUserMenu() {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <button
-                    className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent"
+                    className="flex items-center gap-3 rounded-full border border-border bg-background/80 py-1.5 pr-3 pl-1.5 ring-offset-background transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                    <Avatar className="h-8 w-8 grayscale transition-all hover:grayscale-0">
-                        {profile.profilePicUrl && (
-                            <AvatarImage src={profile.profilePicUrl} alt={name} />
+                    <Avatar className="h-8 w-8 border border-border">
+                        {avatarUrl && (
+                            <AvatarImage src={avatarUrl} alt={name} />
                         )}
                         <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
+                    <div className="hidden text-left sm:block">
+                        <p className="max-w-32 truncate text-sm font-semibold leading-none">
+                            {name}
+                        </p>
+                        <p className="mt-1 text-xs leading-none text-muted-foreground">
+                            Профиль
+                        </p>
+                    </div>
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
@@ -55,7 +68,7 @@ export function HeaderUserMenu() {
                     <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">{name}</p>
                         <p className="text-xs leading-none text-muted-foreground">
-                            {profile.email}
+                            {email}
                         </p>
                     </div>
                 </DropdownMenuLabel>
@@ -64,7 +77,13 @@ export function HeaderUserMenu() {
                     <DropdownMenuItem asChild>
                         <Link to="/profile" className="cursor-pointer">
                             <IconUserCircle className="mr-2 h-4 w-4" />
-                            <span>Account</span>
+                            <span>Профиль</span>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link to="/dashboard" className="cursor-pointer">
+                            <IconLayoutDashboard className="mr-2 h-4 w-4" />
+                            <span>Dashboard</span>
                         </Link>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -74,7 +93,7 @@ export function HeaderUserMenu() {
                     onClick={() => auth?.logout()}
                 >
                     <IconLogout className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>Выйти</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

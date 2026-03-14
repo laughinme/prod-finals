@@ -1,7 +1,32 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { motion } from "motion/react";
+import {
+    HeartHandshake,
+    LayoutDashboard,
+    MessageCircle,
+    Sparkles,
+} from "lucide-react";
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
+import { cn } from "@/shared/lib/utils";
+
+const navItems = [
+    {
+        label: "Знакомства",
+        to: "/discovery",
+        icon: Sparkles,
+    },
+    {
+        label: "Сообщения",
+        to: "/chat",
+        icon: MessageCircle,
+    },
+    {
+        label: "Dashboard",
+        to: "/dashboard",
+        icon: LayoutDashboard,
+    },
+];
 
 export function Header() {
     return (
@@ -9,41 +34,67 @@ export function Header() {
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60"
+            className="sticky top-0 z-50 w-full border-b border-border bg-card/90 backdrop-blur supports-backdrop-filter:bg-card/80"
         >
-            <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
-                <div className="flex items-center gap-6">
-                    <Link to="/" className="flex items-center space-x-2">
-                        <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="bg-foreground text-background font-bold px-2 py-1 rounded-md text-sm tracking-widest uppercase transition-colors"
-                        >
-                            Monolith
-                        </motion.div>
-                    </Link>
-
-                    <nav className="hidden md:flex gap-6">
-                        <motion.div whileHover={{ y: -1 }}>
-                            <Link
-                                to="/dashboard"
-                                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                                Dashboard
-                            </Link>
-                        </motion.div>
-                    </nav>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <motion.div className="md:hidden" whileHover={{ y: -1 }}>
-                        <Link
-                            to="/dashboard"
-                            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                            Dashboard
-                        </Link>
+            <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+                <NavLink to="/discovery" className="flex items-center gap-3">
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex size-10 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20"
+                    >
+                        <HeartHandshake className="size-5 text-primary-foreground" />
                     </motion.div>
+                    <div className="hidden sm:block">
+                        <div className="text-base font-bold tracking-tight">T-Match</div>
+                        <div className="text-xs text-muted-foreground">
+                            lifestyle dating preview
+                        </div>
+                    </div>
+                </NavLink>
+
+                <nav className="hidden items-center gap-1 rounded-full border border-border bg-background/80 p-1 md:flex">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                                    )
+                                }
+                            >
+                                <Icon className="size-4" />
+                                {item.label}
+                            </NavLink>
+                        );
+                    })}
+                </nav>
+
+                <div className="ml-auto flex items-center gap-2 sm:gap-3">
+                    <NavLink
+                        to="/chat"
+                        className={({ isActive }) =>
+                            cn(
+                                "flex size-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors md:hidden",
+                                isActive
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "hover:bg-secondary hover:text-foreground",
+                            )
+                        }
+                    >
+                        <MessageCircle className="size-4" />
+                    </NavLink>
+
+                    <div className="hidden rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground lg:block">
+                        mock flow
+                    </div>
 
                     <HeaderUserMenu />
                 </div>
