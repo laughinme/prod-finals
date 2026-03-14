@@ -49,10 +49,25 @@ cd /opt/chupapis
 bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv"
 ```
 
+ZIP URL is supported too:
+
+```bash
+bash deploy/manual-train-ml.sh "https://example.com/path/to/train.zip"
+```
+
 Optional second argument sets exact model key in S3:
 
 ```bash
 bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv" "ml-models/manual-v1.json"
+```
+
+Optional third argument selects CSV path inside ZIP (when archive contains multiple CSV files):
+
+```bash
+bash deploy/manual-train-ml.sh \
+  "https://example.com/path/to/train.zip" \
+  "ml-models/manual-v2.json" \
+  "datasets/train.csv"
 ```
 
 What script does:

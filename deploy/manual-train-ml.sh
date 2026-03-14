@@ -5,12 +5,14 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 if [[ $# -lt 1 ]]; then
+  echo "Usage: bash deploy/manual-train-ml.sh <dataset_url_or_zip_url> [model_s3_key] [archive_member]" >&2
   echo "Usage: bash deploy/manual-train-ml.sh <dataset_url> [model_s3_key]" >&2
   exit 1
 fi
 
 dataset_url="$1"
 model_s3_key="${2:-}"
+archive_member="${3:-}"
 
 if [[ ! -f "deploy/.env" ]]; then
   echo "deploy/.env is missing. Upload production env first." >&2
@@ -40,6 +42,10 @@ run_args=(
 
 if [[ -n "$model_s3_key" ]]; then
   run_args+=(-e "ML_MODEL_S3_KEY=${model_s3_key}")
+fi
+
+if [[ -n "$archive_member" ]]; then
+  run_args+=(-e "ML_TRAIN_ARCHIVE_MEMBER=${archive_member}")
 fi
 
 "${compose_cmd[@]}" run "${run_args[@]}" ml-service python -m ml.scripts.train_model

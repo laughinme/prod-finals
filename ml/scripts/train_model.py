@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import io
 import os
 from pathlib import Path
 import urllib.request
+import zipfile
+
+import boto3
+from botocore.config import Config
 
 import boto3
 from botocore.config import Config
@@ -17,10 +22,72 @@ def _as_bool(raw: str | None, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _download_file(url: str, destination: Path, timeout_sec: int) -> None:
+def _is_zip_payload(*, payload: bytes, url: str, content_type: str) -> bool:
+    if payload.startswith(b"PK\x03\x04") or payload.startswith(b"PK\x05\x06"):
+        return True
+    if url.lower().split("?", maxsplit=1)[0].endswith(".zip"):
+        return True
+    return "zip" in content_type.lower()
+
+
+def _extract_csv_from_zip(
+    *,
+    payload: bytes,
+    destination: Path,
+    archive_member: str,
+) -> str:
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        members = [name for name in archive.namelist() if not name.endswith("/")]
+        if not members:
+            raise RuntimeError("ZIP archive is empty.")
+
+        selected_member = ""
+        if archive_member:
+            selected_member = archive_member.lstrip("/")
+            if selected_member not in members:
+                raise RuntimeError(
+                    f"ZIP member '{archive_member}' not found. "
+                    "Set ML_TRAIN_ARCHIVE_MEMBER to a valid path inside archive."
+                )
+        else:
+            csv_members = [name for name in members if name.lower().endswith(".csv")]
+            if not csv_members:
+                raise RuntimeError("ZIP archive does not contain CSV files.")
+            if len(csv_members) > 1:
+                listed = ", ".join(csv_members[:5])
+                raise RuntimeError(
+                    "ZIP archive contains multiple CSV files. "
+                    f"Set ML_TRAIN_ARCHIVE_MEMBER. Candidates: {listed}"
+                )
+            selected_member = csv_members[0]
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with archive.open(selected_member) as source:
+            destination.write_bytes(source.read())
+        return selected_member
+
+
+def _download_training_data(
+    *,
+    url: str,
+    destination: Path,
+    timeout_sec: int,
+    archive_member: str,
+) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(url, timeout=timeout_sec) as response:  # noqa: S310
         payload = response.read()
+        content_type = response.headers.get_content_type()
+
+    if _is_zip_payload(payload=payload, url=url, content_type=content_type):
+        selected_member = _extract_csv_from_zip(
+            payload=payload,
+            destination=destination,
+            archive_member=archive_member,
+        )
+        print(f"ZIP detected, extracted member: {selected_member} -> {destination}")
+        return
+
     destination.write_bytes(payload)
 
 
@@ -129,13 +196,19 @@ def _upload_artifact(
 def main() -> int:
     data_url = os.getenv("ML_TRAIN_DATA_URL", "").strip()
     data_path = Path(os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv"))
+    archive_member = os.getenv("ML_TRAIN_ARCHIVE_MEMBER", "").strip()
     artifact_path = Path(os.getenv("ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json"))
     timeout_sec = int(os.getenv("ML_TRAIN_DOWNLOAD_TIMEOUT_SEC", "120"))
     required = _as_bool(os.getenv("ML_TRAIN_REQUIRED"), default=False)
 
     if data_url:
         print(f"Downloading training data from: {data_url}")
-        _download_file(data_url, data_path, timeout_sec=timeout_sec)
+        _download_training_data(
+            url=data_url,
+            destination=data_path,
+            timeout_sec=timeout_sec,
+            archive_member=archive_member,
+        )
         print(f"Training data saved to: {data_path}")
     elif data_path.exists():
         print(f"Using existing local training data: {data_path}")
