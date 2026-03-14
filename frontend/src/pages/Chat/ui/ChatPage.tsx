@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
-import { Header } from "@/features/navigation/ui/Header";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 
@@ -44,9 +43,7 @@ export default function ChatPage() {
   }, [activeChatProfile, closeMatch]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-      <Header />
-
+    <>
       {!activeChatProfile ? (
         <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
@@ -176,12 +173,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="z-10 flex items-center justify-center gap-2 border-b border-primary/20 bg-primary/10 p-3 text-center text-sm font-medium text-foreground">
-              <ShieldAlert className="size-4 text-primary" />
-              Мы заботимся о вашей безопасности. Никогда не переводите деньги
-              незнакомцам.
-            </div>
-
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
               {messages.map((message) => (
                 <motion.div
@@ -236,6 +227,6 @@ export default function ChatPage() {
           </div>
         </main>
       )}
-    </div>
+    </>
   );
 }

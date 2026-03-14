@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Coffee, ShieldAlert } from "lucide-react";
 
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
-import { Header } from "@/features/navigation/ui/Header";
 import { DiscoveryProfileCard } from "./DiscoveryProfileCard";
 import { Button } from "@/shared/components/ui/button";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -28,9 +27,7 @@ export default function DiscoveryPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-      <Header />
-
+    <>
       {!currentProfile ? (
         <main className="flex flex-1 flex-col items-center justify-center bg-secondary/20 p-8 text-center">
           <div className="mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-card shadow-sm">
@@ -132,6 +129,6 @@ export default function DiscoveryPage() {
           </AnimatePresence>
         </main>
       )}
-    </div>
+    </>
   );
 }

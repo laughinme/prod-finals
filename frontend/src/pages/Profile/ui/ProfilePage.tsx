@@ -2,7 +2,6 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { IconCalendar, IconMail, IconShieldCheck } from "@tabler/icons-react";
 
-import { Header } from "@/features/navigation/ui/Header";
 import { Badge } from "@/shared/components/ui/badge";
 import { Separator } from "@/shared/components/ui/separator";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -53,10 +52,8 @@ export default function ProfilePage() {
     const { data: profile, isLoading, isError } = useProfile();
 
     return (
-        <div className="min-h-screen bg-background flex flex-col font-sans relative">
-            <Header />
-
-            <div className="absolute top-16 left-0 right-0 h-48 sm:h-64 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-b border-border/40 z-0"></div>
+        <div className="relative flex-1">
+            <div className="absolute top-0 left-0 right-0 h-48 sm:h-64 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-b border-border/40 z-0"></div>
 
             <main className="flex-1 w-full max-w-5xl mx-auto px-4 lg:px-6 pt-40 sm:pt-56 pb-12 relative z-10">
                 {isLoading && <ProfileSkeleton />}
