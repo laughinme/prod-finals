@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { IconCalendar, IconMail, IconShieldCheck } from "@tabler/icons-react";
 
 import { Badge } from "@/shared/components/ui/badge";
@@ -26,15 +27,6 @@ const item = {
   },
 } as const;
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 function ProfileSkeleton() {
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-10">
@@ -45,25 +37,36 @@ function ProfileSkeleton() {
           <Skeleton className="h-4 w-56" />
         </div>
       </div>
-      <Skeleton className="h-64 w-full rounded-xl" />
-      <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
 }
 
 export default function ProfilePage() {
+  const { t, i18n } = useTranslation();
   const { data: profile, isLoading, isError } = useProfile();
+
+  function formatDate(iso: string | null | undefined): string {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString(
+      i18n.language === "ru" ? "ru-RU" : "en-US",
+      {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      },
+    );
+  }
 
   return (
     <div className="relative flex-1">
-      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-gradient-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
+      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
 
       <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-40 pb-12 lg:px-6 sm:pt-56">
         {isLoading && <ProfileSkeleton />}
 
         {isError && (
           <div className="mx-auto mt-12 max-w-2xl rounded-xl border bg-card p-8 py-20 text-center text-muted-foreground">
-            Не удалось загрузить профиль. Попробуйте обновить страницу.
+            {t("profile.load_error")}
           </div>
         )}
 
@@ -119,7 +122,11 @@ export default function ProfilePage() {
 
                 <div className="flex items-center text-muted-foreground">
                   <IconCalendar className="mr-3 size-4" />
-                  <span>В сети с {formatDate(profile.createdAt)}</span>
+                  <span>
+                    {t("profile.online_since", {
+                      date: formatDate(profile.createdAt),
+                    })}
+                  </span>
                 </div>
 
                 <div className="flex items-center text-muted-foreground">
@@ -129,14 +136,14 @@ export default function ProfilePage() {
                       variant="destructive"
                       className="h-5 rounded-sm px-1.5 text-[10px] font-semibold uppercase"
                     >
-                      Забанен
+                      {t("profile.banned")}
                     </Badge>
                   ) : (
                     <Badge
                       variant="outline"
                       className="h-5 rounded-sm border-foreground/20 px-1.5 text-[10px] font-semibold uppercase text-foreground/70"
                     >
-                      Активен
+                      {t("profile.active")}
                     </Badge>
                   )}
                 </div>

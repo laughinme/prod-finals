@@ -1,4 +1,12 @@
-import { Navigate, Outlet, useLocation, useRoutes, type Location, type RouteObject } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  useLocation,
+  useRoutes,
+  type Location,
+  type RouteObject,
+} from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import HomePage from "@/pages/Home";
 import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import AuthPage from "@/pages/auth/ui/AuthPage";
@@ -10,22 +18,31 @@ import { useProfile } from "@/features/profile/useProfile";
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
 import ProfileSetupPage from "@/pages/ProfileSetup/ui/ProfileSetupPage";
+import PhotoUploadPage from "@/pages/PhotoUpload/ui/PhotoUploadPage";
 import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
 import MatchPage from "@/pages/Match/ui/MatchPage";
 import ChatPage from "@/pages/Chat/ui/ChatPage";
+import { QuizPage } from "@/pages/Onboarding/ui/QuizPage";
 
-const MatchmakingLoadingState = () => (
-  <div className="flex min-h-screen items-center justify-center bg-secondary/20">
-    <p className="text-lg text-muted-foreground">Загрузка сценария...</p>
-  </div>
-);
+const MatchmakingLoadingState = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary/20">
+      <p className="text-lg text-muted-foreground">
+        {t("common.loading_scenario")}
+      </p>
+    </div>
+  );
+};
 
 const RequireAuth = () => {
   const auth = useAuth();
   const location = useLocation();
 
   if (!auth) {
-    throw new Error("Auth context is unavailable. Wrap routes with <AuthProvider>.");
+    throw new Error(
+      "Auth context is unavailable. Wrap routes with <AuthProvider>.",
+    );
   }
 
   if (!auth.user) {
@@ -40,7 +57,9 @@ const RedirectIfAuthenticated = () => {
   const location = useLocation();
 
   if (!auth) {
-    throw new Error("Auth context is unavailable. Wrap routes with <AuthProvider>.");
+    throw new Error(
+      "Auth context is unavailable. Wrap routes with <AuthProvider>.",
+    );
   }
 
   if (auth.user) {
@@ -67,6 +86,10 @@ const RequireMatchmakingReady = () => {
     return <Navigate to="/onboarding" replace />;
   }
 
+  if (!profile?.quizStarted) {
+    return <Navigate to="/quiz" replace />;
+  }
+
   return <Outlet />;
 };
 
@@ -77,6 +100,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: "onboarding", element: <OnboardingPage /> },
+      { path: "photo-upload", element: <PhotoUploadPage /> },
       { path: "profile-setup", element: <ProfileSetupPage /> },
       { path: "match", element: <MatchPage /> },
       {
@@ -87,22 +111,23 @@ export const routes: RouteObject[] = [
             children: [
               { path: "discovery", element: <DiscoveryPage /> },
               { path: "chat", element: <ChatPage /> },
-            ]
+            ],
           },
           { path: "profile", element: <ProfilePage /> },
           { path: "dashboard", element: <DashboardPage /> },
-        ]
+        ],
       },
-    ]
+    ],
   },
   {
     path: "/auth",
-    element: <RedirectIfAuthenticated />
+    element: <RedirectIfAuthenticated />,
   },
   {
     path: "*",
-    element: <Navigate to="/" replace />
-  }
+    element: <Navigate to="/" replace />,
+  },
+  { path: "/quiz", element: <QuizPage /> },
 ];
 
 export const AppRoutes = () => {

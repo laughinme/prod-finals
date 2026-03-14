@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { Camera, Check, UploadCloud } from "lucide-react";
 
 import { MATCHMAKING_INTERESTS } from "@/entities/match-profile/model";
@@ -7,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 
 export default function ProfileSetupPage() {
+  const { t } = useTranslation();
   const {
     profile,
     step,
@@ -55,10 +57,9 @@ export default function ProfileSetupPage() {
               className="space-y-8"
             >
               <div>
-                <h2 className="mb-2 text-3xl font-bold">Создание профиля</h2>
+                <h2 className="mb-2 text-3xl font-bold">{t("profile.setup_title")}</h2>
                 <p className="text-muted-foreground">
-                  Расскажите немного о себе. Фото и базовое описание
-                  обязательны.
+                  {t("profile.setup_description")}
                 </p>
               </div>
 
@@ -96,7 +97,7 @@ export default function ProfileSetupPage() {
                       <>
                         <UploadCloud className="mb-2 size-8 text-muted-foreground" />
                         <span className="px-4 text-center text-sm font-medium text-muted-foreground">
-                          Загрузить фото
+                          {t("profile.upload_photo")}
                         </span>
                       </>
                     )}
@@ -111,18 +112,18 @@ export default function ProfileSetupPage() {
 
                 <div className="w-full flex-1 space-y-5">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">Ваше имя</label>
+                    <label className="text-sm font-semibold">{t("profile.your_name")}</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
-                      placeholder="Например, Александр"
+                      placeholder={t("profile.name_placeholder")}
                       className="w-full rounded-xl border border-border bg-background px-4 py-3 text-base outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold">Возраст</label>
+                    <label className="text-sm font-semibold">{t("profile.age")}</label>
                     <input
                       type="number"
                       value={age}
@@ -148,7 +149,7 @@ export default function ProfileSetupPage() {
                 disabled={!isStep1Valid || isSubmittingStep1}
                 onClick={handleStep1Submit}
               >
-                {isSubmittingStep1 ? "Сохранение..." : "Продолжить"}
+                {isSubmittingStep1 ? t("common.saving") : t("common.continue")}
               </Button>
             </motion.div>
           ) : (
@@ -159,10 +160,9 @@ export default function ProfileSetupPage() {
               className="space-y-8"
             >
               <div>
-                <h2 className="mb-2 text-3xl font-bold">Ваши интересы</h2>
+                <h2 className="mb-2 text-3xl font-bold">{t("profile.interests_title")}</h2>
                 <p className="text-muted-foreground">
-                  Выберите от 3 до 5 тегов. Это поможет нам точнее находить
-                  совпадения по образу жизни.
+                  {t("profile.interests_description")}
                 </p>
               </div>
 
@@ -192,9 +192,7 @@ export default function ProfileSetupPage() {
                   <Check className="size-5 text-primary" />
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Мы также используем агрегированные данные о ваших привычках,
-                  чтобы сделать рекомендации еще точнее. Это 100% безопасно и
-                  приватно.
+                  {t("profile.privacy_note")}
                 </p>
               </div>
 
@@ -205,7 +203,7 @@ export default function ProfileSetupPage() {
                   className="h-14 flex-1 rounded-2xl"
                   onClick={() => setStep(1)}
                 >
-                  Назад
+                  {t("common.back")}
                 </Button>
                 <Button
                   size="lg"
@@ -213,7 +211,7 @@ export default function ProfileSetupPage() {
                   disabled={!isStep2Valid}
                   onClick={handleComplete}
                 >
-                  Начать знакомства
+                  {t("profile.start_discovery")}
                 </Button>
               </div>
             </motion.div>

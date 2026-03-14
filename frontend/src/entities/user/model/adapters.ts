@@ -8,6 +8,7 @@ export const toUser = (dto: UserDto): User => ({
     profilePicUrl: dto.avatar_url ?? dto.profile_pic_url ?? null,
     bio: dto.bio ?? null,
     isOnboarded: dto.is_onboarded,
+    quizStarted: dto.quiz_started,
     banned: dto.banned,
     roles: dto.role_slugs ?? dto.roles ?? [],
     createdAt: dto.created_at,

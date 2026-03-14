@@ -1,8 +1,9 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends
 
 from database.relational_db import User
-from domain.users import UserModel, UserPatch
+from domain.users.schemas.profile import UserModel, UserPatch
 from core.security import auth_user
 from service.users import UserService, get_user_service
 
@@ -15,11 +16,9 @@ router = APIRouter()
 )
 async def profile(
     user: Annotated[User, Depends(auth_user)],
-    # TODO: Add expandable fields
-    # expand: Annotated[list[ExpandUserFields], Query(default_factory=list, description="Fields to expand with in the response")],
-    # svc: Annotated[UserService, Depends(get_user_service)],
-):
-    return user
+    svc: Annotated[UserService, Depends(get_user_service)],
+) -> UserModel:
+    return await svc.serialize_user(user)
 
 
 @router.patch(
@@ -31,6 +30,6 @@ async def update_profile(
     payload: UserPatch,
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
-):
+) -> UserModel:
     await svc.patch_user(payload, user)
-    return user
+    return await svc.serialize_user(user)

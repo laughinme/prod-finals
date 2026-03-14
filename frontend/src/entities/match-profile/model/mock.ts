@@ -1,4 +1,10 @@
-import type { CurrentUserPreview, MatchChatMessage, MatchProfile, MatchmakingDraft } from "./types";
+import type {
+  CurrentUserPreview,
+  MatchChatMessage,
+  MatchProfile,
+  MatchProfileId,
+  MatchmakingDraft,
+} from "./types";
 
 export const MATCHMAKING_INTERESTS = [
   "Кофе",
@@ -28,6 +34,7 @@ export const CURRENT_USER_PREVIEW: CurrentUserPreview = {
 export const MOCK_DISCOVERY_PROFILES: MatchProfile[] = [
   {
     id: 1,
+    candidateUserId: null,
     name: "Алиса",
     age: 26,
     image:
@@ -38,9 +45,20 @@ export const MOCK_DISCOVERY_PROFILES: MatchProfile[] = [
       "Вы оба часто завтракаете в кофейнях в центре и предпочитаете активный отдых по выходным. А еще у вас совпадают вкусы на кинопремьеры.",
     location: "Москва, Центр",
     activity: "Активна сегодня",
+    reasonCodes: ["lifestyle_overlap", "behavioral_signal", "city_fit"],
+    detailsAvailable: true,
+    actions: {
+      canLike: true,
+      canPass: true,
+      canHide: true,
+      canBlock: true,
+      canReport: true,
+    },
+    source: "mock",
   },
   {
     id: 2,
+    candidateUserId: null,
     name: "Максим",
     age: 28,
     image:
@@ -51,10 +69,20 @@ export const MOCK_DISCOVERY_PROFILES: MatchProfile[] = [
       "Ваши ритмы жизни похожи: тренировки по вечерам в будни и заказы из ресторанов по пятницам.",
     location: "Москва, Юг",
     activity: "Был(а) вчера",
+    reasonCodes: ["behavioral_signal", "goal_fit", "profile_quality"],
+    detailsAvailable: true,
+    actions: {
+      canLike: true,
+      canPass: true,
+      canHide: true,
+      canBlock: true,
+      canReport: true,
+    },
+    source: "mock",
   },
 ];
 
-export const INITIAL_CHAT_MESSAGES: Record<number, MatchChatMessage[]> = {
+export const INITIAL_CHAT_MESSAGES: Partial<Record<MatchProfileId, MatchChatMessage[]>> = {
   1: [
     {
       id: 1,

@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, MessageCircle } from "lucide-react";
 
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
@@ -7,6 +8,7 @@ import { Button } from "@/shared/components/ui/button";
 
 export default function MatchPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { currentUserPreview, matchedProfile, openChat, closeMatch } =
     useMatchmakingFlow();
 
@@ -56,7 +58,7 @@ export default function MatchPage() {
           transition={{ delay: 0.2 }}
           className="mb-6 text-5xl font-bold tracking-tight md:text-7xl"
         >
-          Это мэтч!
+          {t("match.its_a_match")}
         </motion.h1>
 
         <motion.p
@@ -65,8 +67,7 @@ export default function MatchPage() {
           transition={{ delay: 0.3 }}
           className="mb-12 max-w-lg text-xl text-muted-foreground"
         >
-          Вы и {matchedProfile.name} понравились друг другу. Самое время начать
-          общение.
+          {t("match.match_description", { name: matchedProfile.name })}
         </motion.p>
 
         <motion.div
@@ -77,25 +78,25 @@ export default function MatchPage() {
         >
           <Button
             size="lg"
-            className="h-14 flex-1 gap-2 rounded-2xl text-lg font-semibold"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg font-semibold"
             onClick={() => {
               openChat(matchedProfile.id);
               navigate("/chat");
             }}
           >
             <MessageCircle className="size-5" />
-            Написать
+            {t("match.write_message")}
           </Button>
           <Button
             variant="outline"
             size="lg"
-            className="h-14 flex-1 rounded-2xl text-lg"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg"
             onClick={() => {
               closeMatch();
               navigate("/discovery");
             }}
           >
-            Продолжить
+            {t("common.continue")}
             <ArrowRight className="ml-2 size-5" />
           </Button>
         </motion.div>

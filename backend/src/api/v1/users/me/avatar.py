@@ -4,12 +4,8 @@ from fastapi import APIRouter, Depends
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.users import (
-    AvatarConfirmRequest,
-    AvatarPresignRequest,
-    AvatarPresignResponse,
-    UserModel,
-)
+from domain.users.schemas.avatar import AvatarConfirmRequest, AvatarPresignRequest, AvatarPresignResponse
+from domain.users.schemas.profile import UserModel
 from service.users import UserService, get_user_service
 
 router = APIRouter()
@@ -41,9 +37,9 @@ async def confirm_avatar_upload(
     payload: AvatarConfirmRequest,
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
-) -> User:
-    await svc.confirm_avatar_upload(user=user, object_key=payload.object_key)
-    return user
+) -> UserModel:
+    await svc.confirm_avatar_upload(user=user, file_key=payload.object_key)
+    return await svc.serialize_user(user)
 
 
 @router.delete(
@@ -54,6 +50,6 @@ async def confirm_avatar_upload(
 async def delete_avatar(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
-) -> User:
+) -> UserModel:
     await svc.remove_avatar(user=user)
-    return user
+    return await svc.serialize_user(user)

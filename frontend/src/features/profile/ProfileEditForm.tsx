@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -20,6 +21,7 @@ interface ProfileEditFormProps {
 }
 
 export function ProfileEditForm({ profile }: ProfileEditFormProps) {
+    const { t } = useTranslation();
     const [form, setForm] = useState<UserPatchPayload>({
         username: profile.username ?? "",
         bio: profile.bio ?? "",
@@ -62,19 +64,19 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
     return (
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
-                <CardTitle className="text-2xl">Личная информация</CardTitle>
+                <CardTitle className="text-2xl">{t("profile.personal_info")}</CardTitle>
                 <CardDescription className="text-base">
-                    Обновите своё имя и описание
+                    {t("profile.update_name_bio")}
                 </CardDescription>
             </CardHeader>
 
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-6 px-0 pb-6">
                     <div className="space-y-3">
-                        <Label htmlFor="profile-username" className="text-sm font-semibold text-foreground/80">Имя пользователя</Label>
+                        <Label htmlFor="profile-username" className="text-sm font-semibold text-foreground/80">{t("profile.username")}</Label>
                         <Input
                             id="profile-username"
-                            placeholder="Введите имя"
+                            placeholder={t("profile.enter_name")}
                             className="h-11 px-4 text-base bg-muted/40 border-border/50 focus-visible:bg-transparent"
                             value={form.username ?? ""}
                             onChange={(e) =>
@@ -84,10 +86,10 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                     </div>
 
                     <div className="space-y-3">
-                        <Label htmlFor="profile-bio" className="text-sm font-semibold text-foreground/80">О себе</Label>
+                        <Label htmlFor="profile-bio" className="text-sm font-semibold text-foreground/80">{t("profile.bio")}</Label>
                         <textarea
                             id="profile-bio"
-                            placeholder="Расскажите о себе..."
+                            placeholder={t("profile.tell_about_yourself")}
                             rows={4}
                             className="w-full min-w-0 rounded-md border border-border/50 bg-muted/40 px-4 py-3 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:bg-transparent focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/20 resize-none"
                             value={form.bio ?? ""}
@@ -106,7 +108,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         disabled={!hasChanges || isPending}
                         onClick={handleReset}
                     >
-                        Отмена
+                        {t("common.cancel")}
                     </Button>
 
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -116,7 +118,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                             className="font-semibold"
                             disabled={!hasChanges || isPending}
                         >
-                            {isPending ? "Сохранение..." : "Сохранить"}
+                            {isPending ? t("common.saving") : t("common.save")}
                         </Button>
                     </motion.div>
                 </CardFooter>
