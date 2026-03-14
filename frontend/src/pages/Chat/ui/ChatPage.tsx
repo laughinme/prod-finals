@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -19,6 +19,7 @@ export default function ChatPage() {
   const {
     activeChatProfile,
     chatProfiles,
+    closeMatch,
     messages,
     openChat,
     reportProfile,
@@ -35,6 +36,12 @@ export default function ChatPage() {
     sendMessage(activeChatProfile.id, input);
     setInput("");
   };
+
+  useEffect(() => {
+    if (activeChatProfile) {
+      closeMatch();
+    }
+  }, [activeChatProfile, closeMatch]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
