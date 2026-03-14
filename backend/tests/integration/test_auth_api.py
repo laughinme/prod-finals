@@ -48,6 +48,7 @@ async def test_register_login_refresh_logout_flow(
     assert profile.json()["username"] == payload["username"]
     assert profile.json()["display_name"] is None
     assert profile.json()["avatar_status"] is None
+    assert profile.json()["quiz_started"] is False
 
     login = await client.post(
         "/api/v1/auth/login",
@@ -125,3 +126,4 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     assert body["display_name"] == "Profile User"
     assert body["city"]["id"] == "msk"
     assert body["goal"] == "dating"
+    assert body["quiz_started"] is False

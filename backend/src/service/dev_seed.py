@@ -188,6 +188,7 @@ async def ensure_dev_seed(
         user.age_range_max = payload["age_range_max"]
         user.distance_km = 30
         user.goal = payload["goal"]
+        user.quiz_started = True
         user.demo_user_key = payload["demo_user_key"]
         user.is_onboarded = True
         user.avatar_status = "approved"

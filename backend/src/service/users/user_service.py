@@ -83,6 +83,7 @@ class UserService:
             age_range=AgeRange(**user.age_range) if user.age_range else None,
             distance_km=user.distance_km,
             goal=self._build_legacy_goal(user.goal),
+            quiz_started=user.quiz_started,
             is_onboarded=user.can_open_feed,
             onboarding_status=user.onboarding_status,
             has_min_profile=user.has_min_profile,
