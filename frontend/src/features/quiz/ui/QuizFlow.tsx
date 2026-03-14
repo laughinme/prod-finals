@@ -85,13 +85,20 @@ export function QuizFlow() {
 
     let finalAnswers = currentAnswer;
 
-    if (question.stepType === "range" && finalAnswers.length < 2) {
-      if (question.optional && finalAnswers.length === 0) {
-        // Handled below by skipMutation
-      } else {
-        const min = question.rangeMin ?? 18;
-        const max = question.rangeMax ?? 99;
-        finalAnswers = [String(min), String(max)];
+    if (question.stepType === "range") {
+      if (finalAnswers.length < 2) {
+        if (question.optional && finalAnswers.length === 0) {
+          // Handled below
+        } else {
+          const min = question.rangeMin ?? 18;
+          const max = question.rangeMax ?? 99;
+          finalAnswers = [String(min), String(max)];
+        }
+      }
+
+      // Bypass backend set[str] deduplication if values are identical
+      if (finalAnswers.length >= 2 && finalAnswers[0] === finalAnswers[1]) {
+        finalAnswers = [finalAnswers[0], finalAnswers[1] + " "];
       }
     }
 
