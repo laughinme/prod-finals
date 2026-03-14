@@ -26,18 +26,31 @@ def run_ingestion():
     df['real_transaction_dttm'] = pd.to_datetime(df['real_transaction_dttm'])
     df['hour'] = df['real_transaction_dttm'].dt.hour
     df['day_of_week'] = df['real_transaction_dttm'].dt.dayofweek
-    df['merchant_type_code'] = df['merchant_type_code'].astype(str)
+    df['merchant_type_code'] = df['merchant_type_code'].fillna('unknown').astype(str)
+    df['merchant_nm'] = df['merchant_nm'].fillna('unknown').astype(str)
 
     # 2. CatBoost Enrichment
-    '''
+
     train_df = df[df['category_nm'].notna()]
     predict_df = df[df['category_nm'].isna()]
     if len(predict_df) > 0:
-        print("2. Обучение CatBoost для восстановления категорий...")
-        model = CatBoostClassifier(iterations=150, verbose=0, text_features=['merchant_nm'], cat_features=['merchant_type_code'])
-        model.fit(train_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']], train_df['category_nm'])
-        df.loc[df['category_nm'].isna(), 'category_nm'] = model.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']]).flatten()
-'''
+        # ДОБАВЬ ЭТОТ ПРИНТ, чтобы понимать масштаб беды :)
+        print(f"2. Обучение CatBoost... Размер train: {len(train_df)} строк, predict: {len(predict_df)} строк")
+        
+        model = CatBoostClassifier(
+            iterations=105,        # <-- УМЕНЬШИЛИ с 150 до 30 (для быстрого теста этого хватит) груповое мочилово
+            verbose=5,            # <-- ВАЖНО: теперь каждые 5 итераций он будет писать прогресс в консоль
+            text_features=['merchant_nm'],
+            cat_features=['merchant_type_code'],
+            thread_count=4        # <-- ОГРАНИЧИМ ПОТОКИ (чтобы Docker не задохнулся от нехватки CPU)
+        )
+        model.fit(
+            train_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']],
+            train_df['category_nm']
+        )
+        preds = model.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
+        df.loc[df['category_nm'].isna(), 'category_nm'] = preds.flatten()
+        print("✅ Категории успешно восстановлены.")
     # 3. Векторизация
     print("3. Создание профилей...")
     cat_dist = df.groupby(['party_rk', 'category_nm']).size().unstack(fill_value=0).astype(float)

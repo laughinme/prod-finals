@@ -241,3 +241,13 @@ class ErrorResponse(StrictModel):
     message: str
     details: dict[str, Any] | None = None
     trace_id: UUID
+
+
+class UserProfileUpdateRequest(StrictModel):
+    trace_id: UUID
+    user_id: int
+    # Список любимых категорий, которые выбрал юзер (например: ["Фастфуд", "Кино", "Супермаркеты"])
+    favorite_categories: list[str] = Field(min_length=1, max_length=15)
+    
+    # Опционально: можно передавать дефолтный часовой пояс или время активности
+    preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
