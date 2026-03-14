@@ -1,5 +1,8 @@
+from datetime import datetime
+
 import pytest
 from httpx import AsyncClient
+
 
 pytestmark = [
     pytest.mark.integration,
@@ -11,11 +14,13 @@ pytestmark = [
 async def test_health_endpoints_available(client: AsyncClient):
     health = await client.get("/api/health")
     assert health.status_code == 200
-    assert health.json()["status"] == "operating"
+    assert health.json()["status"] in {"ok", "degraded"}
+    assert "dependencies" in health.json()
+    datetime.fromisoformat(health.json()["timestamp"].replace("Z", "+00:00"))
 
     ping = await client.get("/api/ping")
     assert ping.status_code == 200
-    assert ping.json()["status"] == "operating"
+    assert ping.json()["status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -26,4 +31,3 @@ async def test_readiness_endpoint_available(client: AsyncClient):
     assert ready.json()["checks"]["database"] == "ok"
     assert ready.json()["checks"]["redis"] == "ok"
     assert ready.json()["checks"]["storage"] == "ok"
-

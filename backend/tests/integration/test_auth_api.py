@@ -6,6 +6,7 @@ from httpx import AsyncClient
 
 from tests.helpers import auth_header
 
+
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.usefixtures("_integration_state"),
@@ -25,7 +26,7 @@ async def test_register_login_refresh_logout_flow(
     payload = {
         "email": f"user_{suffix}@example.com",
         "password": faker.password(length=12),
-        "username": f"user_{suffix}",
+        "display_name": f"user_{suffix}",
     }
 
     register = await client.post(
@@ -37,6 +38,9 @@ async def test_register_login_refresh_logout_flow(
     register_data = register.json()
     assert register_data["access_token"]
     assert register_data["refresh_token"]
+    assert register_data["user"]["email"] == payload["email"]
+    assert register_data["user"]["display_name"] == payload["display_name"]
+    assert register_data["user"]["avatar"]["status"] == "missing"
 
     profile = await client.get(
         "/api/v1/users/me",
@@ -54,6 +58,7 @@ async def test_register_login_refresh_logout_flow(
     login_data = login.json()
     assert login_data["access_token"]
     assert login_data["refresh_token"]
+    assert login_data["user"]["display_name"] == payload["display_name"]
 
     refresh = await client.post(
         "/api/v1/auth/refresh",
@@ -68,7 +73,7 @@ async def test_register_login_refresh_logout_flow(
         "/api/v1/auth/logout",
         headers=auth_header(refresh_data["refresh_token"]),
     )
-    assert logout.status_code == 200
+    assert logout.status_code == 204
 
     refresh_after_logout = await client.post(
         "/api/v1/auth/refresh",

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -9,11 +10,11 @@ class AvatarPresignRequest(BaseModel):
 
 
 class AvatarPresignResponse(BaseModel):
-    object_key: str = Field(..., min_length=1)
+    file_key: str = Field(..., min_length=1)
     upload_url: str = Field(..., min_length=1)
-    public_url: str = Field(..., min_length=1)
-    expires_in: int = Field(..., gt=0)
+    expires_at: datetime
+    max_size_mb: int = Field(..., gt=0)
 
 
 class AvatarConfirmRequest(BaseModel):
-    object_key: str = Field(..., min_length=1, max_length=1024)
+    file_key: str = Field(..., min_length=1, max_length=1024)

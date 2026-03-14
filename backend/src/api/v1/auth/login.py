@@ -1,11 +1,12 @@
 from typing import Annotated, Literal
-from fastapi import APIRouter, Depends, Response, Request, Header
+from fastapi import APIRouter, Depends, Header, Request, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from core.errors import UnauthorizedError
 from core.http.cookies import clear_auth_cookies, set_auth_cookies
 from service.auth import CredentialsService, get_credentials_service
-from domain.auth import UserLogin, TokenPair
+from domain.auth import DemoLoginRequest, TokenPairWithUser, UserLogin
+from service.users import UserService, get_user_service
 
 router = APIRouter()
 security = HTTPBearer(
@@ -16,36 +17,56 @@ security = HTTPBearer(
 
 @router.post(
     path="/login",
-    response_model=TokenPair,
+    response_model=TokenPairWithUser,
     summary="Authenticate user and issue tokens",
-    responses={        
-        200: {
-            'description': 'refresh_token field varies depending on the source of request. ' \
-            'For web it is always null and being set as httponly cookie, ' \
-            'however any other platform gets access and refresh tokens in response body. ' \
-            'It is made to protect web from xss and csrf attacks'
-        },
-        401: {"description": "Wrong credentials"}
-    }
+    responses={401: {"description": "Wrong credentials"}},
 )
 async def login_user(
     response: Response,
     payload: UserLogin,
     svc: Annotated[CredentialsService, Depends(get_credentials_service)],
+    user_svc: Annotated[UserService, Depends(get_user_service)],
     client: Literal['web', 'mobile'] = Header('web', alias='X-Client'),
-) -> TokenPair:
-    access, refresh, csrf = await svc.login(payload, client)
+) -> TokenPairWithUser:
+    user, access, refresh, csrf = await svc.login(payload, client)
     
     if client == 'web':
         set_auth_cookies(response, refresh, csrf)
     
-        return TokenPair(access_token=access, refresh_token=None)
-    
-    return TokenPair(access_token=access, refresh_token=refresh)
+    return TokenPairWithUser(
+        access_token=access,
+        refresh_token=refresh,
+        user=await user_svc.serialize_user(user),
+    )
+
+
+@router.post(
+    path="/demo-login",
+    response_model=TokenPairWithUser,
+    summary="Demo-only login using seeded user aliases",
+)
+async def demo_login(
+    response: Response,
+    payload: DemoLoginRequest,
+    svc: Annotated[CredentialsService, Depends(get_credentials_service)],
+    user_svc: Annotated[UserService, Depends(get_user_service)],
+    client: Literal["web", "mobile"] = Header("web", alias="X-Client"),
+) -> TokenPairWithUser:
+    user, access, refresh, csrf = await svc.demo_login(payload, client)
+
+    if client == "web":
+        set_auth_cookies(response, refresh, csrf)
+
+    return TokenPairWithUser(
+        access_token=access,
+        refresh_token=refresh,
+        user=await user_svc.serialize_user(user),
+    )
 
 
 @router.post(
     path="/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
     responses={401: {"description": "Not authorized"}}
 )
 async def logout(
@@ -53,7 +74,7 @@ async def logout(
     response: Response,
     svc: Annotated[CredentialsService, Depends(get_credentials_service)],
     creds: Annotated[HTTPAuthorizationCredentials, Depends(security)]
-) -> dict:
+) -> Response:
     refresh_cookie = request.cookies.get("refresh_token")
     
     refresh_header = (
@@ -68,5 +89,6 @@ async def logout(
     
     if refresh_cookie:
         clear_auth_cookies(response)
-        
-    return {'message': 'Logged out successfully'}
+
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response

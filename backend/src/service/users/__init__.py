@@ -2,6 +2,8 @@ from fastapi import Depends
 
 from database.redis import CacheRepo, get_redis
 from database.relational_db import (
+    CitiesInterface,
+    DatingInterface,
     LanguagesInterface,
     RolesInterface,
     UserInterface,
@@ -18,12 +20,15 @@ async def get_user_service(
     media_storage: MediaStorageService = Depends(get_media_storage_service),
 ) -> UserService:
     user_repo = UserInterface(uow.session)
+    city_repo = CitiesInterface(uow.session)
     lang_repo = LanguagesInterface(uow.session)
     role_repo = RolesInterface(uow.session)
     cache_repo = CacheRepo(redis) if redis else None
     return UserService(
         uow=uow,
         user_repo=user_repo,
+        city_repo=city_repo,
+        dating_repo=DatingInterface(uow.session),
         lang_repo=lang_repo,
         role_repo=role_repo,
         media_storage=media_storage,
