@@ -12,12 +12,14 @@ import {
   EMPTY_MATCHMAKING_DRAFT,
   INITIAL_CHAT_MESSAGES,
   type CurrentUserPreview,
+  type MatchProfileExplanationReason,
   type MatchChatMessage,
   type MatchProfile,
   type MatchProfileId,
   type MatchmakingDraft,
 } from "@/entities/match-profile/model";
 import { useFeed } from "./useFeed";
+import { useFeedExplanation } from "./useFeedExplanation";
 
 type MatchmakingFlowContextValue = {
   currentProfile: MatchProfile | null;
@@ -122,6 +124,31 @@ function getTimeLabel(): string {
   }).format(new Date());
 }
 
+function getExplanationTags(
+  reasons: MatchProfileExplanationReason[],
+  fallbackTags: string[],
+): string[] {
+  const nextTags = reasons
+    .map((reason) => reason.tag)
+    .filter((tag): tag is string => Boolean(tag))
+    .slice(0, 3);
+
+  return nextTags.length > 0 ? nextTags : fallbackTags;
+}
+
+function getExplanationText(
+  reasons: MatchProfileExplanationReason[],
+  fallbackText: string,
+): string {
+  const nextText = reasons
+    .map((reason) => reason.text.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" ");
+
+  return nextText || fallbackText;
+}
+
 export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const storageKey = getStorageKey(auth?.user?.email as string | null | undefined);
@@ -159,7 +186,31 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
   const visibleProfiles = profiles.filter(
     (profile) => !dismissedProfileIds.includes(profile.id),
   );
-  const currentProfile = visibleProfiles[0] ?? null;
+  const baseCurrentProfile = visibleProfiles[0] ?? null;
+  const currentProfileServeItemId =
+    baseCurrentProfile?.source === "feed" && typeof baseCurrentProfile.id === "string"
+      ? baseCurrentProfile.id
+      : null;
+  const { data: currentProfileExplanation } = useFeedExplanation(
+    baseCurrentProfile?.detailsAvailable ? currentProfileServeItemId : null,
+  );
+  const currentProfile = baseCurrentProfile
+    ? {
+        ...baseCurrentProfile,
+        explanation: currentProfileExplanation
+          ? getExplanationText(
+              currentProfileExplanation.reasons,
+              baseCurrentProfile.explanation,
+            )
+          : baseCurrentProfile.explanation,
+        tags: currentProfileExplanation
+          ? getExplanationTags(
+              currentProfileExplanation.reasons,
+              baseCurrentProfile.tags,
+            )
+          : baseCurrentProfile.tags,
+      }
+    : null;
   const matchedProfile = getProfileById(profiles, matchedProfileId);
   const activeChatProfile =
     getProfileById(profiles, activeChatProfileId) ??
