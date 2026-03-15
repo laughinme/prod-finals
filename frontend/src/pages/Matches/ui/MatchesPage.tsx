@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 
 import { useMatches } from "@/features/match/model/useMatches";
+import { useMatchNotifications } from "@/app/providers/realtime";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
@@ -13,6 +14,7 @@ export default function MatchesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data, isLoading } = useMatches();
+  const matchNotifications = useMatchNotifications();
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 space-y-6">
@@ -53,7 +55,10 @@ export default function MatchesPage() {
             <Card 
               key={match.matchId} 
               className="group cursor-pointer overflow-hidden border-border bg-card transition-colors hover:border-primary/50"
-              onClick={() => navigate(`/chat?match=${match.matchId}`)}
+              onClick={() => {
+                void matchNotifications?.markMatchAsSeen(match.matchId);
+                navigate(`/chat?match=${match.matchId}`);
+              }}
             >
               <CardContent className="p-0 relative">
                 <div className="aspect-square w-full bg-secondary">
@@ -71,6 +76,14 @@ export default function MatchesPage() {
                     {match.unreadCount} new
                   </Badge>
                 )}
+                {matchNotifications?.unseenMatchIds.includes(match.matchId) ? (
+                  <Badge
+                    className="absolute top-3 left-3 rounded-full px-2"
+                    variant="secondary"
+                  >
+                    {t("match.new_match_badge")}
+                  </Badge>
+                ) : null}
                 <div className="p-4 bg-card/95 backdrop-blur-sm">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="font-semibold text-lg line-clamp-1">{match.displayName}</h3>

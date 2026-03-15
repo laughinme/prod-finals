@@ -94,7 +94,10 @@
   "match": {
     "its_a_match": "Это мэтч!",
     "match_description": "Вы и {{name}} понравились друг другу. Самое время начать общение.",
-    "write_message": "Написать"
+    "write_message": "Написать",
+    "maybe_later": "Позже",
+    "realtime_match_hint": "У вас новый мэтч. Можно сразу открыть чат и написать первым.",
+    "new_match_badge": "Новый мэтч"
   },
   "chat": {
     "match_score_short": "Совпадение {{score}}%",

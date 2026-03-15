@@ -94,7 +94,10 @@
   "match": {
     "its_a_match": "It's a match!",
     "match_description": "You and {{name}} liked each other. It's time to start chatting.",
-    "write_message": "Write a message"
+    "write_message": "Write a message",
+    "maybe_later": "Maybe later",
+    "realtime_match_hint": "You have a fresh match and can start the conversation right away.",
+    "new_match_badge": "New match"
   },
   "chat": {
     "match_score_short": "Match {{score}}%",

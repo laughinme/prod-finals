@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
+import { useMatchNotifications } from "@/app/providers/realtime";
 import { cn } from "@/shared/lib/utils";
 
 export function Header() {
   const { t } = useTranslation();
+  const matchNotifications = useMatchNotifications();
 
   const navItems = [
     {
@@ -72,12 +74,17 @@ export function Header() {
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )
                 }
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </NavLink>
-            );
-          })}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                  {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
+                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
+                      {matchNotifications?.unseenMatchCount}
+                    </span>
+                  ) : null}
+                </NavLink>
+              );
+            })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
