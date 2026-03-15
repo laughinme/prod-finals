@@ -20,6 +20,7 @@ class User(TimestampMixin, Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
+    service_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     
     # Credentials
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
@@ -45,6 +46,7 @@ class User(TimestampMixin, Base):
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    interests: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     quiz_started: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
