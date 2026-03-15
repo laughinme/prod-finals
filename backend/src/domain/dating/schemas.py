@@ -351,7 +351,9 @@ class RankedCandidate(BaseModel):
     candidate_user_id: UUID
     score: float = Field(..., ge=0, le=1)
     reason_codes: list[CompatibilityReasonCode] = Field(default_factory=list)
+    reason_signals: list[CompatibilityReasonSignal] = Field(default_factory=list)
     category_keys: list[str] = Field(default_factory=list)
+    category_scores: list[CompatibilityCategoryScore] = Field(default_factory=list)
 
 
 class RankedCandidates(BaseModel):

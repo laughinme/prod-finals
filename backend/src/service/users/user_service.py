@@ -24,6 +24,7 @@ from domain.users.schemas.avatar import AvatarPresignResponse
 from domain.users.schemas.profile import UserPatch
 from domain.users.schemas.profile import UserModel
 from service.media import ALLOWED_AVATAR_CONTENT_TYPES, MediaStorageService
+from service.matchmaking.ml_facade import MlFacade
 from .exceptions import (
     AvatarObjectNotFoundError,
     AvatarTooLargeError,
@@ -46,6 +47,7 @@ class UserService:
         media_storage: MediaStorageService,
         city_repo: CitiesInterface | None = None,
         matchmaking_repo: MatchmakingInterface | None = None,
+        ml_facade: MlFacade | None = None,
         cache_repo: CacheRepo | None = None,
     ):
         self.uow = uow
@@ -55,6 +57,7 @@ class UserService:
         self.lang_repo = lang_repo
         self.role_repo = role_repo
         self.media_storage = media_storage
+        self.ml_facade = ml_facade
         self.cache_repo = cache_repo
         self.settings = get_settings()
         
@@ -65,6 +68,7 @@ class UserService:
         return await self.user_repo.get_by_demo_user_key(demo_user_key)
 
     async def serialize_user(self, user: User) -> UserModel:
+        import_transactions = await self._get_import_transactions_value(user.id)
         return UserModel(
             id=user.id,
             email=user.email,
@@ -75,7 +79,6 @@ class UserService:
             avatar_status=self._build_legacy_avatar_status(user),
             avatar_rejection_reason=user.avatar_rejection_reason,
             birth_date=user.birth_date,
-            age=user.age,
             city={"id": user.city.id, "name": user.city.name} if user.city else None,
             gender=user.gender,
             bio=user.bio,
@@ -83,6 +86,8 @@ class UserService:
             age_range=AgeRange(**user.age_range) if user.age_range else None,
             distance_km=user.distance_km,
             goal=self._build_legacy_goal(user.goal),
+            interests=list(user.interests or []),
+            import_transactions=import_transactions,
             quiz_started=user.quiz_started,
             is_onboarded=user.can_open_feed,
             onboarding_status=user.onboarding_status,
@@ -97,6 +102,9 @@ class UserService:
 
     async def patch_user(self, payload: UserPatch, user: User):
         data = payload.model_dump(exclude_none=True)
+        should_reset_feed_batch = False
+        should_sync_ml_preferences = False
+        import_transactions = data.pop("import_transactions", None)
 
         if "city_id" in data:
             if self.city_repo is None:
@@ -124,13 +132,17 @@ class UserService:
                     value.value if hasattr(value, "value") else value
                     for value in prefs["looking_for_genders"]
                 ]
+                should_reset_feed_batch = True
             if prefs.get("age_range") is not None:
                 user.age_range_min = prefs["age_range"]["min"]
                 user.age_range_max = prefs["age_range"]["max"]
+                should_reset_feed_batch = True
             if prefs.get("distance_km") is not None:
                 user.distance_km = prefs["distance_km"]
+                should_reset_feed_batch = True
             if prefs.get("goal") is not None:
                 user.goal = self._normalize_goal(prefs["goal"])
+                should_reset_feed_batch = True
 
         if "first_name" in data:
             value = data.pop("first_name")
@@ -149,26 +161,61 @@ class UserService:
                 value.value if hasattr(value, "value") else value
                 for value in data.pop("looking_for_genders")
             ]
+            should_reset_feed_batch = True
 
         if "age_range" in data:
             age_range = data.pop("age_range")
             user.age_range_min = age_range["min"]
             user.age_range_max = age_range["max"]
+            should_reset_feed_batch = True
 
         if "distance_km" in data:
             user.distance_km = data.pop("distance_km")
+            should_reset_feed_batch = True
 
         if "goal" in data:
             user.goal = self._normalize_goal(data.pop("goal"))
+            should_reset_feed_batch = True
+
+        if "interests" in data:
+            user.interests = list(data.pop("interests") or [])
+            should_reset_feed_batch = True
+            should_sync_ml_preferences = True
+
+        if import_transactions is not None:
+            should_sync_ml_preferences = True
+            if self.matchmaking_repo is not None:
+                await self.matchmaking_repo.upsert_quiz_answer(
+                    user_id=user.id,
+                    step_key="import_transactions",
+                    answers=[str(bool(import_transactions)).lower()],
+                )
 
         for field, value in data.items():
             setattr(user, field, value)
 
         user.is_onboarded = user.can_open_feed
+        if should_reset_feed_batch and self.matchmaking_repo is not None:
+            await self.matchmaking_repo.reset_batch_for_date(
+                user_id=user.id,
+                batch_date=datetime.now().date(),
+            )
             
         await self.uow.commit()
             
         await self.uow.session.refresh(user)
+
+        if should_sync_ml_preferences and self.ml_facade is not None:
+            await self.ml_facade.sync_profile_preferences(
+                user_id=user.id,
+                ml_user_id=user.service_user_id,
+                favorite_categories=list(user.interests or []),
+                import_transactions=(
+                    bool(import_transactions)
+                    if import_transactions is not None
+                    else await self._get_import_transactions_value(user.id)
+                ),
+            )
 
     async def create_avatar_presign(
         self,
@@ -343,6 +390,17 @@ class UserService:
             distance_km=user.distance_km,
             goal=user.goal,
         )
+
+    async def _get_import_transactions_value(self, user_id: UUID | str) -> bool:
+        if self.matchmaking_repo is None:
+            return True
+        saved_answer = await self.matchmaking_repo.get_quiz_answer(
+            user_id=user_id,
+            step_key="import_transactions",
+        )
+        if saved_answer is None or not saved_answer.answers:
+            return True
+        return saved_answer.answers[0].strip().lower() != "false"
 
     def _build_legacy_avatar_status(self, user: User) -> str | None:
         status = getattr(

@@ -274,6 +274,12 @@ async def _direct_upsert_profiles(
                     "vector": _fallback_vector(profile, size=vector_size),
                     "payload": {
                         "party_rk": profile.ml_user_id,
+                        "favorite_categories": _build_favorite_categories(
+                            profile=profile,
+                            bootstrap_categories=list(DEFAULT_FAVORITE_CATEGORIES),
+                        ),
+                        "preferred_activity_hour": _preferred_hour(profile.ml_user_id),
+                        "import_transactions_enabled": False,
                         "top_cat": profile.interests[0] if profile.interests else "unknown",
                         "is_fallback_synced": True,
                     },
@@ -301,7 +307,7 @@ async def _upsert_profiles_via_ml(
     synced_failed = 0
 
     headers = {"X-Service-Token": ml_service_token}
-    endpoint = f"{ml_service_url.rstrip('/')}/v1/profiles/favorites"
+    endpoint = f"{ml_service_url.rstrip('/')}/v1/profile/preferences"
 
     for profile in users_to_sync:
         categories = _build_favorite_categories(
@@ -312,6 +318,7 @@ async def _upsert_profiles_via_ml(
             "trace_id": str(uuid4()),
             "user_id": profile.ml_user_id,
             "favorite_categories": categories,
+            "import_transactions": False,
             "preferred_activity_hour": _preferred_hour(profile.ml_user_id),
         }
         response = await client.post(endpoint, headers=headers, json=payload)

@@ -11,6 +11,7 @@ from database.relational_db import (
     get_uow,
 )
 from service.media import MediaStorageService, get_media_storage_service
+from service.matchmaking import MlFacade, get_ml_facade
 from .user_service import UserService
 
 
@@ -18,6 +19,7 @@ async def get_user_service(
     uow: UoW = Depends(get_uow),
     redis = Depends(get_redis),
     media_storage: MediaStorageService = Depends(get_media_storage_service),
+    ml_facade: MlFacade = Depends(get_ml_facade),
 ) -> UserService:
     user_repo = UserInterface(uow.session)
     city_repo = CitiesInterface(uow.session)
@@ -32,5 +34,6 @@ async def get_user_service(
         lang_repo=lang_repo,
         role_repo=role_repo,
         media_storage=media_storage,
+        ml_facade=ml_facade,
         cache_repo=cache_repo,
     )

@@ -152,9 +152,14 @@ class FeedService(BaseDatingService):
                     target_user_id=candidate_score.candidate_user_id,
                     rank=index,
                     score=candidate_score.score,
-                    compatibility_mode="basic_fallback",
+                    compatibility_mode=(
+                        "ml_model"
+                        if ranked.decision_mode == DecisionMode.MODEL
+                        else "basic_fallback"
+                    ),
                     preview=preview.preview,
                     reason_codes=preview.reason_codes,
+                    reason_signals=[entry.model_dump() for entry in preview.reason_signals],
                     category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
                 )
             )
@@ -229,7 +234,8 @@ class FeedService(BaseDatingService):
                         score_percent=int(round(item.score * 100)),
                         preview=item.preview,
                         reason_codes=item.reason_codes,
-                        reason_signals=build_preview_reason_signals(
+                        reason_signals=item.reason_signals
+                        or build_preview_reason_signals(
                             reason_codes=item.reason_codes,
                             score=item.score,
                         ),

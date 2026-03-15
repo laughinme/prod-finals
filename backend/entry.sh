@@ -10,6 +10,11 @@ if [ "${MOCK_USER_SEED_ENABLED:-false}" = "true" ]; then
   python -m scripts.seed_mock_users
 fi
 
+if [ -n "${ML_SERVICE_URL:-}" ]; then
+  echo "Synchronizing backend users with ML profiles..."
+  python -m scripts.sync_ml_profiles --upsert-existing || echo "ML profile sync failed; continuing startup"
+fi
+
 echo "Starting the application..."
 exec uvicorn main:app \
   --host "${API_HOST:-0.0.0.0}" \

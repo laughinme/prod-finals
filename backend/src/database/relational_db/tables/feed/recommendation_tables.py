@@ -39,6 +39,7 @@ class RecommendationItem(CreatedAtMixin, Base):
     compatibility_mode: Mapped[str] = mapped_column(String(32), nullable=False)
     preview: Mapped[str] = mapped_column(String(160), nullable=False)
     reason_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    reason_signals: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
     category_breakdown: Mapped[list[dict[str, object]]] = mapped_column(JSON, nullable=False, default=list)
     details_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -11,6 +11,7 @@ from domain.dating import (
     CompatibilityPreview,
     CompatibilityReason,
     CompatibilityReasonCode,
+    CompatibilityReasonSignal,
     DecisionMode,
     ExplanationRequest,
     FeedCandidateContext,
@@ -77,6 +78,16 @@ class MlFacade:
     ) -> None:
         raise NotImplementedError
 
+    async def sync_profile_preferences(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        raise NotImplementedError
+
 
 class MockMlFacade(MlFacade):
     async def rank(
@@ -119,12 +130,27 @@ class MockMlFacade(MlFacade):
                 score += completion_bonus
                 reason_codes.append(CompatibilityReasonCode.PROFILE_QUALITY)
 
+            score = round(min(score, 0.99), 2)
+            category_keys = self._resolve_category_keys(requester, candidate)
+            normalized_reason_codes = reason_codes[:4] or [CompatibilityReasonCode.PROFILE_QUALITY]
+            reason_signal_payloads = build_preview_reason_signals(
+                reason_codes=[code.value for code in normalized_reason_codes],
+                score=score,
+            )
+            category_scores = self._build_category_breakdown(
+                category_keys=category_keys,
+                candidate_seed=candidate.ml_user_id or str(candidate.user_id),
+                score_percent=int(round(score * 100)),
+            )
+
             scored.append(
                 RankedCandidate(
                     candidate_user_id=candidate.user_id,
-                    score=round(min(score, 0.99), 2),
-                    reason_codes=reason_codes[:4] or [CompatibilityReasonCode.PROFILE_QUALITY],
-                    category_keys=self._resolve_category_keys(requester, candidate),
+                    score=score,
+                    reason_codes=normalized_reason_codes,
+                    reason_signals=reason_signal_payloads,
+                    category_keys=category_keys,
+                    category_scores=category_scores,
                 )
             )
 
@@ -168,11 +194,17 @@ class MockMlFacade(MlFacade):
             score_percent=score_percent,
             preview=preview_map[primary],
             reason_codes=[code.value for code in reason_codes],
-            reason_signals=build_preview_reason_signals(
+            reason_signals=scored.reason_signals
+            or build_preview_reason_signals(
                 reason_codes=[code.value for code in reason_codes],
                 score=scored.score,
             ),
-            category_breakdown=self._build_category_breakdown(scored, score_percent),
+            category_breakdown=scored.category_scores
+            or self._build_category_breakdown(
+                category_keys=scored.category_keys,
+                candidate_seed=str(scored.candidate_user_id),
+                score_percent=score_percent,
+            ),
         )
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
@@ -223,6 +255,16 @@ class MockMlFacade(MlFacade):
         )
 
     async def sync_onboarding_profile(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        return None
+
+    async def sync_profile_preferences(
         self,
         *,
         user_id: UUID,
@@ -326,17 +368,19 @@ class MockMlFacade(MlFacade):
 
     def _build_category_breakdown(
         self,
-        scored: RankedCandidate,
+        *,
+        category_keys: list[str],
+        candidate_seed: str,
         score_percent: int,
     ) -> list[CompatibilityCategoryScore]:
         labels = category_label_map()
-        category_keys = list(dict.fromkeys(scored.category_keys or []))
+        category_keys = list(dict.fromkeys(category_keys or []))
         if not category_keys:
-            category_keys = pick_category_keys(f"compatibility:{scored.candidate_user_id}")
+            category_keys = pick_category_keys(f"compatibility:{candidate_seed}")
 
         items: list[CompatibilityCategoryScore] = []
         for key in category_keys[:5]:
-            digest = sha256(f"{scored.candidate_user_id}:{key}".encode("utf-8")).digest()
+            digest = sha256(f"{candidate_seed}:{key}".encode("utf-8")).digest()
             item_score = max(35, min(99, score_percent - 12 + (digest[0] % 25)))
             items.append(
                 CompatibilityCategoryScore(
@@ -373,6 +417,38 @@ class HttpMlFacade(MlFacade):
     def _map_reason_code(self, ml_code: str) -> CompatibilityReasonCode:
         return _ML_REASON_MAP.get(ml_code, CompatibilityReasonCode.PROFILE_QUALITY)
 
+    def _map_reason_signal(self, payload: dict) -> CompatibilityReasonSignal:
+        code = str(payload.get("code", "")).strip() or CompatibilityReasonCode.PROFILE_QUALITY.value
+        return CompatibilityReasonSignal(
+            code=code,
+            label=self._signal_label(code),
+            strength=str(payload.get("strength", "medium")).strip() or "medium",
+            confidence=float(payload.get("confidence", 0.5) or 0.5),
+        )
+
+    def _signal_label(self, code: str) -> str:
+        mapping = {
+            "lifestyle_similarity": "Lifestyle similarity",
+            "activity_overlap": "Activity overlap",
+            "communication_style_fit": "Communication style fit",
+            "meetup_rhythm_fit": "Meetup rhythm fit",
+            "locality_fit": "Locality fit",
+            "novelty_boost": "Novelty boost",
+        }
+        return mapping.get(code, "Compatibility signal")
+
+    def _preview_text(self, reason_codes: list[CompatibilityReasonCode]) -> str:
+        primary = reason_codes[0] if reason_codes else CompatibilityReasonCode.PROFILE_QUALITY
+        preview_map = {
+            CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
+            CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
+            CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
+            CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
+            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
+        }
+        return preview_map[primary]
+
     def _map_decision_mode(self, ml_mode: str) -> DecisionMode:
         if ml_mode == "model":
             return DecisionMode.MODEL
@@ -387,8 +463,7 @@ class HttpMlFacade(MlFacade):
         trace_id = uuid4()
         request_ml_id = requester.ml_user_id or str(requester.user_id)
         request_ml_id_norm = _normalize_ml_id(request_ml_id)
-        # Internal ML API validates limit <= 50.
-        query_limit = min(max(limit * 3, limit), 50)
+        query_limit = min(max(limit, 1), 2000)
 
         candidate_id_map: dict[str, UUID] = {}
         for candidate in candidates:
@@ -405,6 +480,10 @@ class HttpMlFacade(MlFacade):
             "request_user_id": request_ml_id_norm,
             "limit": query_limit,
             "strategy": "balanced",
+            "candidate_user_ids": [
+                _normalize_ml_id(candidate.ml_user_id or str(candidate.user_id))
+                for candidate in candidates
+            ],
             "exclusion": {"hard_exclude_user_ids": [request_ml_id_norm]},
             "context": {
                 "request_ts": date.today().isoformat() + "T00:00:00Z",
@@ -450,7 +529,12 @@ class HttpMlFacade(MlFacade):
                     candidate_user_id=candidate_uuid,
                     score=round(min(max(ml_item.get("score", 0.0), 0.0), 0.99), 2),
                     reason_codes=reason_codes[:4],
+                    reason_signals=[
+                        self._map_reason_signal(signal)
+                        for signal in ml_item.get("reason_signals", [])
+                    ],
                     category_keys=[],
+                    category_scores=self._category_scores_from_components(ml_item),
                 )
             )
 
@@ -521,7 +605,23 @@ class HttpMlFacade(MlFacade):
         )
 
     def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
-        return self._fallback.build_preview(scored)
+        reason_codes = [
+            code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
+            for code in scored.reason_codes
+        ]
+        score_percent = int(round(scored.score * 100))
+        return CompatibilityPreview(
+            score=scored.score,
+            score_percent=score_percent,
+            preview=self._preview_text(reason_codes),
+            reason_codes=[code.value for code in reason_codes],
+            reason_signals=scored.reason_signals
+            or build_preview_reason_signals(
+                reason_codes=[code.value for code in reason_codes],
+                score=scored.score,
+            ),
+            category_breakdown=scored.category_scores,
+        )
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
         return self._fallback.empty_state(code)
@@ -563,3 +663,56 @@ class HttpMlFacade(MlFacade):
                 resp.raise_for_status()
         except Exception as exc:
             logger.warning("ML service /v1/profiles/onboarding failed: %s", exc)
+
+    async def sync_profile_preferences(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        categories = list(dict.fromkeys(favorite_categories))
+        payload = {
+            "trace_id": str(uuid4()),
+            "user_id": _normalize_ml_id(ml_user_id or str(user_id)),
+            "favorite_categories": categories[:15],
+            "import_transactions": import_transactions,
+            "preferred_activity_hour": None,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/v1/profile/preferences",
+                    json=payload,
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+        except Exception as exc:
+            logger.warning("ML service /v1/profile/preferences failed: %s", exc)
+
+    def _category_scores_from_components(self, ml_item: dict) -> list[CompatibilityCategoryScore]:
+        components = ml_item.get("score_components") or {}
+        if not isinstance(components, dict):
+            return []
+
+        labels = category_label_map()
+        normalized_items = [
+            (str(key), float(value))
+            for key, value in components.items()
+            if str(key).strip() and isinstance(value, (int, float))
+        ]
+        if not normalized_items:
+            return []
+
+        total = sum(max(value, 0.0) for _, value in normalized_items) or 1.0
+        ranked = sorted(normalized_items, key=lambda item: item[1], reverse=True)[:5]
+        return [
+            CompatibilityCategoryScore(
+                category_key=key,
+                label=labels.get(key, key),
+                score_percent=max(1, min(100, int(round(max(value, 0.0) / total * 100)))),
+            )
+            for key, value in ranked
+        ]

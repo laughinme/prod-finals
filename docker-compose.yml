@@ -61,47 +61,66 @@ services:
         echo "MinIO buckets are ready"
     restart: "no"
 
-  # ml-service:
-  #   build:
-  #     context: .
-  #     dockerfile: ml/Dockerfile
-  #   container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-ml-service
-  #   environment:
-  #     API_HOST: 0.0.0.0
-  #     API_PORT: 8080
-  #     QDRANT_URL: http://qdrant:6333
-  #     ML_SERVICE_TOKEN: dev-ml-token
-  #     ML_SAMPLE_USER_COUNT: 120
-  #     ML_SAMPLE_TX_PER_USER: 20
-  #     ML_SAMPLE_SEED: 42
-  #     ML_FEATURES_VERSION: features_v1
-  #     ML_MODEL_ARTIFACT_PATH: /app/ml/artifacts/model.json
-  #     ML_TRAIN_ON_START: "false"
-  #     ML_TRAIN_REQUIRED: "false"
-  #     ML_TRAIN_DATA_PATH: /app/ml/data/train.csv
-  #     STORAGE_ENDPOINT_INTERNAL: http://minio:9000
-  #     STORAGE_REGION: us-east-1
-  #     STORAGE_ACCESS_KEY: minioadmin
-  #     STORAGE_SECRET_KEY: minioadmin
-  #     STORAGE_PRIVATE_BUCKET: media-private
-  #   ports:
-  #     - "8081:8080"
-  #   volumes:
-  #     - ml_artifacts:/app/ml/artifacts
-  #     - ml_data:/app/ml/data
-  #   depends_on:
-  #     qdrant:
-  #       condition: service_started
-  #     minio:
-  #       condition: service_started
-  #   restart: unless-stopped
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-ml-service
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      QDRANT_URL: http://qdrant:6333
+      ML_SERVICE_TOKEN: dev-ml-token
+      ML_SAMPLE_USER_COUNT: 120
+      ML_SAMPLE_TX_PER_USER: 20
+      ML_SAMPLE_SEED: 42
+      ML_FEATURES_VERSION: features_v1
+      ML_MODEL_ARTIFACT_PATH: /app/ml/artifacts/model.json
+      ML_TRAIN_ON_START: "false"
+      ML_TRAIN_REQUIRED: "false"
+      ML_TRAIN_DATA_PATH: /app/ml/data/train.csv
+      STORAGE_ENDPOINT_INTERNAL: http://minio:9000
+      STORAGE_REGION: us-east-1
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      STORAGE_PRIVATE_BUCKET: media-private
+    ports:
+      - "8081:8080"
+    volumes:
+      - ml_artifacts:/app/ml/artifacts
+      - ml_data:/app/ml/data
+    depends_on:
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; req=urllib.request.Request("http://127.0.0.1:8080/v1/health", headers={"X-Service-Token":"dev-ml-token"}); urllib.request.urlopen(req, timeout=5)
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
 
   centrifugo:
     image: centrifugo/centrifugo:latest
     container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-centrifugo
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: dev-centrifugo-token-secret-change-me
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost http://127.0.0.1}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost http://127.0.0.1 https://0cec-121-127-46-154.ngrok-free.app}
       CENTRIFUGO_HTTP_API_KEY: dev-centrifugo-api-key-change-me
       CENTRIFUGO_ADMIN_ENABLED: "false"
       CENTRIFUGO_ENGINE_TYPE: memory
@@ -119,11 +138,11 @@ services:
       DEBUG: "true"
       API_HOST: 0.0.0.0
       API_PORT: 8080
-      SITE_URL: ${SITE_URL:-http://localhost}
+      SITE_URL: ${SITE_URL:-https://0cec-121-127-46-154.ngrok-free.app}
       MAX_PHOTO_SIZE: 5
       DATABASE_URL: postgresql+asyncpg://postgres:secret@db:5432/templatepg
       REDIS_URL: redis://redis:6379/0
-      ML_SERVICE_URL: ${ML_SERVICE_URL:-}
+      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml-service:8080}
       ML_SERVICE_TOKEN: dev-ml-token
       STORAGE_ENDPOINT_INTERNAL: http://minio:9000
       STORAGE_ENDPOINT_PUBLIC: ${STORAGE_ENDPOINT_PUBLIC:-http://localhost:9000}
@@ -151,7 +170,7 @@ services:
       MOCK_USER_SEED_PASSWORD: ${MOCK_USER_SEED_PASSWORD:-DemoPass123!}
       CENTRIFUGO_ENABLED: "true"
       CENTRIFUGO_API_URL: http://centrifugo:8000/api/publish
-      CENTRIFUGO_WS_URL: ${CENTRIFUGO_WS_URL:-}
+      CENTRIFUGO_WS_URL: ${CENTRIFUGO_WS_URL:-https://0cec-121-127-46-154.ngrok-free.app}
       CENTRIFUGO_API_KEY: dev-centrifugo-api-key-change-me
       CENTRIFUGO_TOKEN_HMAC_SECRET: dev-centrifugo-token-secret-change-me
       CENTRIFUGO_TOKEN_TTL_SEC: 900
@@ -165,6 +184,10 @@ services:
         condition: service_started
       minio-init:
         condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+      ml-service:
+        condition: service_healthy
       centrifugo:
         condition: service_started
     ports:
@@ -193,3 +216,6 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  ml_artifacts:
+  ml_data:
+  qdrant_data:
