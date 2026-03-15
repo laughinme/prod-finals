@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -243,4 +243,47 @@ async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckRespons
         favorite_categories=payload.favorite_categories,
         trace_id=payload.trace_id,
         preferred_hour=payload.preferred_activity_hour,
+    )
+
+
+@app.post(
+    "/v1/profiles/favorites",
+    tags=["onboarding"],
+    operation_id="postUpdateFavorites",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+)
+async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckResponse:
+    """Холодный старт: создание вектора по выбранным категориям"""
+    return runtime.update_user_profile_favorites(
+        user_id=payload.user_id,
+        favorite_categories=payload.favorite_categories,
+        trace_id=payload.trace_id,
+        preferred_hour=payload.preferred_activity_hour
+    )
+
+@app.post(
+    "/v1/transactions/sync",
+    tags=["onboarding", "events"],
+    operation_id="postSyncTransactions",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+)
+async def post_sync_transactions(
+    payload: TransactionSyncRequest, 
+    background_tasks: BackgroundTasks
+) -> AckResponse:
+    """Event-driven обновление профиля. ML-логика выполняется в фоне."""
+    
+    # Отправляем тяжелую задачу (CatBoost, Scaler, Qdrant Upsert) в фон
+    background_tasks.add_task(
+        runtime.process_transactions_sync_background,
+        payload
+    )
+    
+    return AckResponse(
+        status=AckStatus.accepted, 
+        received_at=datetime.now(timezone.utc)
     )

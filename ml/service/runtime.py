@@ -6,12 +6,15 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 from uuid import UUID, uuid5, NAMESPACE_DNS
-
+import joblib
+import pandas as pd
+from catboost import CatBoostClassifier
 from ml.learn.model import artifact_from_json_bytes
 from ml.learn.pipeline import ModelPipeline, bootstrap_pipeline
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 import numpy as np
+
 
 from .schemas import (
     AckResponse,
@@ -113,6 +116,7 @@ class MlRuntime:
         self._startup_error: str | None = None
         self._loaded_from_artifact = False
         self._pipeline: ModelPipeline | None = None
+        self._load_inference_artifacts()
 
         try:
             self._qdrant_client = QdrantClient(url=self._settings.qdrant_url)
@@ -128,7 +132,139 @@ class MlRuntime:
                 self._startup_error = f"{self._startup_error}; pipeline init failed: {exc}"
             else:
                 self._startup_error = f"Pipeline init failed: {exc}"
+    def _load_inference_artifacts(self):
+        """Поднимаем в память Scaler, список фичей и Catboost модель"""
+        models_dir = Path("/app/ml/models") # Вынеси путь в settings.from_env
+        try:
+            self._scaler = joblib.load(models_dir / "scaler.joblib")
+            self._features_list = joblib.load(models_dir / "features_list.joblib")
             
+            self._catboost = CatBoostClassifier()
+            # Предполагается, что ты сохранил её как model.save_model('imputer.cbm') в qdrant.py
+            self._catboost.load_model(models_dir / "imputer.cbm") 
+            self._has_artifacts = True
+            print("✅ ML Artifacts loaded successfully")
+        except Exception as e:
+            self._has_artifacts = False
+            self._startup_error = f"Artifacts not found: {e}"
+            print("⚠️ Running in fallback mode without CatBoost/Scaler")
+    def update_user_profile_favorites(
+        self, 
+        user_id: str | int, 
+        favorite_categories: list[str], 
+        trace_id: UUID,
+        preferred_hour: float | None = None
+    ) -> AckResponse:
+        
+        if not self._has_artifacts or self._qdrant_client is None:
+            return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+
+        # 1. Формируем "сырой" вектор (распределение любимых категорий)
+        raw_vector = np.zeros(len(self._features_list))
+        
+        # Находим индексы фичей в features_list
+        weight_per_cat = 1.0 / len(favorite_categories) if favorite_categories else 0
+        
+        for cat in favorite_categories:
+            if cat in self._features_list:
+                idx = self._features_list.index(cat)
+                raw_vector[idx] = weight_per_cat
+                
+        # 2. Обрабатываем фичу "Средний час транзакций" (hour). Она всегда последняя в списке?
+        # Или ищем явно:
+        if "hour" in self._features_list:
+            hour_idx = self._features_list.index("hour")
+            raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0 # Дефолтный час
+
+        # 3. Нормализуем через scaler (обученный ранее)
+        # scaler.transform ждет 2D массив
+        scaled_vector = self._scaler.transform([raw_vector])[0]
+
+        # 4. Сохраняем в Qdrant
+        user_uuid = _string_to_uuid(_normalize_user_id(user_id))
+        self._qdrant_client.upsert(
+            collection_name="user_profiles",
+            points=[
+                PointStruct(
+                    id=user_uuid,
+                    vector=scaled_vector.tolist(),
+                    payload={
+                        "party_rk": str(user_id),
+                        "is_warm": False, # Метка, что юзер пришел с холодного старта
+                        "updated_at": _utcnow().isoformat()
+                    }
+                )
+            ]
+        )
+        print(f"[{trace_id}] Cold start profile generated for user {user_id}")
+        return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+
+    # ========================================================
+    # 2. ФИЧА: ФОНОВОЕ ОБОГАЩЕНИЕ ТРАНЗАКЦИЙ
+    # ========================================================
+    def process_transactions_sync_background(self, payload: Any):
+        """Эта функция крутится в фоне. Не блокирует API."""
+        from ml.service.schemas import TransactionSyncRequest # локальный импорт во избежание циклов
+        request: TransactionSyncRequest = payload
+
+        if not self._has_artifacts or self._qdrant_client is None:
+            return
+
+        user_id_str = str(request.user_id)
+        
+        # 1. Переводим транзакции в DataFrame для Pandas/Catboost
+        df = pd.DataFrame([t.model_dump() for t in request.transactions])
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['hour'] = df['timestamp'].dt.hour
+        df['day_of_week'] = df['timestamp'].dt.dayofweek
+        
+        # 2. Заполняем пропуски через CatBoost (Inference Mode)
+        predict_df = df[df['category_nm'].isna() | (df['category_nm'] == '')].copy()
+        if not predict_df.empty:
+            preds = self._catboost.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
+            df.loc[predict_df.index, 'category_nm'] = preds.flatten()
+
+        # 3. Вычисляем профиль (аналог того, что в qdrant.py)
+        cat_counts = df['category_nm'].value_counts()
+        total = cat_counts.sum()
+        
+        raw_vector = np.zeros(len(self._features_list))
+        for cat, count in cat_counts.items():
+            if cat in self._features_list:
+                idx = self._features_list.index(cat)
+                raw_vector[idx] = count / total if total > 0 else 0
+
+        # Считаем средний час
+        if "hour" in self._features_list:
+            hour_idx = self._features_list.index("hour")
+            raw_vector[hour_idx] = df['hour'].mean()
+
+        # 4. Скалируем (тут мы можем БЛЕНДИТЬ данные, если надо)
+        scaled_vector = self._scaler.transform([raw_vector])[0]
+
+        # 5. Обновляем вектор в Qdrant
+        user_uuid = _string_to_uuid(_normalize_user_id(request.user_id))
+        
+        top_cat = df['category_nm'].mode().iloc[0] if not df['category_nm'].empty else "unknown"
+
+        self._qdrant_client.upsert(
+            collection_name="user_profiles",
+            points=[
+                PointStruct(
+                    id=user_uuid,
+                    vector=scaled_vector.tolist(),
+                    payload={
+                        "party_rk": user_id_str,
+                        "is_warm": True, # У него появились реальные транзакции!
+                        "top_cat": top_cat,
+                        "transactions_count": len(df),
+                        "updated_at": _utcnow().isoformat()
+                    }
+                )
+            ]
+        )
+        print(f"[{request.trace_id}] Vectors synchronized dynamically for user {user_id_str}")
+
     def _build_pipeline(self) -> ModelPipeline:
         artifact_path = Path(self._settings.model_artifact_path)
         if artifact_path.exists():
@@ -187,7 +323,7 @@ class MlRuntime:
         trace_seed = request.trace_id.int % (2**32)
         hard_exclude = request.exclusion.hard_exclude_user_ids if request.exclusion else []
         soft_seen = request.exclusion.soft_seen_user_ids if request.exclusion else []
-        soft_seen_set = {_normalize_user_id(user_id) for user_id in (soft_seen or [])}
+        soft_seen_set = set(soft_seen or [])
 
         warnings: list[str] = []
         decision_mode = RecommendationDecisionMode.fallback
@@ -206,7 +342,7 @@ class MlRuntime:
             if qdrant_candidates:
                 decision_mode = RecommendationDecisionMode.model
                 for item in qdrant_candidates:
-                    is_soft_seen = _normalize_user_id(item.candidate_user_id) in soft_seen_set
+                    is_soft_seen = item.candidate_user_id in soft_seen_set
                     policy_flags = []
                     if is_soft_seen:
                         policy_flags.append("cooldown_candidate")
@@ -340,7 +476,6 @@ class MlRuntime:
             # Исключаем hard_exclude
             exclude_ids = {_string_to_uuid(_normalize_user_id(uid)) for uid in hard_exclude_user_ids}
             exclude_ids.add(user_id_str)  # Исключаем самого себя
-            soft_seen_ids = {_normalize_user_id(uid) for uid in soft_seen_user_ids}
 
             # Ищем ближайших в Qdrant
             search_result = self._qdrant_client.query_points(
@@ -364,7 +499,7 @@ class MlRuntime:
                 elif strategy == "exploration":
                     score = max(0.0, score - 0.05)
                 # Soft seen
-                if _normalize_user_id(candidate_user_id) in soft_seen_ids:
+                if candidate_user_id in soft_seen_user_ids:
                     score = max(0.0, score - 0.15)
                 # Ensure we return a structured item
                 from .schemas import RecommendationCandidate
@@ -401,8 +536,8 @@ class MlRuntime:
         Обновляет вектор актора: если лайк - приближает к таргету, если пас - отдаляет.
         """
         try:
-            actor_id = _string_to_uuid(_normalize_user_id(actor_user_id))
-            target_id = _string_to_uuid(_normalize_user_id(target_user_id))
+            actor_id = _string_to_uuid(str(actor_user_id))
+            target_id = _string_to_uuid(str(target_user_id))
             
             # ВАЖНО: Добавили with_payload=True
             points = self._qdrant_client.retrieve(
@@ -459,9 +594,9 @@ class MlRuntime:
             
         except Exception as exc:
             print(f"[{trace_id}] Ошибка обновления вектора: {exc}")
-    def update_user_profile_favorites(
-        self,
-        user_id: str | int,
+    '''def update_user_profile_favorites(
+        self, 
+        user_id: int, 
         favorite_categories: list[str], 
         trace_id: UUID,
         preferred_hour: float | None = None
@@ -533,10 +668,9 @@ class MlRuntime:
             collection_name=collection_name,
             points=[
                 PointStruct(
-                    id=_string_to_uuid(_normalize_user_id(user_id)),
+                    id=user_id,
                     vector=scaled_vector.tolist(),
                     payload={
-                        "party_rk": str(user_id),
                         "is_warm": is_warm,
                         "updated_at": _utcnow().isoformat()
                     }
@@ -545,3 +679,4 @@ class MlRuntime:
         )
 
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+'''

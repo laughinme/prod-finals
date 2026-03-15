@@ -252,3 +252,26 @@ class UserProfileUpdateRequest(StrictModel):
     
     # Опционально: можно передавать дефолтный часовой пояс или время активности
     preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
+
+# Добавить импорты, если их нет
+# from typing import Optional, List
+
+class RawTransaction(StrictModel):
+    transaction_id: str
+    merchant_nm: str
+    merchant_type_code: str | int
+    category_nm: str | None = None  # Может быть None, тогда работает CatBoost
+    timestamp: datetime
+    amount: float = Field(default=0.0, ge=0)
+
+class TransactionSyncRequest(StrictModel):
+    trace_id: UUID
+    user_id: str | int
+    transactions: list[RawTransaction] = Field(min_length=1, max_length=1000)
+    
+# Обновим UserProfileUpdateRequest, который у тебя уже есть:
+class UserProfileUpdateRequest(StrictModel):
+    trace_id: UUID
+    user_id: str | int
+    favorite_categories: list[str] = Field(min_length=1, max_length=15)
+    preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
