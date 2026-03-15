@@ -39,11 +39,28 @@ class MockIdentityRegistry:
 
     @classmethod
     def from_default_source(cls) -> "MockIdentityRegistry":
-        project_root = Path(__file__).resolve().parents[4]
-        ids_path = project_root / "docs" / "users.json"
+        ids_path = cls._resolve_ids_path()
         raw_ids = json.loads(ids_path.read_text(encoding="utf-8"))
         profiles = [cls._build_profile(service_user_id=value) for value in raw_ids]
         return cls(profiles)
+
+    @staticmethod
+    def _resolve_ids_path() -> Path:
+        current_file = Path(__file__).resolve()
+        candidates = [
+            current_file.with_name("users.json"),
+            current_file.parents[4] / "docs" / "users.json",
+            current_file.parents[3] / "docs" / "users.json",
+        ]
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        raise FileNotFoundError(
+            "Could not locate users.json for mock identity registry. "
+            f"Tried: {', '.join(str(path) for path in candidates)}"
+        )
 
     @property
     def profiles(self) -> tuple[MockIdentityProfile, ...]:
