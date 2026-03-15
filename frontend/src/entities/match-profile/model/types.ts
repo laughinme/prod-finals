@@ -38,6 +38,12 @@ export type MatchProfileReaction = {
   nextCardHint: string | null;
 };
 
+export type MatchProfileCategoryScore = {
+  categoryKey: string;
+  label: string;
+  scorePercent: number;
+};
+
 export type MatchProfile = {
   id: MatchProfileId;
   candidateUserId: string | null;
@@ -46,6 +52,7 @@ export type MatchProfile = {
   image: string | null;
   bio: string | null;
   matchScore: number;
+  categoryBreakdown: MatchProfileCategoryScore[];
   tags: string[];
   explanation: string;
   location: string;

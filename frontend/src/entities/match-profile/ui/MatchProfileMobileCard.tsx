@@ -8,6 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type { MatchProfile } from "../model";
+import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 interface MatchProfileMobileCardProps {
   profile: MatchProfile;
@@ -40,13 +41,17 @@ export function MatchProfileMobileCard({
         <div className="absolute inset-0 bg-linear-to-t from-[#0A0A0A] via-[#0A0A0A]/55 to-transparent" />
 
         <div className="absolute top-5 right-5 left-5 flex items-start justify-between gap-3 sm:top-6 sm:right-6 sm:left-6">
-          <div className="flex items-center gap-2 rounded-full bg-[#2A2A2A]/80 px-4 py-2 text-sm font-bold text-white backdrop-blur-md">
-            <Sparkles className="size-4 text-primary" />
-            {profile.matchScore}%
-          </div>
+          <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
+            <div className="flex items-center gap-2 rounded-full bg-[#2A2A2A]/80 px-4 py-2 text-sm font-bold text-white backdrop-blur-md transition-opacity hover:opacity-80">
+              <Sparkles className="size-4 text-primary" />
+              {profile.matchScore}%
+            </div>
+          </ScoreBreakdownPopover>
 
           <div className="flex gap-2">
             <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={onOpenReport}
               className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md transition-colors hover:bg-[#383838]"
               aria-label={t("discovery.report_profile")}
@@ -76,6 +81,8 @@ export function MatchProfileMobileCard({
 
           <div className="mt-2 flex gap-4">
             <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={onPass}
               className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-[#2A2A2A] text-white transition-colors hover:bg-[#333333]"
               aria-label={t("discovery.pass_profile")}
@@ -84,6 +91,8 @@ export function MatchProfileMobileCard({
             </button>
 
             <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={onLike}
               className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-primary text-black shadow-[0_0_40px_rgba(255,221,45,0.3)] transition-colors hover:bg-[#FFD100]"
               aria-label={t("discovery.like_profile")}

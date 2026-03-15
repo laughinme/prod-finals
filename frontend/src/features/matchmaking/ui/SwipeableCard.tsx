@@ -136,7 +136,7 @@ export function SwipeableCard({
       style={{
         touchAction: "pan-y",
       }}
-      className="absolute inset-x-4 z-10 mx-auto w-auto max-w-5xl cursor-grab active:cursor-grabbing md:inset-x-8"
+      className="absolute inset-x-4 z-10 mx-auto w-auto max-w-5xl cursor-grab select-none active:cursor-grabbing md:inset-x-8"
     >
       <div
         style={{ opacity: likeOpacity }}

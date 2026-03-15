@@ -183,6 +183,7 @@ export default function ProfilePage() {
                 image: profile.profilePicUrl,
                 bio: profile.bio,
                 matchScore: 0,
+                categoryBreakdown: [],
                 tags: [],
                 explanation: "",
                 location: "",
