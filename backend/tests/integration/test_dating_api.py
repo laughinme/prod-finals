@@ -110,28 +110,25 @@ async def _answer_onboarding_filters(
     genders: list[str],
     age_min: int,
     age_max: int,
-    goal: str,
-    radius_km: int = 30,
+    interests: list[str] | None = None,
 ) -> None:
+    interests = interests or ["coffee", "music", "travel"]
     responses = [
         await client.post(
             "/api/v1/onboarding/answers",
-            json={"step_key": "who_to_meet", "answers": genders},
+            json={
+                "step_key": "match_preferences",
+                "answers": [
+                    *[f"gender:{gender}" for gender in genders],
+                    f"age_min:{age_min}",
+                    f"age_max:{age_max}",
+                ],
+            },
             headers=auth_header(access_token),
         ),
         await client.post(
             "/api/v1/onboarding/answers",
-            json={"step_key": "preferred_age_range", "answers": [str(age_min), str(age_max)]},
-            headers=auth_header(access_token),
-        ),
-        await client.post(
-            "/api/v1/onboarding/answers",
-            json={"step_key": "connection_goal", "answers": [goal]},
-            headers=auth_header(access_token),
-        ),
-        await client.post(
-            "/api/v1/onboarding/answers",
-            json={"step_key": "search_radius", "answers": [str(radius_km)]},
+            json={"step_key": "interests", "answers": interests},
             headers=auth_header(access_token),
         ),
     ]
@@ -174,18 +171,21 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
     assert onboarding_config.status_code == 200
     steps = {step["step_key"]: step for step in onboarding_config.json()["steps"]}
-    assert set(steps) == {"who_to_meet", "preferred_age_range", "connection_goal", "search_radius"}
-    assert steps["who_to_meet"]["required_for_feed"] is False
-    assert steps["preferred_age_range"]["step_type"] == "range"
-    assert steps["search_radius"]["required_for_feed"] is False
+    assert set(steps) == {"match_preferences", "interests"}
+    assert steps["match_preferences"]["required_for_feed"] is False
+    assert steps["match_preferences"]["step_type"] == "multi_select"
+    assert steps["interests"]["min_answers"] == 3
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
-        json={"step_key": "who_to_meet", "answers": ["male"]},
+        json={
+            "step_key": "match_preferences",
+            "answers": ["gender:male", "age_min:24", "age_max:36"],
+        },
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
-    assert answer.json() == {"step_key": "who_to_meet", "saved": True, "quiz_started": True}
+    assert answer.json() == {"step_key": "match_preferences", "saved": True, "quiz_started": True}
 
     profile_a = await _complete_profile(
         client,
@@ -218,8 +218,6 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         genders=["male"],
         age_min=24,
         age_max=36,
-        goal="casual_dates",
-        radius_km=30,
     )
     await _answer_onboarding_filters(
         client,
@@ -227,8 +225,6 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         genders=["female"],
         age_min=24,
         age_max=36,
-        goal="casual_dates",
-        radius_km=30,
     )
     await _answer_onboarding_filters(
         client,
@@ -236,16 +232,14 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         genders=["female"],
         age_min=21,
         age_max=29,
-        goal="serious_relationship",
-        radius_km=30,
     )
 
     me_a = await client.get("/api/v1/users/me", headers=auth_header(access_a))
     me_b = await client.get("/api/v1/users/me", headers=auth_header(access_b))
     assert me_a.status_code == 200
     assert me_b.status_code == 200
-    assert me_a.json()["goal"] == "dating"
     assert me_a.json()["looking_for_genders"] == ["male"]
+    assert me_a.json()["age_range"] == {"min": 24, "max": 36}
     assert me_a.json()["quiz_started"] is True
     assert me_a.json()["profile_status"] == "active"
     assert me_b.json()["profile_status"] == "active"
@@ -414,12 +408,15 @@ async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, fa
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
-        json={"step_key": "preferred_age_range", "answers": ["18", "18"]},
+        json={
+            "step_key": "match_preferences",
+            "answers": ["gender:male", "age_min:18", "age_max:18"],
+        },
         headers=auth_header(access),
     )
     assert answer.status_code == 200
     assert answer.json() == {
-        "step_key": "preferred_age_range",
+        "step_key": "match_preferences",
         "saved": True,
         "quiz_started": True,
     }
@@ -460,9 +457,9 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=24, age_max=36, goal="casual_dates")
-    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=24, age_max=36, goal="casual_dates")
-    await _answer_onboarding_filters(client, access_c, genders=["female"], age_min=24, age_max=36, goal="casual_dates")
+    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=24, age_max=36)
+    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=24, age_max=36)
+    await _answer_onboarding_filters(client, access_c, genders=["female"], age_min=24, age_max=36)
 
     block = await client.post(
         "/api/v1/blocks",
