@@ -37,7 +37,7 @@ class FeedService(BaseDatingService):
                 batch_date=self.local_today(),
             )
             if batch is None:
-                batch = await self._create_batch(user, min(limit, self.daily_limit))
+                batch = await self._create_batch(user)
             items = await self.matchmaking_repo.list_batch_items(batch.id)
         except Exception as exc:  # pragma: no cover - degraded fallback
             logger.exception("Feed generation degraded for user=%s: %s", user.id, exc)
@@ -112,7 +112,7 @@ class FeedService(BaseDatingService):
             )
         )
 
-    async def _create_batch(self, user: User, limit: int) -> RecommendationBatch:
+    async def _create_batch(self, user: User) -> RecommendationBatch:
         excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
         requester_context = await self._build_feed_context(user)
         all_candidates = [
@@ -129,7 +129,7 @@ class FeedService(BaseDatingService):
         ranked = await self.ml_facade.rank(
             requester=requester_context,
             candidates=[await self._build_feed_context(candidate) for candidate in all_candidates],
-            limit=limit,
+            limit=len(all_candidates),
         )
 
         batch = await self.matchmaking_repo.add(
@@ -138,7 +138,7 @@ class FeedService(BaseDatingService):
                 batch_date=self.local_today(),
                 expires_at=self.local_end_of_day(),
                 decision_mode=ranked.decision_mode.value,
-                daily_limit=self.daily_limit,
+                daily_limit=len(ranked.candidates),
             )
         )
 

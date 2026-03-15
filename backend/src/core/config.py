@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     SQL_ECHO: bool = False
     SCHEDULER_ENABLED: bool = False
     APP_TIMEZONE: str = "Europe/Moscow"
-    FEED_DAILY_LIMIT: int = 100
     PAIR_COOLDOWN_DAYS: int = 30
     DEV_SEED_ENABLED: bool = False
     MOCK_USER_SEED_ENABLED: bool = False

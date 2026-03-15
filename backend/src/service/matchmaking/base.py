@@ -41,7 +41,6 @@ class BaseDatingService:
         self.ml_facade = ml_facade
         self.settings = settings or get_settings()
         self._tz = ZoneInfo(self.settings.APP_TIMEZONE)
-        self.daily_limit = self.settings.FEED_DAILY_LIMIT
         self.cooldown_days = self.settings.PAIR_COOLDOWN_DAYS
 
     def local_today(self) -> date:
