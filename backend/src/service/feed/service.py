@@ -17,6 +17,7 @@ from domain.dating import (
 )
 
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
+from service.matchmaking.reason_signals import build_preview_reason_signals
 
 
 logger = logging.getLogger(__name__)
@@ -228,6 +229,10 @@ class FeedService(BaseDatingService):
                         score_percent=int(round(item.score * 100)),
                         preview=item.preview,
                         reason_codes=item.reason_codes,
+                        reason_signals=build_preview_reason_signals(
+                            reason_codes=item.reason_codes,
+                            score=item.score,
+                        ),
                         category_breakdown=item.category_breakdown,
                     ),
                     actions=FeedCardActions(

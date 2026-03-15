@@ -111,11 +111,19 @@ class CompatibilityCategoryScore(BaseModel):
     score_percent: int = Field(..., ge=0, le=100)
 
 
+class CompatibilityReasonSignal(BaseModel):
+    code: str
+    label: str
+    strength: str
+    confidence: float = Field(..., ge=0, le=1)
+
+
 class CompatibilityPreview(BaseModel):
     score: float = Field(..., ge=0, le=1)
     score_percent: int = Field(..., ge=0, le=100)
     preview: str
     reason_codes: list[str] = Field(default_factory=list)
+    reason_signals: list[CompatibilityReasonSignal] = Field(default_factory=list)
     category_breakdown: list[CompatibilityCategoryScore] = Field(default_factory=list)
 
 

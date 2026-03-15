@@ -22,6 +22,7 @@ from domain.dating import (
     RankedCandidates,
 )
 from domain.dating.category_catalog import category_label_map, pick_category_keys
+from .reason_signals import build_preview_reason_signals
 
 
 def _age_for_birth_date(birth_date: date | None, today: date) -> int | None:
@@ -154,12 +155,12 @@ class MockMlFacade(MlFacade):
         ]
         primary = reason_codes[0]
         preview_map = {
-            CompatibilityReasonCode.CATEGORY_FIT: "Your interests and habits look noticeably compatible.",
-            CompatibilityReasonCode.CITY_FIT: "You are aligned on city rhythm and logistics.",
-            CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
-            CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
-            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
-            CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
+            CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
+            CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
+            CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
+            CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
+            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
         }
         score_percent = int(round(scored.score * 100))
         return CompatibilityPreview(
@@ -167,6 +168,10 @@ class MockMlFacade(MlFacade):
             score_percent=score_percent,
             preview=preview_map[primary],
             reason_codes=[code.value for code in reason_codes],
+            reason_signals=build_preview_reason_signals(
+                reason_codes=[code.value for code in reason_codes],
+                score=scored.score,
+            ),
             category_breakdown=self._build_category_breakdown(scored, score_percent),
         )
 
