@@ -39,7 +39,7 @@ class FeedService(BaseDatingService):
             if batch is None:
                 batch = await self._create_batch(user, min(limit, self.daily_limit))
             items = await self.matchmaking_repo.list_batch_items(batch.id)
-        except Exception as exc:  # pragma: no cover - degraded fallback
+        except Exception as exc:
             logger.exception("Feed generation degraded for user=%s: %s", user.id, exc)
             return FeedResponse(
                 feed_state=FeedState.DEGRADED,

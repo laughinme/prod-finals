@@ -83,6 +83,7 @@ class UserService:
             age_range=AgeRange(**user.age_range) if user.age_range else None,
             distance_km=user.distance_km,
             goal=self._build_legacy_goal(user.goal),
+            interests=list(user.interests or []),
             quiz_started=user.quiz_started,
             is_onboarded=user.can_open_feed,
             onboarding_status=user.onboarding_status,
@@ -159,6 +160,9 @@ class UserService:
 
         if "goal" in data:
             user.goal = self._normalize_goal(data.pop("goal"))
+
+        if "interests" in data:
+            user.interests = data.pop("interests")
 
         for field, value in data.items():
             setattr(user, field, value)

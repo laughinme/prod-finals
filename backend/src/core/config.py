@@ -29,12 +29,18 @@ class Settings(BaseSettings):
     FEED_DAILY_LIMIT: int = 12
     PAIR_COOLDOWN_DAYS: int = 30
     DEV_SEED_ENABLED: bool = False
+    MOCK_USER_SEED_LIMIT: int = 120
+    MOCK_USER_SEED_PASSWORD: str = "DemoPass123!"
     CENTRIFUGO_ENABLED: bool = False
     CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api/publish"
     CENTRIFUGO_WS_URL: str = ""
     CENTRIFUGO_API_KEY: str = ""
     CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
     CENTRIFUGO_TOKEN_TTL_SEC: int = 900
+
+    # ML service integration
+    ML_SERVICE_URL: str = ""
+    ML_SERVICE_TOKEN: str = "dev-ml-token"
 
     # API settings
     API_PORT: int = 8080

@@ -14,10 +14,11 @@ def string_to_uuid(string: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, string))
 
 def run_ingestion():
-    client = QdrantClient(host="qdrant", port=6333)
-    
+    client = QdrantClient(host="qdrant", port=6333)    
     print("1. Загрузка и очистка данных...")
-    df = pd.read_csv("/app/ml/transaction_600_new.csv")
+    import os
+    data_path = os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv")
+    df = pd.read_csv(data_path)
     unique_users = df['party_rk'].unique()[:config.LIMIT_USERS]
     df = df[df['party_rk'].isin(unique_users)].copy()
 
@@ -58,8 +59,10 @@ def run_ingestion():
     
     scaler = StandardScaler()
     profiles_scaled = pd.DataFrame(scaler.fit_transform(profiles), index=profiles.index, columns=profiles.columns)
-    joblib.dump(scaler, 'models/scaler.joblib')
-    joblib.dump(profiles.columns.tolist(), 'models/features_list.joblib')
+    import os
+    os.makedirs('/app/ml/models', exist_ok=True)
+    joblib.dump(scaler, '/app/ml/models/scaler.joblib')
+    joblib.dump(profiles.columns.tolist(), '/app/ml/models/features_list.joblib')
 
     # 4. Заливка в Qdrant
     print(f"4. Синхронизация с Qdrant (Коллекция: {config.COLLECTION_NAME})...")

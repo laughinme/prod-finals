@@ -17,9 +17,9 @@ router = APIRouter()
     summary="Get conversation messages",
 )
 async def get_conversation_messages(
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[ConversationService, Depends(get_conversation_service)],
     conversation_id: UUID = Path(...),
-    user: Annotated[User, Depends(auth_user)] = ...,
-    svc: Annotated[ConversationService, Depends(get_conversation_service)] = ...,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
 ) -> ConversationMessagesResponse:
@@ -33,9 +33,9 @@ async def get_conversation_messages(
     summary="Send message to conversation",
 )
 async def post_conversation_message(
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[ConversationService, Depends(get_conversation_service)],
     payload: SendMessageRequest,
     conversation_id: UUID = Path(...),
-    user: Annotated[User, Depends(auth_user)] = ...,
-    svc: Annotated[ConversationService, Depends(get_conversation_service)] = ...,
 ) -> MessageResponse:
     return await svc.send_message(user=user, conversation_id=conversation_id, payload=payload)
