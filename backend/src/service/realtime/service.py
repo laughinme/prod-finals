@@ -1,12 +1,16 @@
 import asyncio
 import json
+import logging
 from datetime import UTC, datetime, timedelta
+from urllib import error as urllib_error
 from urllib import request
 
 import jwt
 
 from core.config import Settings, get_settings
 from domain.notifications import MatchCreatedEventPayload, RealtimeConnectionResponse
+
+logger = logging.getLogger(__name__)
 
 
 class RealtimeService:
@@ -23,12 +27,16 @@ class RealtimeService:
             and self.settings.CENTRIFUGO_TOKEN_HMAC_SECRET
         )
 
+    @staticmethod
+    def build_personal_channel(*, user_id) -> str:
+        return f"personal-{user_id}"
+
     def build_connection_response(self, *, user_id) -> RealtimeConnectionResponse:
         if not self.is_enabled:
             return RealtimeConnectionResponse(enabled=False)
 
         expires_at = datetime.now(UTC) + timedelta(seconds=self.settings.CENTRIFUGO_TOKEN_TTL_SEC)
-        channel = f"personal:{user_id}"
+        channel = self.build_personal_channel(user_id=user_id)
         token = jwt.encode(
             {
                 "sub": str(user_id),
@@ -50,13 +58,16 @@ class RealtimeService:
         if not self.is_enabled:
             return
         publication = {
-            "channel": f"personal:{user_id}",
+            "channel": self.build_personal_channel(user_id=user_id),
             "data": {
                 "type": "match_created",
                 "payload": payload.model_dump(mode="json"),
             },
         }
-        await asyncio.to_thread(self._post_publication, publication)
+        try:
+            await asyncio.to_thread(self._post_publication, publication)
+        except (OSError, urllib_error.URLError, urllib_error.HTTPError) as exc:
+            logger.warning("Failed to publish realtime match notification: %s", exc)
 
     def _post_publication(self, publication: dict) -> None:
         body = json.dumps(publication).encode()

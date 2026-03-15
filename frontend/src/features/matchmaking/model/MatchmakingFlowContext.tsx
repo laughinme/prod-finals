@@ -1,6 +1,5 @@
 import * as Sentry from "@sentry/react";
 import {
-  createContext,
   useEffect,
   useState,
   type ReactNode,
@@ -16,9 +15,7 @@ import type {
   MatchmakingFlowContextValue,
   PersistedMatchmakingState,
 } from "./types";
-
-export const MatchmakingFlowContext =
-  createContext<MatchmakingFlowContextValue | null>(null);
+import { MatchmakingFlowContext } from "./useMatchmakingFlow";
 
 function getInitialPersistedState(): PersistedMatchmakingState {
   return {

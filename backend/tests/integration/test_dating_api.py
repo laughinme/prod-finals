@@ -304,7 +304,10 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert realtime_token.status_code == 200
-    assert realtime_token.json()["enabled"] is False
+    assert realtime_token.json()["enabled"] is True
+    assert realtime_token.json()["token"]
+    assert realtime_token.json()["channels"]
+    assert realtime_token.json()["ws_url"]
 
     notifications_a = await client.get(
         "/api/v1/notifications/matches",

@@ -164,7 +164,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         });
 
         client.on("publication", (ctx) => {
-          if (!String(ctx.channel).startsWith("personal:")) {
+          if (!String(ctx.channel).startsWith("personal-")) {
             return;
           }
           const event = ctx.data as { type?: string; payload?: MatchCreatedRealtimePayload };

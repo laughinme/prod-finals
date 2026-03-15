@@ -140,6 +140,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-centrifugo
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET:-change-me-centrifugo-token-secret}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-https://team-26-prod-5df88b.pages.prodcontest.ru}
       CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:-change-me-centrifugo-api-key}
       CENTRIFUGO_ADMIN_ENABLED: "false"
       CENTRIFUGO_ENGINE_TYPE: memory
