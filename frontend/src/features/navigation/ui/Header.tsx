@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import {
   HeartHandshake,
-  LayoutDashboard,
   MessageCircle,
   Sparkles,
   Users,
@@ -30,11 +29,6 @@ export function Header() {
       label: t("common.matches"),
       to: "/matches",
       icon: Users,
-    },
-    {
-      label: t("common.dashboard"),
-      to: "/dashboard",
-      icon: LayoutDashboard,
     },
   ];
 
@@ -100,10 +94,6 @@ export function Header() {
           >
             <MessageCircle className="size-4" />
           </NavLink>
-
-          <div className="hidden rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground lg:block">
-            mock flow
-          </div>
 
           <HeaderUserMenu />
         </div>
