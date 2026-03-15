@@ -37,12 +37,34 @@ class RealtimeConnectionResponse(BaseModel):
     channels: list[str] = Field(default_factory=list)
 
 
+class RealtimeSubscriptionResponse(BaseModel):
+    enabled: bool
+    channel: str | None = None
+    token: str | None = None
+    expires_at: datetime | None = None
+
+
 class MatchCreatedEventPayload(BaseModel):
     notification_id: UUID
     match_id: UUID
     conversation_id: UUID
     peer: NotificationPeer
     created_at: datetime
+
+
+class MessageCreatedEventPayload(BaseModel):
+    conversation_id: UUID
+    message_id: UUID
+    sender_user_id: UUID
+    text: str
+    created_at: datetime
+    status: str
+
+
+class ConversationClosedEventPayload(BaseModel):
+    conversation_id: UUID
+    status: str
+    closed_at: datetime
 
 
 class RealtimeEnvelope(BaseModel):

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { UnauthorizedError, type Subscription } from "centrifuge";
 import {
   MessageCircle,
   MoreVertical,
@@ -10,13 +12,17 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-import type {
-  MatchChatMessage,
-  MatchProfile,
-} from "@/entities/match-profile/model";
+import type { MatchProfile } from "@/entities/match-profile/model";
 import { useCloseMatch, useMatches } from "@/features/match";
+import { useMatchNotifications } from "@/app/providers/realtime/useMatchNotifications";
 import { Button } from "@/shared/components/ui/button";
+import {
+  conversationsApi,
+  type ConversationMessagesResponse,
+  type MessageResponse,
+} from "@/shared/api/conversations";
 import { cn } from "@/shared/lib/utils";
+import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
 
 type ChatNavigationState = {
   matchedProfile?: MatchProfile;
@@ -24,12 +30,50 @@ type ChatNavigationState = {
   conversationId?: string | null;
 };
 
+type RealtimeChatEvent =
+  | {
+      type: "message_created";
+      payload: MessageResponse & { conversation_id: string };
+    }
+  | {
+      type: "conversation_closed";
+      payload: {
+        conversation_id: string;
+        status: "active" | "closed_by_user" | "closed_by_block" | "closed_by_report";
+        closed_at: string;
+      };
+    };
+
+const buildConversationQueryKey = (conversationId: string | null) =>
+  ["conversation", conversationId] as const;
+
+const buildConversationMessagesQueryKey = (conversationId: string | null) =>
+  ["conversation", conversationId, "messages"] as const;
+
+const appendMessage = (
+  previous: ConversationMessagesResponse | undefined,
+  nextMessage: MessageResponse,
+): ConversationMessagesResponse => {
+  const prevItems = previous?.items ?? [];
+  if (prevItems.some((message) => message.message_id === nextMessage.message_id)) {
+    return previous ?? { items: [nextMessage], next_cursor: null };
+  }
+  return {
+    items: [...prevItems, nextMessage].sort(
+      (left, right) => Date.parse(left.created_at) - Date.parse(right.created_at),
+    ),
+    next_cursor: previous?.next_cursor ?? null,
+  };
+};
+
 export default function ChatPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { data: matchesResponse } = useMatches();
+  const matchNotifications = useMatchNotifications();
   const closeMatchMutation = useCloseMatch();
   const routeState = location.state as ChatNavigationState | null;
   const requestedMatchId = searchParams.get("match");
@@ -38,9 +82,6 @@ export default function ChatPage() {
   );
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
-  const [messagesByChatId, setMessagesByChatId] = useState<
-    Record<string, MatchChatMessage[]>
-  >({});
   const [search, setSearch] = useState("");
 
   const matches = matchesResponse?.matches ?? [];
@@ -58,18 +99,77 @@ export default function ChatPage() {
     matches.find((match) => match.matchId === activeMatchId) ??
     null;
   const fallbackProfile = routeState?.matchedProfile ?? null;
-  const activeChatId =
-    activeMatch?.matchId ??
-    routeState?.matchId ??
-    (fallbackProfile ? String(fallbackProfile.id) : null);
-  const messages = activeChatId ? messagesByChatId[activeChatId] ?? [] : [];
-  const activeChatName = activeMatch?.displayName ?? fallbackProfile?.name ?? null;
-  const activeChatAvatar = activeMatch?.avatarUrl ?? fallbackProfile?.image ?? null;
-  const activeChatMeta = activeMatch
-    ? activeMatch.lastMessageAt
-      ? t("chat.recent_active")
-      : t("chat.no_messages_yet")
-    : t("chat.recent_active");
+  const activeConversationId = activeMatch?.conversationId ?? routeState?.conversationId ?? null;
+
+  const conversationQuery = useQuery({
+    queryKey: buildConversationQueryKey(activeConversationId),
+    queryFn: async () => {
+      if (!activeConversationId) {
+        throw new Error("Missing conversation id");
+      }
+      return conversationsApi.getConversation(activeConversationId);
+    },
+    enabled: Boolean(activeConversationId),
+  });
+
+  const messagesQuery = useQuery({
+    queryKey: buildConversationMessagesQueryKey(activeConversationId),
+    queryFn: async () => {
+      if (!activeConversationId) {
+        throw new Error("Missing conversation id");
+      }
+      return conversationsApi.getMessages(activeConversationId);
+    },
+    enabled: Boolean(activeConversationId),
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (text: string) => {
+      if (!activeConversationId) {
+        throw new Error("Missing conversation id");
+      }
+      return conversationsApi.sendMessage(activeConversationId, text);
+    },
+    onSuccess: (message) => {
+      queryClient.setQueryData<ConversationMessagesResponse>(
+        buildConversationMessagesQueryKey(activeConversationId),
+        (previous) => appendMessage(previous, message),
+      );
+      void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+    },
+  });
+
+  const activeChatName =
+    conversationQuery.data?.peer.display_name ??
+    activeMatch?.displayName ??
+    fallbackProfile?.name ??
+    null;
+  const activeChatAvatar =
+    conversationQuery.data?.peer.avatar_url ??
+    activeMatch?.avatarUrl ??
+    fallbackProfile?.image ??
+    null;
+  const peerUserId = conversationQuery.data?.peer.user_id ?? activeMatch?.candidateUserId ?? null;
+  const activeChatMeta =
+    conversationQuery.data?.status && conversationQuery.data.status !== "active"
+      ? t("chat.conversation_closed")
+      : activeMatch?.lastMessageAt
+        ? t("chat.recent_active")
+        : t("chat.no_messages_yet");
+  const conversationIsClosed =
+    conversationQuery.data?.status != null && conversationQuery.data.status !== "active";
+  const isLoadingConversation =
+    Boolean(activeConversationId) &&
+    (conversationQuery.isLoading || messagesQuery.isLoading);
+  const messages = (messagesQuery.data?.items ?? []).map((message) => ({
+    id: message.message_id,
+    text: message.text,
+    sender: message.sender_user_id === peerUserId ? "other" : "me",
+    time: new Intl.DateTimeFormat("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(message.created_at)),
+  }));
 
   useEffect(() => {
     if (!activeMatchId) {
@@ -93,26 +193,110 @@ export default function ChatPage() {
     }
   }, [activeMatchId, matches, requestedMatchId, routeState?.matchId, visibleMatches]);
 
-  const handleSend = () => {
-    if (!activeChatId || !input.trim()) {
+  useEffect(() => {
+    if (activeMatch?.matchId) {
+      void matchNotifications?.markMatchAsSeen(activeMatch.matchId);
+    }
+  }, [activeMatch?.matchId, matchNotifications]);
+
+  useEffect(() => {
+    if (
+      !activeConversationId ||
+      !matchNotifications?.isRealtimeEnabled ||
+      !matchNotifications.realtimeClient
+    ) {
       return;
     }
 
-    setMessagesByChatId((prevMessages) => ({
-      ...prevMessages,
-      [activeChatId]: [
-        ...(prevMessages[activeChatId] ?? []),
-        {
-          id: Date.now(),
-          text: input.trim(),
-          sender: "me",
-          time: new Intl.DateTimeFormat("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(new Date()),
-        },
-      ],
-    }));
+    let cancelled = false;
+    let subscription: Subscription | null = null;
+
+    const subscribeToConversation = async () => {
+      try {
+        const realtime = await conversationsApi.getRealtimeToken(activeConversationId);
+        if (
+          cancelled ||
+          !realtime.enabled ||
+          !realtime.channel ||
+          !matchNotifications.realtimeClient
+        ) {
+          return;
+        }
+
+        const existing = matchNotifications.realtimeClient.getSubscription(realtime.channel);
+        if (existing) {
+          matchNotifications.realtimeClient.removeSubscription(existing);
+        }
+
+        subscription = matchNotifications.realtimeClient.newSubscription(realtime.channel, {
+          token: realtime.token ?? undefined,
+          getToken: async () => {
+            const refreshed = await conversationsApi.getRealtimeToken(activeConversationId);
+            if (!refreshed.enabled || !refreshed.token) {
+              throw new UnauthorizedError();
+            }
+            return refreshed.token;
+          },
+        });
+
+        subscription.on("publication", (ctx) => {
+          const event = ctx.data as RealtimeChatEvent;
+          if (event.type === "message_created") {
+            queryClient.setQueryData<ConversationMessagesResponse>(
+              buildConversationMessagesQueryKey(activeConversationId),
+              (previous) => appendMessage(previous, event.payload),
+            );
+            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+            return;
+          }
+
+          if (event.type === "conversation_closed") {
+            queryClient.setQueryData(
+              buildConversationQueryKey(activeConversationId),
+              (previous: Awaited<
+                ReturnType<typeof conversationsApi.getConversation>
+              > | undefined) =>
+                previous
+                  ? {
+                      ...previous,
+                      status: event.payload.status,
+                    }
+                  : previous,
+            );
+            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+          }
+        });
+
+        subscription.subscribe();
+      } catch {
+      }
+    };
+
+    void subscribeToConversation();
+
+    return () => {
+      cancelled = true;
+      if (subscription && matchNotifications.realtimeClient) {
+        subscription.unsubscribe();
+        matchNotifications.realtimeClient.removeSubscription(subscription);
+      }
+    };
+  }, [
+    activeConversationId,
+    matchNotifications?.isRealtimeEnabled,
+    matchNotifications?.realtimeClient,
+    queryClient,
+  ]);
+
+  const handleSend = () => {
+    if (!activeConversationId || !input.trim() || conversationIsClosed) {
+      return;
+    }
+    sendMessageMutation.mutate(input.trim(), {
+      onError: () => {
+        window.alert(t("chat.send_message_error"));
+      },
+    });
     setInput("");
   };
 
@@ -280,7 +464,11 @@ export default function ChatPage() {
             </div>
 
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
-              {messages.length === 0 ? (
+              {isLoadingConversation ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  {t("common.loading")}
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   {t("chat.no_messages_yet")}
                 </div>
@@ -319,6 +507,7 @@ export default function ChatPage() {
                   type="text"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
+                  disabled={conversationIsClosed}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       handleSend();
@@ -330,6 +519,9 @@ export default function ChatPage() {
                 <Button
                   size="icon"
                   className="h-14 w-14 shrink-0 rounded-xl"
+                  disabled={
+                    conversationIsClosed || sendMessageMutation.isPending || !input.trim()
+                  }
                   onClick={handleSend}
                 >
                   <Send className="size-5" />

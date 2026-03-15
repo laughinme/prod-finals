@@ -353,6 +353,15 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert conversation.status_code == 200
     assert conversation.json()["status"] == "active"
 
+    conversation_realtime = await client.get(
+        f"/api/v1/conversations/{match['conversation_id']}/realtime-token",
+        headers=auth_header(access_a),
+    )
+    assert conversation_realtime.status_code == 200
+    assert conversation_realtime.json()["enabled"] is True
+    assert conversation_realtime.json()["token"]
+    assert conversation_realtime.json()["channel"] == f"conversation-{match['conversation_id']}"
+
     icebreakers = await client.get(
         f"/api/v1/conversations/{match['conversation_id']}/icebreakers",
         headers=auth_header(access_a),

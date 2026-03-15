@@ -92,7 +92,9 @@
     "write_message": "Write a message",
     "maybe_later": "Maybe later",
     "realtime_match_hint": "You have a fresh match and can start the conversation right away.",
-    "new_match_badge": "New match"
+    "new_match_badge": "New match",
+    "empty_title": "No matches yet",
+    "empty_description": "When a match happens, it will appear here. For now, you can go back to discovery."
   },
   "chat": {
     "match_score_short": "Match {{score}}%",
@@ -104,9 +106,11 @@
     "messages_title": "Messages",
     "close_match": "Close match",
     "close_match_error": "Failed to close match.",
+    "conversation_closed": "Conversation closed",
     "no_messages_yet": "No messages yet",
     "report_block": "Report / Block",
     "report_sent": "Report sent. User blocked.",
+    "send_message_error": "Failed to send message.",
     "write_message_placeholder": "Write a message..."
   }
 }

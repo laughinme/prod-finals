@@ -48,6 +48,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const clientRef = useRef<Centrifuge | null>(null);
+  const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(false);
   const [notifications, setNotifications] = useState<MatchNotification[]>([]);
 
   const mergeNotifications = useCallback((items: MatchNotification[]) => {
@@ -126,6 +127,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     if (!auth?.user) {
       clientRef.current?.disconnect();
       clientRef.current = null;
+      setIsRealtimeEnabled(false);
       setNotifications([]);
       return;
     }
@@ -149,6 +151,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           !connection.ws_url ||
           !connection.token
         ) {
+          setIsRealtimeEnabled(false);
           return;
         }
 
@@ -191,7 +194,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
         client.connect();
         clientRef.current = client;
+        setIsRealtimeEnabled(true);
       } catch {
+        setIsRealtimeEnabled(false);
       }
     };
 
@@ -201,12 +206,15 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       cancelled = true;
       clientRef.current?.disconnect();
       clientRef.current = null;
+      setIsRealtimeEnabled(false);
     };
   }, [auth?.user, mergeNotifications, queryClient]);
 
   const value = useMemo(
     () => ({
       currentNotification,
+      isRealtimeEnabled,
+      realtimeClient: clientRef.current,
       unseenMatchCount,
       unseenMatchIds,
       dismissCurrentNotification,
@@ -216,6 +224,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     [
       currentNotification,
       dismissCurrentNotification,
+      isRealtimeEnabled,
       markMatchAsSeen,
       openCurrentMatch,
       unseenMatchCount,
