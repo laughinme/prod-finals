@@ -45,7 +45,7 @@ function getExplanationText(
 
 export function useDiscoveryPage() {
   const navigate = useNavigate();
-  const { data: feed, refetch } = useFeed();
+  const { data: feed } = useFeed();
   const feedReactionMutation = useFeedReaction();
   const [dismissedProfileIds, setDismissedProfileIds] = useState<MatchProfileId[]>(
     [],
@@ -171,11 +171,6 @@ export function useDiscoveryPage() {
     }
   };
 
-  const resetDiscovery = () => {
-    setDismissedProfileIds([]);
-    void refetch();
-  };
-
   return {
     currentProfile,
     exitX,
@@ -184,6 +179,5 @@ export function useDiscoveryPage() {
     closeReport: () => setShowReport(false),
     handleLike,
     handlePass,
-    resetDiscovery,
   };
 }

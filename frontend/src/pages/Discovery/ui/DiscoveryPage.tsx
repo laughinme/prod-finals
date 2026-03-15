@@ -18,7 +18,6 @@ export default function DiscoveryPage() {
     closeReport,
     handleLike,
     handlePass,
-    resetDiscovery,
   } = useDiscoveryPage();
 
   return (
@@ -39,14 +38,6 @@ export default function DiscoveryPage() {
             <p className="mb-8 max-w-md text-lg text-muted-foreground">
               {t("discovery.analyzing_habits")}
             </p>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-2xl"
-              onClick={resetDiscovery}
-            >
-              {t("discovery.refresh_recommendations")}
-            </Button>
           </motion.div>
         ) : (
           <SwipeableCard
