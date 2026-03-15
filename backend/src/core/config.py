@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
     CENTRIFUGO_TOKEN_TTL_SEC: int = 900
 
+    # ML service integration
+    ML_SERVICE_URL: str = ""
+    ML_SERVICE_TOKEN: str = "dev-ml-token"
+
     # API settings
     API_PORT: int = 8080
     API_HOST: str = '0.0.0.0'
