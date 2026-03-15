@@ -9,6 +9,8 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useProfile } from "@/features/profile/useProfile";
 import { ProfileAvatarUpload } from "@/features/profile/ProfileAvatarUpload";
 import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
+import { DiscoveryDesktopProfileCard } from "@/pages/Discovery/ui/DiscoveryDesktopProfileCard";
+import type { MatchProfile } from "@/entities/match-profile/model";
 
 const container = {
   hidden: { opacity: 0 },
@@ -156,6 +158,43 @@ export default function ProfilePage() {
             >
               <ProfileEditForm profile={profile} />
             </motion.div>
+          </motion.div>
+        )}
+
+        {profile && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="mt-12"
+          >
+            <h2 className="mb-6 text-2xl font-bold tracking-tight">
+              {t("profile.my_questionnaire")}
+            </h2>
+            <DiscoveryDesktopProfileCard
+              profile={
+                {
+                  id: profile.email,
+                  candidateUserId: null,
+                  name: profile.username || profile.email,
+                  age: null,
+                  image: profile.profilePicUrl,
+                  bio: profile.bio,
+                  matchScore: 0,
+                  tags: [],
+                  explanation: "",
+                  location: "",
+                  activity: "",
+                  reasonCodes: [],
+                  detailsAvailable: false,
+                  actions: null,
+                  source: "feed",
+                } satisfies MatchProfile
+              }
+              onLike={() => {}}
+              onPass={() => {}}
+              onOpenReport={() => {}}
+            />
           </motion.div>
         )}
       </main>

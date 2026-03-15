@@ -62,7 +62,8 @@
     "load_error": "Failed to load profile. Please try refreshing the page.",
     "online_since": "Online since {{date}}",
     "banned": "Banned",
-    "active": "Active"
+    "active": "Active",
+    "my_questionnaire": "My Questionnaire"
   },
   "onboarding": {
     "title_part1": "Dating by",

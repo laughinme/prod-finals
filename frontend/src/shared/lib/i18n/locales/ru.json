@@ -62,7 +62,8 @@
     "load_error": "Не удалось загрузить профиль. Попробуйте обновить страницу.",
     "online_since": "В сети с {{date}}",
     "banned": "Забанен",
-    "active": "Активен"
+    "active": "Активен",
+    "my_questionnaire": "Моя анкета"
   },
   "onboarding": {
     "title_part1": "Знакомства по",

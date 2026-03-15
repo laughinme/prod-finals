@@ -2,7 +2,6 @@ import {
   Navigate,
   Outlet,
   useLocation,
-  type Location,
   type RouteObject,
 } from "react-router-dom";
 import { useTranslation } from "react-i18next";

@@ -68,23 +68,40 @@ export function Header() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    "relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
+                      ? "text-primary-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )
                 }
-                >
-                  <Icon className="size-4" />
-                  {item.label}
-                  {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
-                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
-                      {matchNotifications?.unseenMatchCount}
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <motion.div
+                        layoutId="nav-pill"
+                        className="absolute inset-0 rounded-full bg-primary"
+                        transition={{
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Icon className="size-4" />
+                      {item.label}
+                      {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
+                        <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
+                          {matchNotifications?.unseenMatchCount}
+                        </span>
+                      ) : null}
                     </span>
-                  ) : null}
-                </NavLink>
-              );
-            })}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
