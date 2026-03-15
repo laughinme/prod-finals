@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 def init_scheduler(settings: Settings | None = None) -> AsyncIOScheduler | None:
     settings = settings or get_settings()
+    ml_service_url = getattr(settings, "ML_SERVICE_URL", "")
     if not settings.SCHEDULER_ENABLED:
         logger.info("Scheduler is disabled")
         return None
@@ -23,7 +24,7 @@ def init_scheduler(settings: Settings | None = None) -> AsyncIOScheduler | None:
         },
     )
 
-    if settings.ML_SERVICE_URL:
+    if ml_service_url:
         scheduler.add_job(
             dispatch_ml_swipe_events,
             trigger="interval",
