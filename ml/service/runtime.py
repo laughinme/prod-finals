@@ -382,61 +382,58 @@ class MlRuntime:
         
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
 
-    def _update_user_vector_on_pass(self, actor_user_id: int, target_user_id: int, trace_id: UUID) -> None:
+    def _update_user_vector_on_pass(self, actor_user_id: str | int, target_user_id: str | int, trace_id: UUID) -> None:
         """
         Обновляет вектор пользователя actor_user_id, чтобы он стал менее похожим на target_user_id.
-        Это реализует дообучение по свайпам "pass".
         """
         try:
-            # Получаем векторы из Qdrant
             actor_id = _string_to_uuid(str(actor_user_id))
             target_id = _string_to_uuid(str(target_user_id))
             
+            # ВАЖНО: Добавили with_payload=True
             points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
                 ids=[actor_id, target_id],
-                with_vectors=True
+                with_vectors=True,
+                with_payload=True 
             )
             
             if len(points) != 2:
-                print(f"[{trace_id}] Could not retrieve vectors for users {actor_user_id} and {target_user_id}")
+                print(f"[{trace_id}] Не найдены векторы для юзеров {actor_user_id} и {target_user_id}")
                 return
             
-            actor_vector = None
-            target_vector = None
+            actor_vector, target_vector, actor_payload = None, None, None
             for point in points:
                 if point.id == actor_id:
                     actor_vector = point.vector
+                    actor_payload = point.payload # ВАЖНО: Сохраняем payload
                 elif point.id == target_id:
                     target_vector = point.vector
             
             if actor_vector is None or target_vector is None:
-                print(f"[{trace_id}] Missing vectors for update")
                 return
             
-            # Корректируем вектор актора: вычитаем часть вектора цели
-            # alpha - коэффициент обучения, можно настроить
-            alpha = 0.01  # маленький шаг, чтобы не переобучить сильно
+            # ВАЖНО: Увеличили шаг, чтобы результат был заметен сразу!
+            alpha = 0.1
             new_vector = [
                 actor - alpha * target
                 for actor, target in zip(actor_vector, target_vector)
             ]
             
-            # Нормализуем вектор, чтобы сохранить единичную длину (для косинусного расстояния)
+            # Нормализация
             norm = np.linalg.norm(new_vector)
             if norm > 0:
-                new_vector = [x / norm for x in new_vector]
+                new_vector = [float(x / norm) for x in new_vector] # Приводим к float для JSON
             
-            # Обновляем вектор в Qdrant
+            # ВАЖНО: Передаем payload обратно
             self._qdrant_client.upsert(
                 collection_name="user_profiles",
-                points=[PointStruct(id=actor_id, vector=new_vector)]
+                points=[PointStruct(id=actor_id, vector=new_vector, payload=actor_payload)]
             )
-            
-            print(f"[{trace_id}] Updated vector for user {actor_user_id} based on pass to {target_user_id}")
+            print(f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} отдалился от {target_user_id}")
             
         except Exception as exc:
-            print(f"[{trace_id}] Error updating user vector: {exc}")
+            print(f"[{trace_id}] Ошибка обновления вектора: {exc}")
     def update_user_profile_favorites(
         self, 
         user_id: int, 
