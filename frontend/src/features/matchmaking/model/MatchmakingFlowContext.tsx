@@ -93,6 +93,7 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
       value={{
         isOnboardingComplete,
         completeOnboarding,
+        setIsOnboardingComplete,
       }}
     >
       {children}

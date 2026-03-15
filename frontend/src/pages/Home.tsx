@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useProfile } from "@/features/profile/useProfile";
+import { useQuizCompletion } from "@/features/quiz/model";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const { data: profile, isLoading } = useProfile();
   const { isOnboardingComplete } = useMatchmakingFlow();
+  const { isQuizCompletedLocal } = useQuizCompletion();
 
   if (isLoading) {
     return (
@@ -17,7 +19,16 @@ export default function HomePage() {
     );
   }
 
-  const shouldOpenDiscovery = profile?.isOnboarded || isOnboardingComplete;
+  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
+  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
 
-  return <Navigate to={shouldOpenDiscovery ? "/discovery" : "/onboarding"} replace />;
+  if (!isPhotoDone) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!isQuizDone) {
+    return <Navigate to="/quiz" replace />;
+  }
+
+  return <Navigate to="/discovery" replace />;
 }

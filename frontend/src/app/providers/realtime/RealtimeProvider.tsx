@@ -20,6 +20,7 @@ import {
 } from "@/shared/api/matchNotifications";
 import { getRealtimeConnectionToken } from "@/shared/api/realtime";
 import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
+import * as Sentry from "@sentry/react";
 
 type RealtimeProviderProps = {
   children: ReactNode;
@@ -154,7 +155,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         if (!cancelled) {
           mergeNotifications(initial.items.map(toMatchNotification));
         }
-      } catch {}
+      } catch (e) {
+        Sentry.captureException(e);
+      }
 
       try {
         const connection = await getRealtimeConnectionToken();
@@ -173,7 +176,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           getToken: async () => {
             const refreshed = await getRealtimeConnectionToken();
             if (!refreshed.enabled || !refreshed.token) {
-              throw new UnauthorizedError();
+              throw new UnauthorizedError("unauthorized error");
             }
             return refreshed.token;
           },

@@ -23,6 +23,7 @@ import {
 } from "@/shared/api/conversations";
 import { cn } from "@/shared/lib/utils";
 import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
+import * as Sentry from "@sentry/react";
 
 type ChatNavigationState = {
   matchedProfile?: MatchProfile;
@@ -39,7 +40,11 @@ type RealtimeChatEvent =
       type: "conversation_closed";
       payload: {
         conversation_id: string;
-        status: "active" | "closed_by_user" | "closed_by_block" | "closed_by_report";
+        status:
+          | "active"
+          | "closed_by_user"
+          | "closed_by_block"
+          | "closed_by_report";
         closed_at: string;
       };
     };
@@ -55,12 +60,15 @@ const appendMessage = (
   nextMessage: MessageResponse,
 ): ConversationMessagesResponse => {
   const prevItems = previous?.items ?? [];
-  if (prevItems.some((message) => message.message_id === nextMessage.message_id)) {
+  if (
+    prevItems.some((message) => message.message_id === nextMessage.message_id)
+  ) {
     return previous ?? { items: [nextMessage], next_cursor: null };
   }
   return {
     items: [...prevItems, nextMessage].sort(
-      (left, right) => Date.parse(left.created_at) - Date.parse(right.created_at),
+      (left, right) =>
+        Date.parse(left.created_at) - Date.parse(right.created_at),
     ),
     next_cursor: previous?.next_cursor ?? null,
   };
@@ -101,7 +109,8 @@ export default function ChatPage() {
     matches.find((match) => match.matchId === activeMatchId) ??
     null;
   const fallbackProfile = routeState?.matchedProfile ?? null;
-  const activeConversationId = activeMatch?.conversationId ?? routeState?.conversationId ?? null;
+  const activeConversationId =
+    activeMatch?.conversationId ?? routeState?.conversationId ?? null;
 
   const conversationQuery = useQuery({
     queryKey: buildConversationQueryKey(activeConversationId),
@@ -151,7 +160,10 @@ export default function ChatPage() {
     activeMatch?.avatarUrl ??
     fallbackProfile?.image ??
     null;
-  const peerUserId = conversationQuery.data?.peer.user_id ?? activeMatch?.candidateUserId ?? null;
+  const peerUserId =
+    conversationQuery.data?.peer.user_id ??
+    activeMatch?.candidateUserId ??
+    null;
   const activeChatMeta =
     conversationQuery.data?.status && conversationQuery.data.status !== "active"
       ? t("chat.conversation_closed")
@@ -159,7 +171,8 @@ export default function ChatPage() {
         ? t("chat.recent_active")
         : t("chat.no_messages_yet");
   const conversationIsClosed =
-    conversationQuery.data?.status != null && conversationQuery.data.status !== "active";
+    conversationQuery.data?.status != null &&
+    conversationQuery.data.status !== "active";
   const isLoadingConversation =
     Boolean(activeConversationId) &&
     (conversationQuery.isLoading || messagesQuery.isLoading);
@@ -193,7 +206,13 @@ export default function ChatPage() {
         setActiveMatchId(initialActiveMatch.matchId);
       }
     }
-  }, [activeMatchId, matches, requestedMatchId, routeState?.matchId, visibleMatches]);
+  }, [
+    activeMatchId,
+    matches,
+    requestedMatchId,
+    routeState?.matchId,
+    visibleMatches,
+  ]);
 
   useEffect(() => {
     if (activeMatch?.matchId) {
@@ -215,7 +234,8 @@ export default function ChatPage() {
 
     const subscribeToConversation = async () => {
       try {
-        const realtime = await conversationsApi.getRealtimeToken(activeConversationId);
+        const realtime =
+          await conversationsApi.getRealtimeToken(activeConversationId);
         if (
           cancelled ||
           !realtime.enabled ||
@@ -225,21 +245,27 @@ export default function ChatPage() {
           return;
         }
 
-        const existing = matchNotifications.realtimeClient.getSubscription(realtime.channel);
+        const existing = matchNotifications.realtimeClient.getSubscription(
+          realtime.channel,
+        );
         if (existing) {
           matchNotifications.realtimeClient.removeSubscription(existing);
         }
 
-        subscription = matchNotifications.realtimeClient.newSubscription(realtime.channel, {
-          token: realtime.token ?? undefined,
-          getToken: async () => {
-            const refreshed = await conversationsApi.getRealtimeToken(activeConversationId);
-            if (!refreshed.enabled || !refreshed.token) {
-              throw new UnauthorizedError();
-            }
-            return refreshed.token;
+        subscription = matchNotifications.realtimeClient.newSubscription(
+          realtime.channel,
+          {
+            token: realtime.token ?? undefined,
+            getToken: async () => {
+              const refreshed =
+                await conversationsApi.getRealtimeToken(activeConversationId);
+              if (!refreshed.enabled || !refreshed.token) {
+                throw new UnauthorizedError("unauthorized");
+              }
+              return refreshed.token;
+            },
           },
-        });
+        );
 
         subscription.on("publication", (ctx) => {
           const event = ctx.data as RealtimeChatEvent;
@@ -255,9 +281,11 @@ export default function ChatPage() {
           if (event.type === "conversation_closed") {
             queryClient.setQueryData(
               buildConversationQueryKey(activeConversationId),
-              (previous: Awaited<
-                ReturnType<typeof conversationsApi.getConversation>
-              > | undefined) =>
+              (
+                previous:
+                  | Awaited<ReturnType<typeof conversationsApi.getConversation>>
+                  | undefined,
+              ) =>
                 previous
                   ? {
                       ...previous,
@@ -270,7 +298,8 @@ export default function ChatPage() {
         });
 
         subscription.subscribe();
-      } catch {
+      } catch (e) {
+        Sentry.captureException(e);
       }
     };
 
@@ -313,7 +342,9 @@ export default function ChatPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
             <MessageCircle className="size-10 text-primary" />
           </div>
-          <h1 className="mb-3 text-3xl font-bold">{t("chat.no_active_chats")}</h1>
+          <h1 className="mb-3 text-3xl font-bold">
+            {t("chat.no_active_chats")}
+          </h1>
           <p className="mb-8 max-w-md text-muted-foreground">
             {t("chat.no_active_chats_description")}
           </p>
@@ -329,7 +360,9 @@ export default function ChatPage() {
         <main className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
           <div className="hidden w-80 flex-col border-r border-border bg-card md:flex">
             <div className="border-b border-border p-4">
-              <h2 className="mb-4 text-xl font-bold">{t("chat.messages_title")}</h2>
+              <h2 className="mb-4 text-xl font-bold">
+                {t("chat.messages_title")}
+              </h2>
               <div className="relative">
                 <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -366,7 +399,9 @@ export default function ChatPage() {
 
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="mb-1 flex items-baseline justify-between">
-                      <h3 className="truncate text-sm font-semibold">{match.displayName}</h3>
+                      <h3 className="truncate text-sm font-semibold">
+                        {match.displayName}
+                      </h3>
                       <span className="text-xs text-muted-foreground">
                         {match.lastMessageAt
                           ? new Intl.DateTimeFormat("ru-RU", {
@@ -397,8 +432,12 @@ export default function ChatPage() {
                   />
                 </div>
                 <div>
-                  <h3 className="mb-1 leading-none font-semibold">{activeChatName}</h3>
-                  <p className="text-xs leading-none text-muted-foreground">{activeChatMeta}</p>
+                  <h3 className="mb-1 leading-none font-semibold">
+                    {activeChatName}
+                  </h3>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {activeChatMeta}
+                  </p>
                 </div>
               </div>
 
@@ -433,7 +472,8 @@ export default function ChatPage() {
 
                               const nextMatch =
                                 visibleMatches.find(
-                                  (match) => match.matchId !== activeMatch.matchId,
+                                  (match) =>
+                                    match.matchId !== activeMatch.matchId,
                                 ) ?? null;
 
                               if (nextMatch) {
@@ -454,9 +494,7 @@ export default function ChatPage() {
                         className="flex w-full items-center gap-2 px-4 py-3 text-sm text-destructive transition-colors hover:bg-destructive/10"
                         onClick={() => {
                           setShowMenu(false);
-                          window.alert(
-                            t("chat.report_sent"),
-                          );
+                          window.alert(t("chat.report_sent"));
                           navigate("/discovery");
                         }}
                       >
@@ -469,7 +507,10 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
+            <div
+              ref={messagesContainerRef}
+              className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6"
+            >
               {isLoadingConversation ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   {t("common.loading")}
@@ -497,7 +538,9 @@ export default function ChatPage() {
                           : "rounded-bl-sm border border-border bg-card text-card-foreground",
                       )}
                     >
-                      <p className="text-[15px] leading-relaxed">{message.text}</p>
+                      <p className="text-[15px] leading-relaxed">
+                        {message.text}
+                      </p>
                     </div>
                     <span className="mt-2 px-1 text-xs text-muted-foreground">
                       {message.time}
@@ -527,7 +570,9 @@ export default function ChatPage() {
                   size="icon"
                   className="h-14 w-14 shrink-0 rounded-xl"
                   disabled={
-                    conversationIsClosed || sendMessageMutation.isPending || !input.trim()
+                    conversationIsClosed ||
+                    sendMessageMutation.isPending ||
+                    !input.trim()
                   }
                   onClick={handleSend}
                 >

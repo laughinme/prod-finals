@@ -53,19 +53,22 @@ export const RequireAuth = () => {
 };
 
 export const RequireMatchmakingReady = () => {
-  const { isOnboardingComplete } = useMatchmakingFlow();
   const { data: profile, isLoading } = useProfile();
+  const { isOnboardingComplete } = useMatchmakingFlow();
   const { isQuizCompletedLocal } = useQuizCompletion();
 
-  if (isLoading) {
+  if (!profile && isLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  if (!profile?.isOnboarded && !isOnboardingComplete) {
+  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
+  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
+
+  if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (!profile?.quizStarted && !isQuizCompletedLocal) {
+  if (!isQuizDone) {
     return <Navigate to="/quiz" replace />;
   }
 
@@ -73,15 +76,17 @@ export const RequireMatchmakingReady = () => {
 };
 
 export const RequireIncompleteOnboarding = () => {
-  const { isOnboardingComplete } = useMatchmakingFlow();
   const { data: profile, isLoading } = useProfile();
+  const { isOnboardingComplete } = useMatchmakingFlow();
 
-  if (isLoading) {
+  if (!profile && isLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  if (profile?.isOnboarded || isOnboardingComplete) {
-    return <Navigate to="/" replace />;
+  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
+
+  if (isPhotoDone) {
+    return <Navigate to="/quiz" replace />;
   }
 
   return <Outlet />;
@@ -92,15 +97,18 @@ export const RequireIncompleteQuiz = () => {
   const { isQuizCompletedLocal } = useQuizCompletion();
   const { isOnboardingComplete } = useMatchmakingFlow();
 
-  if (isLoading) {
+  if (!profile && isLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  if (profile?.quizStarted || isQuizCompletedLocal) {
-    return <Navigate to="/" replace />;
+  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
+  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
+
+  if (isQuizDone) {
+    return <Navigate to="/discovery" replace />;
   }
 
-  if (!profile?.isOnboarded && !isOnboardingComplete) {
+  if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
   }
 

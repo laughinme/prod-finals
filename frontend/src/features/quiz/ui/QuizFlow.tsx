@@ -6,7 +6,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/react";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
 import type { Question } from "@/entities/quiz";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useQuizCompletion } from "@/features/quiz/model";
@@ -20,11 +19,8 @@ import {
 export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth()!;
   const { completeOnboarding } = useMatchmakingFlow();
   const { markQuizCompleted } = useQuizCompletion();
-
-  const quizStarted = user?.quiz_started ?? false;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
@@ -36,7 +32,6 @@ export function QuizFlow() {
   } = useQuery({
     queryKey: ["onboarding", "config"],
     queryFn: getOnboardingConfig,
-    enabled: !quizStarted,
   });
 
   const answerMutation = useMutation({
@@ -61,6 +56,11 @@ export function QuizFlow() {
   }
 
   if (isConfigError || (!question && !isConfigLoading)) {
+    if (!isConfigLoading && config?.steps.length === 0) {
+      markQuizCompleted();
+      completeOnboarding();
+      return <Navigate to="/discovery" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

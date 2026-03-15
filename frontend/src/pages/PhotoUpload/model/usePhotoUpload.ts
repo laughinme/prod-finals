@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import * as Sentry from "@sentry/react";
 
 import { useUploadAvatar } from "@/features/profile/useProfile";
@@ -7,7 +13,6 @@ import { useUploadAvatar } from "@/features/profile/useProfile";
 export type PhotoUploadState = "idle" | "preview" | "uploading" | "done";
 
 export function usePhotoUpload() {
-  const navigate = useNavigate();
   const { mutateAsync: uploadAvatar } = useUploadAvatar();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,10 +109,6 @@ export function usePhotoUpload() {
       clearInterval(progressInterval);
       setProgress(100);
       setUploadState("done");
-
-      setTimeout(() => {
-        navigate("/quiz", { replace: true });
-      }, 1500);
     } catch (error) {
       Sentry.captureException(error);
       clearInterval(progressInterval);
