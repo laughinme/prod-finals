@@ -91,6 +91,11 @@ export function Header() {
                     <span className="relative z-10 flex items-center gap-2">
                       <Icon className="size-4" />
                       {item.label}
+                      {item.to === "/chat" && unreadMessagesCount > 0 ? (
+                        <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
+                          {unreadMessagesCount}
+                        </span>
+                      ) : null}
                       {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
                         <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
                           {matchNotifications?.unseenMatchCount}
@@ -109,7 +114,7 @@ export function Header() {
             to="/chat"
             className={({ isActive }) =>
               cn(
-                "flex size-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors md:hidden",
+                "relative flex size-10 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors md:hidden",
                 isActive
                   ? "border-primary bg-primary text-primary-foreground"
                   : "hover:bg-secondary hover:text-foreground",
@@ -117,6 +122,11 @@ export function Header() {
             }
           >
             <MessageCircle className="size-4" />
+            {unreadMessagesCount > 0 ? (
+              <span className="absolute -top-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                {unreadMessagesCount}
+              </span>
+            ) : null}
           </NavLink>
 
           <HeaderUserMenu />

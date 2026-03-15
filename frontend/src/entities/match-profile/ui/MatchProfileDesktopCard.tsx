@@ -78,7 +78,7 @@ export function MatchProfileDesktopCard({
             className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
             onClick={onOpenReport}
           >
-            <ShieldAlert className="size-[30px] opacity-80" />
+            <ShieldAlert className="size-7.5 opacity-80" />
           </button>
         </div>
 
