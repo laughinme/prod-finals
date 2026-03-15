@@ -123,6 +123,18 @@ export default function ChatPage() {
     enabled: Boolean(activeConversationId),
   });
 
+  const markReadMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeConversationId) {
+        throw new Error("Missing conversation id");
+      }
+      return conversationsApi.markRead(activeConversationId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+    },
+  });
+
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
       if (!activeConversationId) {
@@ -200,6 +212,17 @@ export default function ChatPage() {
   }, [activeMatch?.matchId, matchNotifications]);
 
   useEffect(() => {
+    matchNotifications?.setActiveConversationId(activeConversationId);
+    if (activeConversationId) {
+      matchNotifications?.clearConversationMessageNotifications(activeConversationId);
+      void markReadMutation.mutateAsync().catch(() => undefined);
+    }
+    return () => {
+      matchNotifications?.setActiveConversationId(null);
+    };
+  }, [activeConversationId, markReadMutation, matchNotifications]);
+
+  useEffect(() => {
     if (
       !activeConversationId ||
       !matchNotifications?.isRealtimeEnabled ||
@@ -246,6 +269,10 @@ export default function ChatPage() {
               buildConversationMessagesQueryKey(activeConversationId),
               (previous) => appendMessage(previous, event.payload),
             );
+            if (event.payload.sender_user_id === peerUserId) {
+              matchNotifications?.clearConversationMessageNotifications(activeConversationId);
+              void markReadMutation.mutateAsync().catch(() => undefined);
+            }
             void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
             return;
           }
@@ -283,8 +310,9 @@ export default function ChatPage() {
     };
   }, [
     activeConversationId,
-    matchNotifications?.isRealtimeEnabled,
-    matchNotifications?.realtimeClient,
+    markReadMutation,
+    matchNotifications,
+    peerUserId,
     queryClient,
   ]);
 
@@ -361,14 +389,21 @@ export default function ChatPage() {
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="mb-1 flex items-baseline justify-between">
                       <h3 className="truncate text-sm font-semibold">{match.displayName}</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {match.lastMessageAt
-                          ? new Intl.DateTimeFormat("ru-RU", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }).format(new Date(match.lastMessageAt))
-                          : ""}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {match.unreadCount > 0 ? (
+                          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                            {match.unreadCount}
+                          </span>
+                        ) : null}
+                        <span className="text-xs text-muted-foreground">
+                          {match.lastMessageAt
+                            ? new Intl.DateTimeFormat("ru-RU", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }).format(new Date(match.lastMessageAt))
+                            : ""}
+                        </span>
+                      </div>
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
                       {match.lastMessagePreview ?? t("chat.no_messages_yet")}

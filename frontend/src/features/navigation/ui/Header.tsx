@@ -10,11 +10,15 @@ import {
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
 import { useMatchNotifications } from "@/app/providers/realtime";
+import { useMatches } from "@/features/match";
 import { cn } from "@/shared/lib/utils";
 
 export function Header() {
   const { t } = useTranslation();
   const matchNotifications = useMatchNotifications();
+  const { data: matchesResponse } = useMatches();
+  const unreadMessagesCount =
+    matchesResponse?.matches.reduce((total, match) => total + match.unreadCount, 0) ?? 0;
 
   const navItems = [
     {
@@ -77,6 +81,11 @@ export function Header() {
                 >
                   <Icon className="size-4" />
                   {item.label}
+                  {item.to === "/chat" && unreadMessagesCount > 0 ? (
+                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
+                      {unreadMessagesCount}
+                    </span>
+                  ) : null}
                   {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
                     <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
                       {matchNotifications?.unseenMatchCount}
