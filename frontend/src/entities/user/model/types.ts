@@ -1,7 +1,9 @@
 export type User = {
     id: string;
     email: string;
-    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    fullName: string;
     profilePicUrl: string | null;
     bio: string | null;
     birthDate: string | null;
@@ -14,7 +16,8 @@ export type User = {
 };
 
 export type UserPatchPayload = {
-    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     bio?: string | null;
     birthDate?: string | null;
 };

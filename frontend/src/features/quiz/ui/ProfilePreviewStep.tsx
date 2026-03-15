@@ -28,7 +28,7 @@ export function ProfilePreviewStep() {
   }
 
   const currentBio = bio ?? profile.bio ?? "";
-  const title = profile.username || profile.email.split("@")[0];
+  const title = profile.fullName || profile.email.split("@")[0];
 
   const handleSave = async () => {
     try {

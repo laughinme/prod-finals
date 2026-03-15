@@ -34,7 +34,7 @@ export function HeaderUserMenu() {
   }
 
   const email = profile?.email ?? auth?.user?.email ?? "profile@t-match.local";
-  const name = profile?.username || email;
+  const name = profile?.fullName || email;
   const avatarUrl = profile?.profilePicUrl ?? null;
 
   const initials = name

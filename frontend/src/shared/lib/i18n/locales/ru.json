@@ -48,7 +48,8 @@
   "profile": {
     "personal_info": "Личная информация",
     "update_name_bio": "Обновите своё имя и описание",
-    "username": "Имя пользователя",
+    "first_name": "Имя",
+    "last_name": "Фамилия",
     "enter_name": "Введите имя",
     "age": "Возраст",
     "enter_age": "Введите возраст",

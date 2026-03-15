@@ -22,28 +22,38 @@ interface ProfileEditFormProps {
 export function ProfileEditForm({ profile }: ProfileEditFormProps) {
     const { t } = useTranslation();
     const [form, setForm] = useState<UserPatchPayload>({
-        username: profile.username ?? "",
+        firstName: profile.firstName ?? "",
+        lastName: profile.lastName ?? "",
         bio: profile.bio ?? "",
         birthDate: profile.birthDate ?? "",
     });
 
     useEffect(() => {
         setForm({
-            username: profile.username ?? "",
+            firstName: profile.firstName ?? "",
+            lastName: profile.lastName ?? "",
             bio: profile.bio ?? "",
             birthDate: profile.birthDate ?? "",
         });
-    }, [profile.username, profile.bio, profile.birthDate]);
+    }, [profile.firstName, profile.lastName, profile.bio, profile.birthDate]);
 
     const { mutate: save, isPending } = useUpdateProfile();
 
     const hasChanges =
+        (form.firstName ?? "") !== (profile.firstName ?? "") ||
+        (form.lastName ?? "") !== (profile.lastName ?? "") ||
         (form.bio ?? "") !== (profile.bio ?? "");
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         const payload: UserPatchPayload = {};
+        if ((form.firstName ?? "") !== (profile.firstName ?? "")) {
+            payload.firstName = form.firstName || null;
+        }
+        if ((form.lastName ?? "") !== (profile.lastName ?? "")) {
+            payload.lastName = form.lastName || null;
+        }
         if ((form.bio ?? "") !== (profile.bio ?? "")) {
             payload.bio = form.bio || null;
         }
@@ -53,7 +63,8 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
 
     const handleReset = () => {
         setForm({
-            username: profile.username ?? "",
+            firstName: profile.firstName ?? "",
+            lastName: profile.lastName ?? "",
             bio: profile.bio ?? "",
             birthDate: profile.birthDate ?? "",
         });
@@ -68,13 +79,26 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-6 px-0 pb-6">
                     <div className="space-y-3">
-                        <Label htmlFor="profile-username" className="text-sm font-semibold text-foreground/80">{t("profile.username")}</Label>
+                        <Label htmlFor="profile-first-name" className="text-sm font-semibold text-foreground/80">{t("profile.first_name")}</Label>
                         <Input
-                            id="profile-username"
-                            disabled
-                            className="h-11 px-4 text-base bg-muted/60 border-border/30 text-muted-foreground cursor-not-allowed opacity-60"
-                            value={form.username ?? ""}
-                            readOnly
+                            id="profile-first-name"
+                            className="h-11 px-4 text-base"
+                            value={form.firstName ?? ""}
+                            onChange={(e) =>
+                                setForm((p) => ({ ...p, firstName: e.target.value }))
+                            }
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label htmlFor="profile-last-name" className="text-sm font-semibold text-foreground/80">{t("profile.last_name")}</Label>
+                        <Input
+                            id="profile-last-name"
+                            className="h-11 px-4 text-base"
+                            value={form.lastName ?? ""}
+                            onChange={(e) =>
+                                setForm((p) => ({ ...p, lastName: e.target.value }))
+                            }
                         />
                     </div>
 

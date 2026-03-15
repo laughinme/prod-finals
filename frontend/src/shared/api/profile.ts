@@ -5,7 +5,8 @@ import type { User, UserPatchPayload } from "@/entities/user/model";
 export type UserDto = {
     id: string;
     email: string;
-    username: string | null;
+    first_name: string | null;
+    last_name: string | null;
     avatar_key?: string | null;
     avatar_url?: string | null;
     profile_pic_url?: string | null;
@@ -21,7 +22,8 @@ export type UserDto = {
 };
 
 export type UserPatchPayloadDto = {
-    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
     bio?: string | null;
     birth_date?: string | null;
 };

@@ -48,7 +48,8 @@
   "profile": {
     "personal_info": "Personal Information",
     "update_name_bio": "Update your name and bio",
-    "username": "Username",
+    "first_name": "First name",
+    "last_name": "Last name",
     "enter_name": "Enter name",
     "age": "Age",
     "enter_age": "Enter age",

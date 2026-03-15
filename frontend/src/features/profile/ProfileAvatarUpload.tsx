@@ -11,19 +11,19 @@ import { useUploadAvatar } from "@/features/profile/useProfile";
 
 interface ProfileAvatarUploadProps {
     src: string | null;
-    username: string | null;
+    fullName: string;
     email: string;
 }
 
 export function ProfileAvatarUpload({
     src,
-    username,
+    fullName,
     email,
 }: ProfileAvatarUploadProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const { mutate: upload, isPending } = useUploadAvatar();
 
-    const initials = (username ?? email)
+    const initials = (fullName || email)
         .split(/[\s@]+/)
         .slice(0, 2)
         .map((s) => s[0]?.toUpperCase() ?? "")
@@ -48,7 +48,7 @@ export function ProfileAvatarUpload({
                 className="relative cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60 ring-4 ring-background z-10 bg-background"
             >
                 <Avatar className="size-32 text-4xl sm:size-40 sm:text-5xl">
-                    {src && <AvatarImage src={src} alt={username ?? email} />}
+                    {src && <AvatarImage src={src} alt={fullName || email} />}
                     <AvatarFallback className="text-3xl sm:text-4xl font-medium">{initials}</AvatarFallback>
                 </Avatar>
 

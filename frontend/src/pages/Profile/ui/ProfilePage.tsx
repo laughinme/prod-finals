@@ -89,14 +89,14 @@ export default function ProfilePage() {
               <div className="-mt-12 sm:-mt-20">
                 <ProfileAvatarUpload
                   src={profile.profilePicUrl}
-                  username={profile.username}
+                  fullName={profile.fullName}
                   email={profile.email}
                 />
               </div>
 
               <div className="w-full space-y-1">
                 <h1 className="truncate text-2xl font-extrabold tracking-tight md:text-3xl">
-                  {profile.username || profile.email}
+                  {profile.fullName}
                 </h1>
                 <p className="truncate text-base font-medium text-muted-foreground">
                   {profile.email}
@@ -178,7 +178,7 @@ export default function ProfilePage() {
               const previewProfile = {
                 id: profile.email,
                 candidateUserId: null,
-                name: profile.username || profile.email,
+                name: profile.fullName,
                 age: null,
                 image: profile.profilePicUrl,
                 bio: profile.bio,
