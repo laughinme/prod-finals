@@ -5,8 +5,8 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     ports:
-      - "8333:6333"
-      - "8334:6334"
+      - "8002:6333"
+      - "8003:6334"
     restart: unless-stopped
 
   ml-service:
