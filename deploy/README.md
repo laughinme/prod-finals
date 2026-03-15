@@ -74,7 +74,11 @@ Then reconnect so the docker group is applied.
 4. The job syncs the repo to the VM.
 5. The job uploads `deploy/.env`.
 6. The job runs `bash deploy/remote-deploy.sh` on the VM and waits until services are healthy.
-7. `ml-service` starts without training by default. Training is a separate manual step.
+7. Post-deploy ML profile sync runs automatically (`ML_SYNC_ON_DEPLOY=true` by default):
+   - ensures `users.service_user_id` is present,
+   - upserts missing user profiles into `user_profiles` via ML API,
+   - optionally removes orphan Qdrant points (`ML_SYNC_DELETE_ORPHANS=true`).
+8. `ml-service` starts without training by default. Training is a separate manual step.
 
 ## Notes
 
@@ -88,6 +92,13 @@ Then reconnect so the docker group is applied.
 - Set `SITE_URL` and `STORAGE_ENDPOINT_PUBLIC` to the final `https://...` domain, and keep `COOKIE_SECURE=true` in production.
 - ML model training is manual. Run on VM:
   `bash deploy/manual-train-ml.sh "https://your-dataset-url.csv"`.
+- Automatic ML profile sync is controlled by:
+  - `ML_SYNC_ON_DEPLOY` (default `true`)
+  - `ML_SYNC_DELETE_ORPHANS` (default `true`)
+  - `ML_SYNC_UPSERT_EXISTING` (default `false`)
+  - `ML_SYNC_COLLECTION` (default `user_profiles`)
+  - `ML_SYNC_BATCH_SIZE` (default `200`)
+  - `ML_SYNC_DEFAULT_CATEGORIES` (fallback categories for cold-start upserts)
 - A plain `502 Bad Gateway` on `/api/*` usually means the external proxy is up but the `backend` container never became healthy or exited during startup.
 
 ## Quick debugging on the VM
@@ -102,6 +113,7 @@ docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f caddy
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f centrifugo
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f ml-service
 docker compose --env-file deploy/.env -f docker-compose.prod.yml exec backend sh
+docker compose --env-file deploy/.env -f docker-compose.prod.yml exec -T backend python -m scripts.sync_ml_profiles --delete-orphans
 ```
 
 What to look for first:
