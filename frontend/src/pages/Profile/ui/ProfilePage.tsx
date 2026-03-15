@@ -194,6 +194,8 @@ export default function ProfilePage() {
               onLike={() => {}}
               onPass={() => {}}
               onOpenReport={() => {}}
+              showMatchScore={false}
+              showReportButton={false}
             />
           </motion.div>
         )}

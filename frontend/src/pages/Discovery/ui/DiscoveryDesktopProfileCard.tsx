@@ -4,21 +4,29 @@ import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 
+type DiscoveryDesktopProfileCardProps = DiscoveryProfileCardViewProps & {
+  showMatchScore?: boolean;
+  showReportButton?: boolean;
+};
+
 export function DiscoveryDesktopProfileCard({
   profile,
   onOpenReport,
-}: DiscoveryProfileCardViewProps) {
+  showMatchScore = true,
+  showReportButton = true,
+}: DiscoveryDesktopProfileCardProps) {
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
   const hasMeta = Boolean(profile.location || profile.activity);
 
   return (
     <Card className="relative flex flex-col overflow-hidden rounded-4xl border-border bg-card p-0 shadow-2xl shadow-primary/5 md:flex-row">
-      {/* Top Left Badge */}
-      <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
-        <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md">
-          {profile.matchScore}%
+      {showMatchScore ? (
+        <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
+          <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md">
+            {profile.matchScore}%
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="relative h-[50vh] w-full shrink-0 md:h-[70vh] md:w-[45%]">
         {profile.image ? (
@@ -32,12 +40,14 @@ export function DiscoveryDesktopProfileCard({
           <div className="absolute inset-0 bg-secondary" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent md:hidden" />
-        
-        <div className="absolute top-4 left-4 z-20 md:hidden">
-          <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md">
-            {profile.matchScore}%
+
+        {showMatchScore ? (
+          <div className="absolute top-4 left-4 z-20 md:hidden">
+            <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md">
+              {profile.matchScore}%
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="absolute right-4 bottom-4 left-4 text-white md:hidden">
           <h2 className="text-3xl font-bold">{title}</h2>
@@ -62,14 +72,16 @@ export function DiscoveryDesktopProfileCard({
             ) : null}
           </div>
 
-          <div className="absolute top-2 right-0">
-            <button
-              className="mt-2 text-muted-foreground transition-colors hover:text-destructive"
-              onClick={onOpenReport}
-            >
-              <ShieldAlert className="size-7.5 opacity-80" />
-            </button>
-          </div>
+          {showReportButton ? (
+            <div className="absolute top-2 right-0">
+              <button
+                className="mt-2 text-muted-foreground transition-colors hover:text-destructive"
+                onClick={onOpenReport}
+              >
+                <ShieldAlert className="size-7.5 opacity-80" />
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {profile.bio && (
