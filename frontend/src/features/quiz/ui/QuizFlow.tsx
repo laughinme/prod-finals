@@ -17,6 +17,12 @@ import {
   postOnboardingAnswers,
 } from "@/shared/api/onboarding";
 
+type MatchPreferencesState = {
+  genders: string[];
+  ageMin: number;
+  ageMax: number;
+};
+
 export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -52,6 +58,28 @@ export function QuizFlow() {
     return answers[question.stepKey] || [];
   }, [answers, question]);
 
+  const currentMatchPreferences = useMemo<MatchPreferencesState | null>(() => {
+    if (!question || question.stepKey !== "match_preferences") {
+      return null;
+    }
+
+    const defaultAgeMin = question.rangeMin ?? 18;
+    const defaultAgeMax = question.rangeMax ?? 99;
+    const genders = currentAnswer
+      .filter((item) => item.startsWith("gender:"))
+      .map((item) => item.split(":", 2)[1]);
+    const ageMin = Number(
+      currentAnswer.find((item) => item.startsWith("age_min:"))?.split(":", 2)[1] ??
+        defaultAgeMin,
+    );
+    const ageMax = Number(
+      currentAnswer.find((item) => item.startsWith("age_max:"))?.split(":", 2)[1] ??
+        defaultAgeMax,
+    );
+
+    return { genders, ageMin, ageMax };
+  }, [currentAnswer, question]);
+
   if (isConfigLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary/20">
@@ -71,6 +99,18 @@ export function QuizFlow() {
       ...prev,
       [question.stepKey]: finalValue,
     }));
+  };
+
+  const updateMatchPreferencesAnswer = (nextState: MatchPreferencesState) => {
+    if (!question || question.stepKey !== "match_preferences") {
+      return;
+    }
+
+    handleAnswerChange([
+      ...nextState.genders.map((gender) => `gender:${gender}`),
+      `age_min:${nextState.ageMin}`,
+      `age_max:${nextState.ageMax}`,
+    ]);
   };
 
   const moveToNext = () => {
@@ -111,24 +151,15 @@ export function QuizFlow() {
         return;
       }
 
-      const response = await answerMutation.mutateAsync({
+      await answerMutation.mutateAsync({
         stepKey: question.stepKey,
         answers: finalAnswers,
       });
 
-      if (response.completed || isLastQuestion) {
+      if (isLastQuestion) {
         markQuizCompleted();
         completeOnboarding();
         navigate("/discovery", { replace: true });
-      } else if (response.nextStepKey) {
-        const nextIndex = steps.findIndex(
-          (s) => s.stepKey === response.nextStepKey,
-        );
-        if (nextIndex !== -1) {
-          setCurrentIndex(nextIndex);
-        } else {
-          moveToNext();
-        }
       } else {
         moveToNext();
       }
@@ -148,9 +179,9 @@ export function QuizFlow() {
 
   const isCurrentValid = () => {
     if (!question) return false;
-    if (question.optional) return true;
 
     const count = currentAnswer.length;
+    if (question.optional && count === 0) return true;
 
     if (question.stepType === "single_select") return count === 1;
     if (question.stepType === "multi_select") {
@@ -251,6 +282,161 @@ export function QuizFlow() {
             {q.maxAnswers && `Max: ${q.maxAnswers}`}
           </p>
         )}
+      </div>
+    );
+  };
+
+  const renderInterestTags = (q: Question) => {
+    const toggleOption = (value: string) => {
+      if (currentAnswer.includes(value)) {
+        handleAnswerChange(currentAnswer.filter((item) => item !== value));
+        return;
+      }
+      if (q.maxAnswers && currentAnswer.length >= q.maxAnswers) {
+        return;
+      }
+      handleAnswerChange([...currentAnswer, value]);
+    };
+
+    return (
+      <div className="space-y-6 py-2">
+        <div className="flex flex-wrap gap-3">
+          {q.options.map((option) => {
+            const isSelected = currentAnswer.includes(option.value);
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => toggleOption(option.value)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all",
+                  isSelected
+                    ? "border-primary bg-primary/10 text-foreground shadow-sm"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                <span>{option.label}</span>
+                <span
+                  className={cn(
+                    "flex size-5 items-center justify-center rounded-full border text-[10px]",
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-transparent",
+                  )}
+                >
+                  ✓
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-3xl border border-border/50 bg-secondary/35 p-5 text-sm leading-6 text-muted-foreground">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              ✓
+            </span>
+            <p>
+              Мы также используем агрегированные данные о ваших привычках, чтобы
+              сделать рекомендации еще точнее. Это приватно и безопасно.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMatchPreferences = (q: Question) => {
+    const state = currentMatchPreferences ?? {
+      genders: [],
+      ageMin: q.rangeMin ?? 18,
+      ageMax: q.rangeMax ?? 99,
+    };
+
+    const toggleGender = (value: string) => {
+      const nextGenders = state.genders.includes(value)
+        ? state.genders.filter((item) => item !== value)
+        : [...state.genders, value];
+      updateMatchPreferencesAnswer({
+        ...state,
+        genders: nextGenders,
+      });
+    };
+
+    const minVal = q.rangeMin ?? 18;
+    const maxVal = q.rangeMax ?? 99;
+
+    return (
+      <div className="space-y-8 py-2">
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-muted-foreground">
+            Кого показывать в первую очередь
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {q.options.map((option) => {
+              const isSelected = state.genders.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => toggleGender(option.value)}
+                  className={cn(
+                    "rounded-2xl border px-4 py-3 text-sm font-medium transition-all",
+                    isSelected
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-border/60 bg-secondary/20 p-5">
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <label className="flex items-center justify-between text-sm font-medium text-muted-foreground">
+                <span>От</span>
+                <span className="text-foreground">{state.ageMin}</span>
+              </label>
+              <input
+                type="range"
+                min={minVal}
+                max={maxVal}
+                value={state.ageMin}
+                onChange={(event) =>
+                  updateMatchPreferencesAnswer({
+                    ...state,
+                    ageMin: Math.min(Number(event.target.value), state.ageMax),
+                  })
+                }
+                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-center justify-between text-sm font-medium text-muted-foreground">
+                <span>{t("common.to")}</span>
+                <span className="text-foreground">{state.ageMax}</span>
+              </label>
+              <input
+                type="range"
+                min={minVal}
+                max={maxVal}
+                value={state.ageMax}
+                onChange={(event) =>
+                  updateMatchPreferencesAnswer({
+                    ...state,
+                    ageMax: Math.max(Number(event.target.value), state.ageMin),
+                  })
+                }
+                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-secondary accent-primary"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -357,11 +543,22 @@ export function QuizFlow() {
               </div>
 
               <div className="min-h-50">
-                {question!.stepType === "single_select" &&
+                {question!.stepKey === "match_preferences" &&
+                  renderMatchPreferences(question!)}
+                {question!.stepKey === "interests" &&
+                  renderInterestTags(question!)}
+                {question!.stepKey !== "match_preferences" &&
+                  question!.stepKey !== "interests" &&
+                  question!.stepType === "single_select" &&
                   renderSingleSelect(question!)}
-                {question!.stepType === "multi_select" &&
+                {question!.stepKey !== "match_preferences" &&
+                  question!.stepKey !== "interests" &&
+                  question!.stepType === "multi_select" &&
                   renderMultiSelect(question!)}
-                {question!.stepType === "range" && renderRange(question!)}
+                {question!.stepKey !== "match_preferences" &&
+                  question!.stepKey !== "interests" &&
+                  question!.stepType === "range" &&
+                  renderRange(question!)}
               </div>
             </motion.div>
           </AnimatePresence>

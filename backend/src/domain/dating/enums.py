@@ -70,6 +70,7 @@ class CompatibilityReasonCode(str, Enum):
     AGE_FIT = "age_fit"
     GOAL_FIT = "goal_fit"
     MUTUAL_PREFERENCE_FIT = "mutual_preference_fit"
+    INTERESTS_OVERLAP = "interests_overlap"
     PROFILE_QUALITY = "profile_quality"
 
 

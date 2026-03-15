@@ -85,6 +85,11 @@ class MockMlFacade(MlFacade):
                 score += 0.16
                 reason_codes.append(CompatibilityReasonCode.GOAL_FIT)
 
+            shared_interests = sorted(set(requester.interests).intersection(candidate.interests))
+            if shared_interests:
+                score += min(0.18, 0.06 * len(shared_interests))
+                reason_codes.append(CompatibilityReasonCode.INTERESTS_OVERLAP)
+
             requester_age = _age_for_birth_date(requester.birth_date, today)
             candidate_age = _age_for_birth_date(candidate.birth_date, today)
             if self._has_mutual_age_fit(requester, candidate, requester_age, candidate_age):
@@ -135,6 +140,7 @@ class MockMlFacade(MlFacade):
             CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
             CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
+            CompatibilityReasonCode.INTERESTS_OVERLAP: "You have overlapping interests to build on.",
             CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
         }
         return CompatibilityPreview(
@@ -241,6 +247,11 @@ class MockMlFacade(MlFacade):
                 "Preferences align both ways",
                 "Your mutual preferences suggest the match is viable from both sides.",
                 0.81,
+            ),
+            CompatibilityReasonCode.INTERESTS_OVERLAP: (
+                "Shared interests",
+                "You have overlapping interests that can help start a conversation naturally.",
+                0.72,
             ),
             CompatibilityReasonCode.PROFILE_QUALITY: (
                 "Strong profile signal",
@@ -428,4 +439,3 @@ class HttpMlFacade(MlFacade):
         candidate: FeedCandidateContext,
     ) -> IcebreakersResponse:
         return self._fallback.build_icebreakers(requester, candidate)
-

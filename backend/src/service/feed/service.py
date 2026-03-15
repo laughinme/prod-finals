@@ -165,8 +165,6 @@ class FeedService(BaseDatingService):
         requester_context: FeedCandidateContext,
         candidate_context: FeedCandidateContext,
     ) -> bool:
-        # For demo only purposes
-        return True
         candidate_age = _age_for_birth_date(candidate_context.birth_date, self.local_today())
         requester_age = _age_for_birth_date(requester_context.birth_date, self.local_today())
 

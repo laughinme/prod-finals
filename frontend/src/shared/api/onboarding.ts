@@ -30,7 +30,6 @@ export interface OnboardingStep {
 }
 
 export interface OnboardingConfigResponse {
-  quizOptional: boolean;
   steps: OnboardingStep[];
 }
 
@@ -40,9 +39,8 @@ export interface OnboardingAnswersRequest {
 }
 
 export interface OnboardingAnswersResponse {
-  quizStatus: string;
-  nextStepKey: string | null;
-  completed: boolean;
+  stepKey: string;
+  quizStarted: boolean;
   saved?: boolean;
 }
 
@@ -69,16 +67,14 @@ const toStep = (dto: OnboardingStepDto): OnboardingStep => ({
 const toConfigResponse = (
   dto: OnboardingConfigResponseDto,
 ): OnboardingConfigResponse => ({
-  quizOptional: dto.quiz_optional,
   steps: dto.steps.map(toStep),
 });
 
 const toAnswersResponse = (
   dto: OnboardingAnswersResponseDto,
 ): OnboardingAnswersResponse => ({
-  quizStatus: dto.quiz_status,
-  nextStepKey: dto.next_step_key,
-  completed: dto.completed,
+  stepKey: dto.step_key,
+  quizStarted: dto.quiz_started,
   saved: dto.saved,
 });
 

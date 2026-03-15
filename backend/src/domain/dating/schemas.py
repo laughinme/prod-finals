@@ -307,6 +307,7 @@ class FeedCandidateContext(BaseModel):
     city: str | None = None
     gender: Gender | None = None
     search_preferences: SearchPreferences = Field(default_factory=SearchPreferences)
+    interests: list[str] = Field(default_factory=list)
     bio: str | None = None
     avatar_url: str | None = None
     profile_completion_percent: int = Field(default=0, ge=0, le=100)

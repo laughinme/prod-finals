@@ -68,6 +68,7 @@ class BaseDatingService:
                 "distance_km": user.distance_km,
                 "goal": user.goal,
             },
+            interests=list(user.interests or []),
             bio=user.bio,
             avatar_url=user.avatar_url,
             profile_completion_percent=user.profile_completion_percent,
