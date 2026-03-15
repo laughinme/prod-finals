@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { HeartHandshake } from "lucide-react";
 
 import { useMatches } from "@/features/match/model/useMatches";
 import { useMatchNotifications } from "@/app/providers/realtime";
+import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export default function MatchesPage() {
@@ -10,6 +12,29 @@ export default function MatchesPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useMatches();
   const matchNotifications = useMatchNotifications();
+
+  if (!isLoading && data?.matches.length === 0) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
+          <HeartHandshake className="size-10 text-primary" strokeWidth={2.1} />
+        </div>
+
+        <h1 className="mb-3 text-3xl font-bold">{t("match.empty_title")}</h1>
+        <p className="mb-8 max-w-md text-muted-foreground">
+          {t("match.empty_description")}
+        </p>
+
+        <Button
+          size="lg"
+          className="h-14 rounded-2xl px-8 text-base font-semibold"
+          onClick={() => navigate("/discovery")}
+        >
+          {t("chat.back_to_discovery")}
+        </Button>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
@@ -23,10 +48,6 @@ export default function MatchesPage() {
             </div>
           ))}
         </div>
-      ) : data?.matches.length === 0 ? (
-        <p className="py-16 text-center text-lg text-muted-foreground">
-          Пока что тут пусто
-        </p>
       ) : (
         <div className="columns-2 gap-4 space-y-4 md:columns-3 lg:columns-4 xl:columns-5 sm:gap-6 sm:space-y-6">
           {data?.matches.map((match) => (
