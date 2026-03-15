@@ -386,7 +386,7 @@ export function PreferencesEditor() {
                     {renderQuestion(question)}
 
                     <Button
-                        className="h-11 w-full rounded-xl font-semibold"
+                        className="h-11 rounded-xl px-8 font-semibold"
                         onClick={handleSave}
                         disabled={answerMutation.isPending || currentAnswer.length === 0}
                     >

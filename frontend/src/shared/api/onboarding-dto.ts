@@ -49,3 +49,4 @@ export interface OnboardingAnswersResponseDto extends OnboardingStateDto {
   step_key: string;
   saved?: boolean;
 }
+

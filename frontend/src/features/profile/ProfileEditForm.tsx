@@ -64,7 +64,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
 
     return (
         <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="px-0 pt-0">
+            <CardHeader className="px-0 pt-0 pb-4">
                 <CardTitle className="text-2xl">{t("profile.personal_info")}</CardTitle>
             </CardHeader>
 

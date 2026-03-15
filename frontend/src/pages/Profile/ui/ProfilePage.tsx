@@ -71,11 +71,93 @@ export default function ProfilePage() {
     );
   }
 
+  /* Desktop sidebar — hidden on mobile */
+  const sidebarNav = (
+    <nav className="mt-16 hidden w-40 shrink-0 flex-col gap-1 md:flex">
+      <button
+        type="button"
+        onClick={() => setActiveTab("profile")}
+        className={cn(
+          "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+          activeTab === "profile"
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+      >
+        {t("profile.tab_profile")}
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("filters")}
+        className={cn(
+          "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+          activeTab === "filters"
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+      >
+        {t("profile.tab_filters")}
+      </button>
+
+      <Separator className="my-2" />
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="justify-start text-muted-foreground hover:text-destructive"
+        onClick={() => auth?.logout()}
+      >
+        <IconLogout className="mr-2 size-4" />
+        {t("common.logout")}
+      </Button>
+    </nav>
+  );
+
+  /* Mobile horizontal tab bar — hidden on desktop */
+  const mobileTabBar = (
+    <div className="flex items-center border-b border-border/40 md:hidden">
+      <button
+        type="button"
+        onClick={() => setActiveTab("profile")}
+        className={cn(
+          "border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+          activeTab === "profile"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground",
+        )}
+      >
+        {t("profile.tab_profile")}
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("filters")}
+        className={cn(
+          "border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+          activeTab === "filters"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground",
+        )}
+      >
+        {t("profile.tab_filters")}
+      </button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="ml-auto text-muted-foreground hover:text-destructive"
+        onClick={() => auth?.logout()}
+      >
+        <IconLogout className="size-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="relative flex-1">
-      <div className="absolute top-0 left-0 right-0 z-0 h-36 border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-48 md:h-64"></div>
+      {/* Banner — desktop only, hidden on filters tab */}
+      <div className="absolute top-0 left-0 right-0 z-0 hidden border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 sm:block sm:h-32 md:h-44 dark:from-neutral-800 dark:to-neutral-900" />
 
-      <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-28 pb-8 sm:pt-40 md:pb-12 md:pt-56 lg:px-6">
+      <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pb-20 pt-2 sm:pt-24 md:pb-12 md:pt-36 lg:px-6">
         {isLoading && <ProfileSkeleton />}
 
         {isError && (
@@ -84,232 +166,164 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {profile && activeTab === "filters" && (
-          <motion.div
-            className="mt-24 flex gap-6"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-          >
+        {profile && (
+          <div className="flex gap-6">
+            {/* Main content area */}
             <div className="min-w-0 flex-1">
-              <PreferencesEditor />
-            </div>
-
-            <nav className="flex w-40 shrink-0 flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("profile")}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-                  "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                {t("profile.tab_profile")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("filters")}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-                  "bg-primary/10 text-primary",
-                )}
-              >
-                {t("profile.tab_filters")}
-              </button>
-
-              <Separator className="my-2" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="justify-start text-muted-foreground hover:text-destructive"
-                onClick={() => auth?.logout()}
-              >
-                <IconLogout className="mr-2 size-4" />
-                {t("common.logout")}
-              </Button>
-            </nav>
-          </motion.div>
-        )}
-
-        {profile && activeTab === "profile" && (
-          <motion.div
-            className="flex flex-col gap-8 md:flex-row lg:gap-12"
-            variants={container}
-            initial="hidden"
-            animate="show"
-          >
-            <motion.div
-              variants={item}
-              className="flex w-full flex-col items-center gap-6 text-center md:w-1/3 md:items-start md:text-left"
-            >
-              <div className="-mt-12 sm:-mt-20">
-                <ProfileAvatarUpload
-                  src={profile.profilePicUrl}
-                  fullName={profile.fullName}
-                  email={profile.email}
-                />
-              </div>
-
-              <div className="w-full space-y-1">
-                <h1 className="truncate text-2xl font-extrabold tracking-tight md:text-3xl">
-                  {profile.fullName}
-                </h1>
-                <p className="truncate text-base font-medium text-muted-foreground">
-                  {profile.email}
-                </p>
-              </div>
-
-              {profile.roles && profile.roles.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-2 md:justify-start">
-                  {profile.roles.map((role) => (
-                    <Badge
-                      key={role}
-                      variant="secondary"
-                      className="px-2.5 py-0.5 text-xs"
-                    >
-                      {role}
-                    </Badge>
-                  ))}
-                </div>
+              {/* ===== FILTERS TAB ===== */}
+              {activeTab === "filters" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  {mobileTabBar}
+                  <div className="mt-4 md:mt-0 md:pt-16">
+                    <PreferencesEditor />
+                  </div>
+                </motion.div>
               )}
 
-              <Separator className="w-full" />
-
-              <div className="w-full space-y-4 text-sm">
-                <div className="flex items-center text-muted-foreground">
-                  <IconMail className="mr-3 size-4" />
-                  <span>{profile.email}</span>
-                </div>
-
-                <div className="flex items-center text-muted-foreground">
-                  <IconCalendar className="mr-3 size-4" />
-                  <span>
-                    {t("profile.online_since", {
-                      date: formatDate(profile.createdAt),
-                    })}
-                  </span>
-                </div>
-
-                <div className="flex items-center text-muted-foreground">
-                  <IconShieldCheck className="mr-3 size-4" />
-                  {profile.banned ? (
-                    <Badge
-                      variant="destructive"
-                      className="h-5 rounded-sm px-1.5 text-[10px] font-semibold uppercase"
+              {/* ===== PROFILE TAB ===== */}
+              {activeTab === "profile" && (
+                <>
+                  <motion.div
+                    className="flex flex-col gap-6 md:flex-row md:gap-8 lg:gap-12"
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {/* Left column — avatar, info */}
+                    <motion.div
+                      variants={item}
+                      className="flex w-full flex-col items-center gap-5 text-center md:w-1/3 md:items-start md:text-left"
                     >
-                      {t("profile.banned")}
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="outline"
-                      className="h-5 rounded-sm border-foreground/20 px-1.5 text-[10px] font-semibold uppercase text-foreground/70"
+                      <div className="sm:-mt-20">
+                        <ProfileAvatarUpload
+                          src={profile.profilePicUrl}
+                          fullName={profile.fullName}
+                          email={profile.email}
+                        />
+                      </div>
+
+                      <div className="w-full space-y-1">
+                        <h1 className="truncate text-xl font-extrabold tracking-tight sm:text-2xl md:text-3xl">
+                          {profile.fullName}
+                        </h1>
+                        <p className="truncate text-sm font-medium text-muted-foreground md:text-base">
+                          {profile.email}
+                        </p>
+                      </div>
+
+                      {/* Mobile tab bar — sits naturally in the flow */}
+                      <div className="w-full md:hidden">{mobileTabBar}</div>
+
+                      <Separator className="w-full" />
+
+                      <div className="hidden w-full space-y-4 text-sm md:block">
+                        <div className="flex items-center text-muted-foreground">
+                          <IconMail className="mr-3 size-4 shrink-0" />
+                          <span className="truncate">{profile.email}</span>
+                        </div>
+
+                        <div className="flex items-center text-muted-foreground">
+                          <IconCalendar className="mr-3 size-4 shrink-0" />
+                          <span>
+                            {t("profile.online_since", {
+                              date: formatDate(profile.createdAt),
+                            })}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center text-muted-foreground">
+                          <IconShieldCheck className="mr-3 size-4 shrink-0" />
+                          {profile.banned ? (
+                            <Badge
+                              variant="destructive"
+                              className="h-5 rounded-sm px-1.5 text-[10px] font-semibold uppercase"
+                            >
+                              {t("profile.banned")}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="h-5 rounded-sm border-foreground/20 px-1.5 text-[10px] font-semibold uppercase text-foreground/70"
+                            >
+                              {t("profile.active")}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Right column — edit form */}
+                    <motion.div
+                      variants={item}
+                      className="w-full -mt-4 md:mt-0 md:w-2/3 md:pt-8"
                     >
-                      {t("profile.active")}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+                      <ProfileEditForm profile={profile} />
+                    </motion.div>
+                  </motion.div>
 
-            <motion.div
-              variants={item}
-              className="flex w-full gap-6 pt-4 md:w-2/3 md:pt-8"
-            >
-              <div className="min-w-0 flex-1">
-                <ProfileEditForm profile={profile} />
-              </div>
+                  {/* Card preview */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                    className="mt-8 md:mt-12"
+                  >
+                    <h2 className="mb-4 text-xl font-bold tracking-tight md:mb-6 md:text-2xl">
+                      {t("profile.my_questionnaire")}
+                    </h2>
+                    {(() => {
+                      const previewProfile = {
+                        id: profile.email,
+                        candidateUserId: null,
+                        name: profile.fullName,
+                        age: null,
+                        image: profile.profilePicUrl,
+                        bio: profile.bio,
+                        matchScore: 0,
+                        categoryBreakdown: [],
+                        tags: [],
+                        explanation: "",
+                        location: "",
+                        activity: "",
+                        reasonCodes: [],
+                        detailsAvailable: false,
+                        actions: null,
+                        source: "feed",
+                      } satisfies MatchProfile;
 
-              <nav className="mt-8 flex w-40 shrink-0 flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("profile")}
-                  className={cn(
-                    "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-                    "bg-primary/10 text-primary",
-                  )}
-                >
-                  {t("profile.tab_profile")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("filters")}
-                  className={cn(
-                    "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-                    "text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {t("profile.tab_filters")}
-                </button>
+                      return isMobile ? (
+                        <DiscoveryMobileProfileCard
+                          profile={previewProfile}
+                          onLike={() => {}}
+                          onPass={() => {}}
+                          onOpenReport={() => {}}
+                          showMatchScore={false}
+                          showActions={false}
+                          showReportButton={false}
+                        />
+                      ) : (
+                        <DiscoveryDesktopProfileCard
+                          profile={previewProfile}
+                          onLike={() => {}}
+                          onPass={() => {}}
+                          onOpenReport={() => {}}
+                          showMatchScore={false}
+                          showReportButton={false}
+                        />
+                      );
+                    })()}
+                  </motion.div>
+                </>
+              )}
+            </div>
 
-                <Separator className="my-2" />
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="justify-start text-muted-foreground hover:text-destructive"
-                  onClick={() => auth?.logout()}
-                >
-                  <IconLogout className="mr-2 size-4" />
-                  {t("common.logout")}
-                </Button>
-              </nav>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {profile && activeTab === "profile" && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="mt-12"
-          >
-            <h2 className="mb-6 text-2xl font-bold tracking-tight">
-              {t("profile.my_questionnaire")}
-            </h2>
-            {(() => {
-              const previewProfile = {
-                id: profile.email,
-                candidateUserId: null,
-                name: profile.fullName,
-                age: null,
-                image: profile.profilePicUrl,
-                bio: profile.bio,
-                matchScore: 0,
-                categoryBreakdown: [],
-                tags: [],
-                explanation: "",
-                location: "",
-                activity: "",
-                reasonCodes: [],
-                detailsAvailable: false,
-                actions: null,
-                source: "feed",
-              } satisfies MatchProfile;
-
-              return isMobile ? (
-                <DiscoveryMobileProfileCard
-                  profile={previewProfile}
-                  onLike={() => {}}
-                  onPass={() => {}}
-                  onOpenReport={() => {}}
-                  showMatchScore={false}
-                  showActions={false}
-                  showReportButton={false}
-                />
-              ) : (
-                <DiscoveryDesktopProfileCard
-                  profile={previewProfile}
-                  onLike={() => {}}
-                  onPass={() => {}}
-                  onOpenReport={() => {}}
-                  showMatchScore={false}
-                  showReportButton={false}
-                />
-              );
-            })()}
-          </motion.div>
+            {/* Sidebar — always visible, no animation */}
+            {sidebarNav}
+          </div>
         )}
       </main>
     </div>
