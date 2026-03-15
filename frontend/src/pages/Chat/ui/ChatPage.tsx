@@ -1,343 +1,52 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UnauthorizedError, type Subscription } from "centrifuge";
 import {
   MessageCircle,
   MoreVertical,
   Search,
   Send,
-  ShieldAlert,
 } from "lucide-react";
 
-import type { MatchProfile } from "@/entities/match-profile/model";
-import { useCloseMatch, useMatches } from "@/features/match";
-import { useMatchNotifications } from "@/app/providers/realtime/useMatchNotifications";
+import { useChatPage } from "@/pages/Chat/model";
 import { Button } from "@/shared/components/ui/button";
-import {
-  conversationsApi,
-  type ConversationMessagesResponse,
-  type MessageResponse,
-} from "@/shared/api/conversations";
 import { cn } from "@/shared/lib/utils";
-import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
-import * as Sentry from "@sentry/react";
-
-type ChatNavigationState = {
-  matchedProfile?: MatchProfile;
-  matchId?: string | null;
-  conversationId?: string | null;
-};
-
-type RealtimeChatEvent =
-  | {
-      type: "message_created";
-      payload: MessageResponse & { conversation_id: string };
-    }
-  | {
-      type: "conversation_closed";
-      payload: {
-        conversation_id: string;
-        status:
-          | "active"
-          | "closed_by_user"
-          | "closed_by_block"
-          | "closed_by_report";
-        closed_at: string;
-      };
-    };
-
-const buildConversationQueryKey = (conversationId: string | null) =>
-  ["conversation", conversationId] as const;
-
-const buildConversationMessagesQueryKey = (conversationId: string | null) =>
-  ["conversation", conversationId, "messages"] as const;
-
-const appendMessage = (
-  previous: ConversationMessagesResponse | undefined,
-  nextMessage: MessageResponse,
-): ConversationMessagesResponse => {
-  const prevItems = previous?.items ?? [];
-  if (
-    prevItems.some((message) => message.message_id === nextMessage.message_id)
-  ) {
-    return previous ?? { items: [nextMessage], next_cursor: null };
-  }
-  return {
-    items: [...prevItems, nextMessage].sort(
-      (left, right) =>
-        Date.parse(left.created_at) - Date.parse(right.created_at),
-    ),
-    next_cursor: previous?.next_cursor ?? null,
-  };
-};
 
 export default function ChatPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const { data: matchesResponse } = useMatches();
-  const matchNotifications = useMatchNotifications();
-  const closeMatchMutation = useCloseMatch();
-  const routeState = location.state as ChatNavigationState | null;
-  const requestedMatchId = searchParams.get("match");
-  const [activeMatchId, setActiveMatchId] = useState<string | null>(
-    routeState?.matchId ?? requestedMatchId ?? null,
-  );
-  const [input, setInput] = useState("");
-  const [showMenu, setShowMenu] = useState(false);
-  const [search, setSearch] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-
-  const matches = matchesResponse?.matches ?? [];
-  const visibleMatches = useMemo(
-    () =>
-      matches.filter(
-        (match) =>
-          match.status === "active" &&
-          match.displayName.toLowerCase().includes(search.toLowerCase().trim()),
-      ),
-    [matches, search],
-  );
-  const activeMatch =
-    visibleMatches.find((match) => match.matchId === activeMatchId) ??
-    matches.find((match) => match.matchId === activeMatchId) ??
-    null;
-  const fallbackProfile = routeState?.matchedProfile ?? null;
-  const activeConversationId =
-    activeMatch?.conversationId ?? routeState?.conversationId ?? null;
-
-  const conversationQuery = useQuery({
-    queryKey: buildConversationQueryKey(activeConversationId),
-    queryFn: async () => {
-      if (!activeConversationId) {
-        throw new Error("Missing conversation id");
-      }
-      return conversationsApi.getConversation(activeConversationId);
-    },
-    enabled: Boolean(activeConversationId),
-  });
-
-  const messagesQuery = useQuery({
-    queryKey: buildConversationMessagesQueryKey(activeConversationId),
-    queryFn: async () => {
-      if (!activeConversationId) {
-        throw new Error("Missing conversation id");
-      }
-      return conversationsApi.getMessages(activeConversationId);
-    },
-    enabled: Boolean(activeConversationId),
-  });
-
-  const sendMessageMutation = useMutation({
-    mutationFn: async (text: string) => {
-      if (!activeConversationId) {
-        throw new Error("Missing conversation id");
-      }
-      return conversationsApi.sendMessage(activeConversationId, text);
-    },
-    onSuccess: (message) => {
-      queryClient.setQueryData<ConversationMessagesResponse>(
-        buildConversationMessagesQueryKey(activeConversationId),
-        (previous) => appendMessage(previous, message),
-      );
-      void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-    },
-  });
-
-  const activeChatName =
-    conversationQuery.data?.peer.display_name ??
-    activeMatch?.displayName ??
-    fallbackProfile?.name ??
-    null;
-  const activeChatAvatar =
-    conversationQuery.data?.peer.avatar_url ??
-    activeMatch?.avatarUrl ??
-    fallbackProfile?.image ??
-    null;
-  const peerUserId =
-    conversationQuery.data?.peer.user_id ??
-    activeMatch?.candidateUserId ??
-    null;
-  const activeChatMeta =
-    conversationQuery.data?.status && conversationQuery.data.status !== "active"
-      ? t("chat.conversation_closed")
-      : activeMatch?.lastMessageAt
-        ? t("chat.recent_active")
-        : t("chat.no_messages_yet");
-  const conversationIsClosed =
-    conversationQuery.data?.status != null &&
-    conversationQuery.data.status !== "active";
-  const isLoadingConversation =
-    Boolean(activeConversationId) &&
-    (conversationQuery.isLoading || messagesQuery.isLoading);
-  const messages = (messagesQuery.data?.items ?? []).map((message) => ({
-    id: message.message_id,
-    text: message.text,
-    sender: message.sender_user_id === peerUserId ? "other" : "me",
-    time: new Intl.DateTimeFormat("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(message.created_at)),
-  }));
-
-  useEffect(() => {
-    if (!activeMatchId) {
-      const initialActiveMatch =
-        (routeState?.matchId &&
-          matches.find(
-            (match) =>
-              match.matchId === routeState.matchId && match.status === "active",
-          )) ??
-        (requestedMatchId &&
-          matches.find(
-            (match) =>
-              match.matchId === requestedMatchId && match.status === "active",
-          )) ??
-        visibleMatches[0] ??
-        null;
-
-      if (initialActiveMatch) {
-        setActiveMatchId(initialActiveMatch.matchId);
-      }
-    }
-  }, [
-    activeMatchId,
-    matches,
-    requestedMatchId,
-    routeState?.matchId,
+  const {
+    activeChatAvatar,
+    activeChatInitial,
+    activeChatMeta,
+    activeChatName,
+    activeMatch,
+    conversationIsClosed,
+    goToDiscovery,
+    handleCloseMatch,
+    handleSend,
+    hasActiveChat,
+    input,
+    isClosingMatch,
+    isLoadingConversation,
+    isLoadingInitialChat,
+    isSendingMessage,
+    messages,
+    messagesEndRef,
+    search,
+    selectMatch,
+    setInput,
+    setSearch,
+    showMenu,
+    toggleMenu,
     visibleMatches,
-  ]);
-
-  useEffect(() => {
-    if (activeMatch?.matchId) {
-      void matchNotifications?.markMatchAsSeen(activeMatch.matchId);
-    }
-  }, [activeMatch?.matchId, matchNotifications]);
-
-  useEffect(() => {
-    if (
-      !activeConversationId ||
-      !matchNotifications?.isRealtimeEnabled ||
-      !matchNotifications.realtimeClient
-    ) {
-      return;
-    }
-
-    let cancelled = false;
-    let subscription: Subscription | null = null;
-
-    const subscribeToConversation = async () => {
-      try {
-        const realtime =
-          await conversationsApi.getRealtimeToken(activeConversationId);
-        if (
-          cancelled ||
-          !realtime.enabled ||
-          !realtime.channel ||
-          !matchNotifications.realtimeClient
-        ) {
-          return;
-        }
-
-        const existing = matchNotifications.realtimeClient.getSubscription(
-          realtime.channel,
-        );
-        if (existing) {
-          matchNotifications.realtimeClient.removeSubscription(existing);
-        }
-
-        subscription = matchNotifications.realtimeClient.newSubscription(
-          realtime.channel,
-          {
-            token: realtime.token ?? undefined,
-            getToken: async () => {
-              const refreshed =
-                await conversationsApi.getRealtimeToken(activeConversationId);
-              if (!refreshed.enabled || !refreshed.token) {
-                throw new UnauthorizedError("unauthorized");
-              }
-              return refreshed.token;
-            },
-          },
-        );
-
-        subscription.on("publication", (ctx) => {
-          const event = ctx.data as RealtimeChatEvent;
-          if (event.type === "message_created") {
-            queryClient.setQueryData<ConversationMessagesResponse>(
-              buildConversationMessagesQueryKey(activeConversationId),
-              (previous) => appendMessage(previous, event.payload),
-            );
-            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-            return;
-          }
-
-          if (event.type === "conversation_closed") {
-            queryClient.setQueryData(
-              buildConversationQueryKey(activeConversationId),
-              (
-                previous:
-                  | Awaited<ReturnType<typeof conversationsApi.getConversation>>
-                  | undefined,
-              ) =>
-                previous
-                  ? {
-                      ...previous,
-                      status: event.payload.status,
-                    }
-                  : previous,
-            );
-            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-          }
-        });
-
-        subscription.subscribe();
-      } catch (e) {
-        Sentry.captureException(e);
-      }
-    };
-
-    void subscribeToConversation();
-
-    return () => {
-      cancelled = true;
-      if (subscription && matchNotifications.realtimeClient) {
-        subscription.unsubscribe();
-        matchNotifications.realtimeClient.removeSubscription(subscription);
-      }
-    };
-  }, [
-    activeConversationId,
-    matchNotifications?.isRealtimeEnabled,
-    matchNotifications?.realtimeClient,
-    queryClient,
-  ]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
-
-  const handleSend = () => {
-    if (!activeConversationId || !input.trim() || conversationIsClosed) {
-      return;
-    }
-    sendMessageMutation.mutate(input.trim(), {
-      onError: () => {
-        window.alert(t("chat.send_message_error"));
-      },
-    });
-    setInput("");
-  };
+  } = useChatPage();
 
   return (
     <>
-      {!activeChatName || !activeChatAvatar ? (
+      {isLoadingInitialChat && !hasActiveChat ? (
+        <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
+          <div className="text-sm text-muted-foreground">{t("common.loading")}</div>
+        </main>
+      ) : !hasActiveChat ? (
         <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
             <MessageCircle className="size-10 text-primary" />
@@ -351,7 +60,7 @@ export default function ChatPage() {
           <Button
             size="lg"
             className="h-14 rounded-2xl px-8 text-base font-semibold"
-            onClick={() => navigate("/discovery")}
+            onClick={goToDiscovery}
           >
             {t("chat.back_to_discovery")}
           </Button>
@@ -379,7 +88,7 @@ export default function ChatPage() {
               {visibleMatches.map((match) => (
                 <button
                   key={match.matchId}
-                  onClick={() => setActiveMatchId(match.matchId)}
+                  onClick={() => selectMatch(match.matchId)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors",
                     match.matchId === activeMatch?.matchId
@@ -420,19 +129,23 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="relative flex flex-1 flex-col bg-secondary/10">
-            <div className="z-20 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 overflow-hidden rounded-full">
-                  <img
-                    src={activeChatAvatar}
-                    alt={activeChatName}
-                    className="h-full w-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div>
-                  <h3 className="mb-1 leading-none font-semibold">
+            <div className="relative flex flex-1 flex-col bg-secondary/10">
+              <div className="z-20 flex h-16 items-center justify-between border-b border-border bg-card px-6">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-secondary text-sm font-semibold text-foreground">
+                    {activeChatAvatar ? (
+                      <img
+                        src={activeChatAvatar}
+                        alt={activeChatName ?? ""}
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      activeChatInitial
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="mb-1 leading-none font-semibold">
                     {activeChatName}
                   </h3>
                   <p className="text-xs leading-none text-muted-foreground">
@@ -445,7 +158,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowMenu((prevValue) => !prevValue)}
+                  onClick={toggleMenu}
                 >
                   <MoreVertical className="size-5 text-muted-foreground" />
                 </Button>
@@ -460,47 +173,14 @@ export default function ChatPage() {
                     >
                       {activeMatch && (
                         <button
-                          className="flex w-full items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-secondary"
-                          onClick={async () => {
-                            setShowMenu(false);
-
-                            try {
-                              await closeMatchMutation.mutateAsync({
-                                matchId: activeMatch.matchId,
-                                reasonCode: "not_interested",
-                              });
-
-                              const nextMatch =
-                                visibleMatches.find(
-                                  (match) =>
-                                    match.matchId !== activeMatch.matchId,
-                                ) ?? null;
-
-                              if (nextMatch) {
-                                setActiveMatchId(nextMatch.matchId);
-                              } else {
-                                navigate("/discovery");
-                              }
-                            } catch {
-                              window.alert(t("chat.close_match_error"));
-                            }
-                          }}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+                          disabled={isClosingMatch}
+                          onClick={() => void handleCloseMatch()}
                         >
                           <MessageCircle className="size-4" />
                           {t("chat.close_match")}
                         </button>
                       )}
-                      <button
-                        className="flex w-full items-center gap-2 px-4 py-3 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                        onClick={() => {
-                          setShowMenu(false);
-                          window.alert(t("chat.report_sent"));
-                          navigate("/discovery");
-                        }}
-                      >
-                        <ShieldAlert className="size-4" />
-                        {t("chat.report_block")}
-                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -508,7 +188,6 @@ export default function ChatPage() {
             </div>
 
             <div
-              ref={messagesContainerRef}
               className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6"
             >
               {isLoadingConversation ? (
@@ -571,7 +250,7 @@ export default function ChatPage() {
                   className="h-14 w-14 shrink-0 rounded-xl"
                   disabled={
                     conversationIsClosed ||
-                    sendMessageMutation.isPending ||
+                    isSendingMessage ||
                     !input.trim()
                   }
                   onClick={handleSend}

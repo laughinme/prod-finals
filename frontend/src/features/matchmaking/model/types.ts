@@ -3,7 +3,3 @@ export type MatchmakingFlowContextValue = {
   completeOnboarding: () => void;
   setIsOnboardingComplete: (value: boolean) => void;
 };
-
-export type PersistedMatchmakingState = {
-  isOnboardingComplete: boolean;
-};

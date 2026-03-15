@@ -47,33 +47,10 @@ export interface ConversationResponse {
   safety_actions: ConversationSafetyActions;
 }
 
-export type MatchStatus = "active" | "closed" | "blocked";
-
-export interface MatchListItem {
-  match_id: string;
-  candidate_user_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  conversation_id: string | null;
-  status: MatchStatus;
-  last_message_preview: string | null;
-  last_message_at: string | null;
-  unread_count: number;
-}
-
-export interface MatchListResponse {
-  items: MatchListItem[];
-}
-
 export const conversationsApi = {
-  getMatches: async (): Promise<MatchListResponse> => {
-    const response = await axiosInstance.get<MatchListResponse>("/api/v1/matches");
-    return response.data;
-  },
-
   getConversation: async (conversationId: string): Promise<ConversationResponse> => {
     const response = await axiosInstance.get<ConversationResponse>(
-      `/api/v1/conversations/${conversationId}`,
+      `/conversations/${conversationId}`,
     );
     return response.data;
   },
@@ -84,7 +61,7 @@ export const conversationsApi = {
     limit: number = 50,
   ): Promise<ConversationMessagesResponse> => {
     const response = await axiosInstance.get<ConversationMessagesResponse>(
-      `/api/v1/conversations/${conversationId}/messages`,
+      `/conversations/${conversationId}/messages`,
       {
         params: { cursor, limit },
       },
@@ -97,7 +74,7 @@ export const conversationsApi = {
     text: string,
   ): Promise<MessageResponse> => {
     const response = await axiosInstance.post<MessageResponse>(
-      `/api/v1/conversations/${conversationId}/messages`,
+      `/conversations/${conversationId}/messages`,
       { text },
     );
     return response.data;
@@ -107,7 +84,7 @@ export const conversationsApi = {
     conversationId: string,
   ): Promise<ConversationRealtimeTokenResponse> => {
     const response = await axiosInstance.get<ConversationRealtimeTokenResponse>(
-      `/api/v1/conversations/${conversationId}/realtime-token`,
+      `/conversations/${conversationId}/realtime-token`,
     );
     return response.data;
   },

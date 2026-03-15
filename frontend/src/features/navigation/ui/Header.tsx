@@ -8,13 +8,20 @@ import {
   Users,
 } from "lucide-react";
 
+import { useMatches } from "@/features/match";
 import { HeaderUserMenu } from "./HeaderUserMenu";
 import { useMatchNotifications } from "@/app/providers/realtime";
 import { cn } from "@/shared/lib/utils";
 
 export function Header() {
   const { t } = useTranslation();
+  const { data: matchesResponse } = useMatches();
   const matchNotifications = useMatchNotifications();
+  const unreadMessagesCount =
+    matchesResponse?.matches.reduce(
+      (total, match) => total + match.unreadCount,
+      0,
+    ) ?? 0;
 
   const navItems = [
     {
