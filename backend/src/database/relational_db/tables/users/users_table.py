@@ -49,6 +49,8 @@ class User(TimestampMixin, Base):
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
     interests: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     quiz_started: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    quiz_current_step_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    onboarding_skipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
     # Service

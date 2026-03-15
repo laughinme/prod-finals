@@ -84,16 +84,29 @@ class OnboardingConfigResponse(BaseModel):
     steps: list[OnboardingStep] = Field(default_factory=list)
 
 
+class OnboardingProgress(BaseModel):
+    quiz_started: bool = False
+    skipped: bool = False
+    completed: bool = False
+    should_show: bool = True
+    current_step_key: str | None = None
+    completed_step_keys: list[str] = Field(default_factory=list)
+    answers_by_step: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class OnboardingStateResponse(OnboardingProgress):
+    pass
+
+
 class OnboardingAnswersRequest(BaseModel):
     step_key: str
     answers: list[str] = Field(default_factory=list)
     import_transactions: bool | None = None
 
 
-class OnboardingAnswersResponse(BaseModel):
+class OnboardingAnswersResponse(OnboardingProgress):
     step_key: str
     saved: bool = True
-    quiz_started: bool = True
 
 
 class FeedCandidate(BaseModel):

@@ -187,6 +187,12 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert steps["interests"]["import_transactions_default"] is True
     assert steps["interests"]["import_transactions_value"] is True
 
+    onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    assert onboarding_state.status_code == 200
+    assert onboarding_state.json()["should_show"] is True
+    assert onboarding_state.json()["current_step_key"] == "match_preferences"
+    assert onboarding_state.json()["completed_step_keys"] == []
+
     answer = await client.post(
         "/api/v1/onboarding/answers",
         json={
@@ -196,7 +202,11 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
-    assert answer.json() == {"step_key": "match_preferences", "saved": True, "quiz_started": True}
+    assert answer.json()["step_key"] == "match_preferences"
+    assert answer.json()["quiz_started"] is True
+    assert answer.json()["current_step_key"] == "interests"
+    assert answer.json()["completed_step_keys"] == ["match_preferences"]
+    assert answer.json()["should_show"] is True
 
     interests_answer = await client.post(
         "/api/v1/onboarding/answers",
@@ -208,6 +218,9 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert interests_answer.status_code == 200
+    assert interests_answer.json()["completed"] is True
+    assert interests_answer.json()["should_show"] is False
+    assert interests_answer.json()["current_step_key"] is None
 
     updated_onboarding_config = await client.get(
         "/api/v1/onboarding/config",
@@ -216,6 +229,11 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert updated_onboarding_config.status_code == 200
     updated_steps = {step["step_key"]: step for step in updated_onboarding_config.json()["steps"]}
     assert updated_steps["interests"]["import_transactions_value"] is False
+
+    completed_onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    assert completed_onboarding_state.status_code == 200
+    assert completed_onboarding_state.json()["completed"] is True
+    assert completed_onboarding_state.json()["should_show"] is False
 
     profile_a = await _complete_profile(
         client,
@@ -457,15 +475,36 @@ async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, fa
         headers=auth_header(access),
     )
     assert answer.status_code == 200
-    assert answer.json() == {
-        "step_key": "match_preferences",
-        "saved": True,
-        "quiz_started": True,
-    }
+    assert answer.json()["step_key"] == "match_preferences"
+    assert answer.json()["saved"] is True
+    assert answer.json()["quiz_started"] is True
+    assert answer.json()["current_step_key"] == "interests"
 
     me = await client.get("/api/v1/users/me", headers=auth_header(access))
     assert me.status_code == 200
     assert me.json()["age_range"] == {"min": 18, "max": 18}
+
+
+@pytest.mark.asyncio
+async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, faker: Faker):
+    _, access_token = await _register_user(client, faker, "skipper")
+
+    initial_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    assert initial_state.status_code == 200
+    assert initial_state.json()["should_show"] is True
+    assert initial_state.json()["current_step_key"] == "match_preferences"
+
+    skip_response = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_token))
+    assert skip_response.status_code == 200
+    assert skip_response.json()["quiz_started"] is True
+    assert skip_response.json()["skipped"] is True
+    assert skip_response.json()["should_show"] is False
+    assert skip_response.json()["current_step_key"] is None
+
+    refreshed_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    assert refreshed_state.status_code == 200
+    assert refreshed_state.json()["skipped"] is True
+    assert refreshed_state.json()["should_show"] is False
 
 
 @pytest.mark.asyncio

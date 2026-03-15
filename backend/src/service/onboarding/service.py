@@ -1,6 +1,15 @@
+from collections.abc import Iterable
+
 from core.errors import BadRequestError
 from database.relational_db import User
-from domain.dating import AuditEntityType, OnboardingAnswersRequest, OnboardingAnswersResponse, OnboardingConfigResponse
+from domain.dating import (
+    AuditEntityType,
+    OnboardingAnswersRequest,
+    OnboardingAnswersResponse,
+    OnboardingConfigResponse,
+    OnboardingProgress,
+    OnboardingStateResponse,
+)
 from domain.dating.category_catalog import pick_category_keys
 from domain.dating.quiz_catalog import get_quiz_steps, get_step
 
@@ -22,6 +31,10 @@ class OnboardingService(BaseDatingService):
             for step in get_quiz_steps()
         ]
         return OnboardingConfigResponse(steps=steps)
+
+    async def get_state(self, user: User) -> OnboardingStateResponse:
+        records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
+        return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
 
     async def save_answers(self, user: User, payload: OnboardingAnswersRequest) -> OnboardingAnswersResponse:
         step = get_step(payload.step_key)
@@ -49,6 +62,10 @@ class OnboardingService(BaseDatingService):
 
         self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
         user.quiz_started = True
+        user.onboarding_skipped = False
+        progress_records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
+        progress = self._build_progress(user, progress_records)
+        user.quiz_current_step_key = progress.current_step_key
         user.is_onboarded = user.can_open_feed
         await self.matchmaking_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
         await self.add_audit_event(
@@ -65,7 +82,7 @@ class OnboardingService(BaseDatingService):
         await self.uow.commit()
         await self.uow.session.refresh(user)
 
-        if payload.step_key == "interests":
+        if payload.step_key == "interests" and normalized_answers:
             await self._sync_onboarding_with_ml(
                 user=user,
                 favorite_categories=normalized_answers,
@@ -74,8 +91,25 @@ class OnboardingService(BaseDatingService):
 
         return OnboardingAnswersResponse(
             step_key=payload.step_key,
-            quiz_started=user.quiz_started,
+            **progress.model_dump(),
         )
+
+    async def skip(self, user: User) -> OnboardingStateResponse:
+        user.quiz_started = True
+        user.onboarding_skipped = True
+        user.quiz_current_step_key = None
+        await self.matchmaking_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
+        await self.add_audit_event(
+            event_type="onboarding_skipped",
+            entity_type=AuditEntityType.QUIZ,
+            entity_id=str(user.id),
+            actor_user_id=user.id,
+            payload={"skipped": True},
+        )
+        await self.uow.commit()
+        await self.uow.session.refresh(user)
+        records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
+        return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
         if step.step_key == "match_preferences":
@@ -189,6 +223,60 @@ class OnboardingService(BaseDatingService):
         if step_key == "interests":
             user.interests = list(answers)
             return
+
+    def _build_progress(self, user: User, records: Iterable) -> OnboardingProgress:
+        steps = get_quiz_steps()
+        step_keys = [step.step_key for step in steps]
+        answers_by_step = self._build_answers_by_step(user, records, step_keys)
+        completed_step_keys = [step_key for step_key in step_keys if step_key in answers_by_step]
+        completed = len(completed_step_keys) == len(step_keys)
+        should_show = not user.onboarding_skipped and not completed
+
+        current_step_key: str | None = None
+        if should_show:
+            if user.quiz_current_step_key in step_keys and user.quiz_current_step_key not in completed_step_keys:
+                current_step_key = user.quiz_current_step_key
+            else:
+                current_step_key = next(
+                    (step_key for step_key in step_keys if step_key not in completed_step_keys),
+                    step_keys[0] if step_keys else None,
+                )
+
+        return OnboardingProgress(
+            quiz_started=bool(user.quiz_started),
+            skipped=bool(user.onboarding_skipped),
+            completed=completed,
+            should_show=should_show,
+            current_step_key=current_step_key,
+            completed_step_keys=completed_step_keys,
+            answers_by_step=answers_by_step,
+        )
+
+    def _build_answers_by_step(self, user: User, records: Iterable, step_keys: list[str]) -> dict[str, list[str]]:
+        answers_by_step = {
+            record.step_key: list(record.answers or [])
+            for record in records
+            if record.step_key in step_keys
+        }
+
+        if "match_preferences" not in answers_by_step:
+            inferred_match_preferences: list[str] = []
+            inferred_match_preferences.extend(
+                f"gender:{gender}"
+                for gender in list(user.looking_for_genders or [])
+                if gender
+            )
+            if user.age_range_min is not None:
+                inferred_match_preferences.append(f"age_min:{user.age_range_min}")
+            if user.age_range_max is not None:
+                inferred_match_preferences.append(f"age_max:{user.age_range_max}")
+            if inferred_match_preferences:
+                answers_by_step["match_preferences"] = inferred_match_preferences
+
+        if "interests" not in answers_by_step and user.interests:
+            answers_by_step["interests"] = list(user.interests)
+
+        return answers_by_step
 
     async def _resolve_import_transactions_value(
         self,
