@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -83,6 +83,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [search, setSearch] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const matches = matchesResponse?.matches ?? [];
   const visibleMatches = useMemo(
@@ -288,6 +290,10 @@ export default function ChatPage() {
     queryClient,
   ]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
   const handleSend = () => {
     if (!activeConversationId || !input.trim() || conversationIsClosed) {
       return;
@@ -320,7 +326,7 @@ export default function ChatPage() {
           </Button>
         </main>
       ) : (
-        <main className="flex flex-1 overflow-hidden bg-background">
+        <main className="flex h-[calc(100vh-64px)] overflow-hidden bg-background">
           <div className="hidden w-80 flex-col border-r border-border bg-card md:flex">
             <div className="border-b border-border p-4">
               <h2 className="mb-4 text-xl font-bold">{t("chat.messages_title")}</h2>
@@ -463,7 +469,7 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-6">
+            <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
               {isLoadingConversation ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                   {t("common.loading")}
@@ -499,6 +505,7 @@ export default function ChatPage() {
                   </motion.div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="z-10 border-t border-border bg-card p-4">
