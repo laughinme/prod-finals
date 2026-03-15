@@ -1,10 +1,12 @@
 import logging
 from datetime import date
+from hashlib import sha256
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
 import httpx
 
 from domain.dating import (
+    CompatibilityCategoryScore,
     CompatibilityExplanationResponse,
     CompatibilityPreview,
     CompatibilityReason,
@@ -19,6 +21,7 @@ from domain.dating import (
     RankedCandidate,
     RankedCandidates,
 )
+from domain.dating.category_catalog import category_label_map, pick_category_keys
 
 
 def _age_for_birth_date(birth_date: date | None, today: date) -> int | None:
@@ -63,6 +66,16 @@ class MlFacade:
     ) -> IcebreakersResponse:
         raise NotImplementedError
 
+    async def sync_onboarding_profile(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        raise NotImplementedError
+
 
 class MockMlFacade(MlFacade):
     async def rank(
@@ -80,6 +93,11 @@ class MockMlFacade(MlFacade):
             if self._has_mutual_gender_fit(requester, candidate):
                 score += 0.22
                 reason_codes.append(CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT)
+
+            overlap_keys = self._interest_overlap(requester, candidate)
+            if overlap_keys:
+                score += min(0.20, 0.05 * len(overlap_keys))
+                reason_codes.append(CompatibilityReasonCode.CATEGORY_FIT)
 
             if (
                 requester.search_preferences.goal
@@ -105,6 +123,7 @@ class MockMlFacade(MlFacade):
                     candidate_user_id=candidate.user_id,
                     score=round(min(score, 0.99), 2),
                     reason_codes=reason_codes[:4] or [CompatibilityReasonCode.PROFILE_QUALITY],
+                    category_keys=self._resolve_category_keys(requester, candidate),
                 )
             )
 
@@ -135,16 +154,20 @@ class MockMlFacade(MlFacade):
         ]
         primary = reason_codes[0]
         preview_map = {
+            CompatibilityReasonCode.CATEGORY_FIT: "Your interests and habits look noticeably compatible.",
             CompatibilityReasonCode.CITY_FIT: "You are aligned on city rhythm and logistics.",
             CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
             CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
             CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
         }
+        score_percent = int(round(scored.score * 100))
         return CompatibilityPreview(
             score=scored.score,
+            score_percent=score_percent,
             preview=preview_map[primary],
             reason_codes=[code.value for code in reason_codes],
+            category_breakdown=self._build_category_breakdown(scored, score_percent),
         )
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
@@ -194,6 +217,16 @@ class MockMlFacade(MlFacade):
             ]
         )
 
+    async def sync_onboarding_profile(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        return None
+
     def _has_mutual_gender_fit(
         self,
         requester: FeedCandidateContext,
@@ -231,6 +264,11 @@ class MockMlFacade(MlFacade):
                 "You appear to be in a compatible local context for actually meeting offline.",
                 0.78,
             ),
+            CompatibilityReasonCode.CATEGORY_FIT: (
+                "Common interests and habits",
+                "Your selected preference categories suggest a stronger everyday compatibility.",
+                0.79,
+            ),
             CompatibilityReasonCode.AGE_FIT: (
                 "Mutual age fit",
                 "Both profiles fall within each other's preferred age range.",
@@ -254,6 +292,55 @@ class MockMlFacade(MlFacade):
         }
         title, text, confidence = mapping[code]
         return CompatibilityReason(code=code.value, title=title, text=text, confidence=confidence)
+
+    def _interest_overlap(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> list[str]:
+        requester_interests = set(requester.interests or [])
+        candidate_interests = list(dict.fromkeys(candidate.interests or []))
+        if not requester_interests or not candidate_interests:
+            return []
+        return [key for key in candidate_interests if key in requester_interests]
+
+    def _resolve_category_keys(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> list[str]:
+        overlap = self._interest_overlap(requester, candidate)
+        if overlap:
+            return overlap[:5]
+        if candidate.interests:
+            return list(dict.fromkeys(candidate.interests))[:5]
+        if requester.interests:
+            return list(dict.fromkeys(requester.interests))[:5]
+        seed_key = candidate.ml_user_id or str(candidate.user_id)
+        return pick_category_keys(f"compatibility:{seed_key}")
+
+    def _build_category_breakdown(
+        self,
+        scored: RankedCandidate,
+        score_percent: int,
+    ) -> list[CompatibilityCategoryScore]:
+        labels = category_label_map()
+        category_keys = list(dict.fromkeys(scored.category_keys or []))
+        if not category_keys:
+            category_keys = pick_category_keys(f"compatibility:{scored.candidate_user_id}")
+
+        items: list[CompatibilityCategoryScore] = []
+        for key in category_keys[:5]:
+            digest = sha256(f"{scored.candidate_user_id}:{key}".encode("utf-8")).digest()
+            item_score = max(35, min(99, score_percent - 12 + (digest[0] % 25)))
+            items.append(
+                CompatibilityCategoryScore(
+                    category_key=key,
+                    label=labels.get(key, key),
+                    score_percent=item_score,
+                )
+            )
+        return items
 logger = logging.getLogger(__name__)
 
 # ML ReasonCode → backend CompatibilityReasonCode
@@ -357,6 +444,7 @@ class HttpMlFacade(MlFacade):
                     candidate_user_id=candidate_uuid,
                     score=round(min(max(ml_item.get("score", 0.0), 0.0), 0.99), 2),
                     reason_codes=reason_codes[:4],
+                    category_keys=[],
                 )
             )
 
@@ -438,3 +526,34 @@ class HttpMlFacade(MlFacade):
         candidate: FeedCandidateContext,
     ) -> IcebreakersResponse:
         return self._fallback.build_icebreakers(requester, candidate)
+
+    async def sync_onboarding_profile(
+        self,
+        *,
+        user_id: UUID,
+        ml_user_id: str | None,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        categories = list(dict.fromkeys(favorite_categories))
+        if not categories:
+            categories = pick_category_keys(f"onboarding:{user_id}")[:3]
+
+        payload = {
+            "trace_id": str(uuid4()),
+            "user_id": _normalize_ml_id(ml_user_id or str(user_id)),
+            "favorite_categories": categories[:15],
+            "import_transactions": import_transactions,
+            "preferred_activity_hour": None,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/v1/profiles/onboarding",
+                    json=payload,
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+        except Exception as exc:
+            logger.warning("ML service /v1/profiles/onboarding failed: %s", exc)

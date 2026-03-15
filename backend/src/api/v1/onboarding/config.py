@@ -16,7 +16,7 @@ router = APIRouter()
     summary="Get onboarding filter config",
 )
 async def get_onboarding_config(
-    _: Annotated[User, Depends(auth_user)],
+    user: Annotated[User, Depends(auth_user)],
     svc: Annotated[OnboardingService, Depends(get_onboarding_service)],
 ) -> OnboardingConfigResponse:
-    return svc.get_config()
+    return await svc.get_config(user)

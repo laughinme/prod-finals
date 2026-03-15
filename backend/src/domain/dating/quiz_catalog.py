@@ -1,5 +1,5 @@
 from .enums import OnboardingStepType
-from .interests import INTEREST_OPTIONS
+from .category_catalog import load_category_definitions
 from .schemas import OnboardingStep, OnboardingStepOption
 
 
@@ -39,9 +39,11 @@ _QUIZ_STEPS = [
         required_for_feed=False,
         min_answers=3,
         max_answers=5,
+        import_transactions_enabled=True,
+        import_transactions_default=True,
         options=[
-            OnboardingStepOption(value=value, label=label)
-            for value, label in INTEREST_OPTIONS
+            OnboardingStepOption(value=item.key, label=item.label)
+            for item in load_category_definitions()
         ],
     ),
 ]

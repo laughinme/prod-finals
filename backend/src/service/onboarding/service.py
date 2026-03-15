@@ -1,14 +1,27 @@
 from core.errors import BadRequestError
 from database.relational_db import User
 from domain.dating import AuditEntityType, OnboardingAnswersRequest, OnboardingAnswersResponse, OnboardingConfigResponse
+from domain.dating.category_catalog import pick_category_keys
 from domain.dating.quiz_catalog import get_quiz_steps, get_step
 
 from service.matchmaking import BaseDatingService
 
 
+IMPORT_TRANSACTIONS_STEP_KEY = "import_transactions"
+
+
 class OnboardingService(BaseDatingService):
-    def get_config(self) -> OnboardingConfigResponse:
-        return OnboardingConfigResponse(steps=get_quiz_steps())
+    async def get_config(self, user: User) -> OnboardingConfigResponse:
+        import_transactions = await self._get_import_transactions_value(user.id)
+        steps = [
+            step.model_copy(
+                update={"import_transactions_value": import_transactions}
+            )
+            if step.import_transactions_enabled
+            else step
+            for step in get_quiz_steps()
+        ]
+        return OnboardingConfigResponse(steps=steps)
 
     async def save_answers(self, user: User, payload: OnboardingAnswersRequest) -> OnboardingAnswersResponse:
         step = get_step(payload.step_key)
@@ -16,6 +29,24 @@ class OnboardingService(BaseDatingService):
             raise BadRequestError("Unknown quiz step")
 
         normalized_answers = self._validate_answers(step, payload.answers)
+        import_transactions = await self._resolve_import_transactions_value(
+            user=user,
+            step_key=payload.step_key,
+            import_transactions=payload.import_transactions,
+        )
+
+        await self.matchmaking_repo.upsert_quiz_answer(
+            user_id=user.id,
+            step_key=payload.step_key,
+            answers=normalized_answers,
+        )
+        if import_transactions is not None:
+            await self.matchmaking_repo.upsert_quiz_answer(
+                user_id=user.id,
+                step_key=IMPORT_TRANSACTIONS_STEP_KEY,
+                answers=[str(import_transactions).lower()],
+            )
+
         self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
         user.quiz_started = True
         user.is_onboarded = user.can_open_feed
@@ -25,10 +56,21 @@ class OnboardingService(BaseDatingService):
             entity_type=AuditEntityType.QUIZ,
             entity_id=str(user.id),
             actor_user_id=user.id,
-            payload={"step_key": payload.step_key, "answers": normalized_answers},
+            payload={
+                "step_key": payload.step_key,
+                "answers": normalized_answers,
+                "import_transactions": import_transactions,
+            },
         )
         await self.uow.commit()
         await self.uow.session.refresh(user)
+
+        if payload.step_key == "interests":
+            await self._sync_onboarding_with_ml(
+                user=user,
+                favorite_categories=normalized_answers,
+                import_transactions=import_transactions if import_transactions is not None else True,
+            )
 
         return OnboardingAnswersResponse(
             step_key=payload.step_key,
@@ -40,6 +82,8 @@ class OnboardingService(BaseDatingService):
             return self._validate_match_preferences(step, answers)
 
         normalized = [answer.strip() for answer in answers if answer and answer.strip()]
+        if not normalized and step.optional:
+            return []
 
         if step.step_type.value == "range":
             if len(normalized) != 2:
@@ -145,3 +189,43 @@ class OnboardingService(BaseDatingService):
         if step_key == "interests":
             user.interests = list(answers)
             return
+
+    async def _resolve_import_transactions_value(
+        self,
+        *,
+        user: User,
+        step_key: str,
+        import_transactions: bool | None,
+    ) -> bool | None:
+        step = get_step(step_key)
+        if step is None or not step.import_transactions_enabled:
+            return None
+        if import_transactions is not None:
+            return import_transactions
+        return await self._get_import_transactions_value(user.id)
+
+    async def _get_import_transactions_value(self, user_id) -> bool:
+        saved_answer = await self.matchmaking_repo.get_quiz_answer(
+            user_id=user_id,
+            step_key=IMPORT_TRANSACTIONS_STEP_KEY,
+        )
+        if saved_answer is None or not saved_answer.answers:
+            return True
+        return saved_answer.answers[0].strip().lower() != "false"
+
+    async def _sync_onboarding_with_ml(
+        self,
+        *,
+        user: User,
+        favorite_categories: list[str],
+        import_transactions: bool,
+    ) -> None:
+        categories = list(dict.fromkeys(favorite_categories or list(user.interests or [])))
+        if not categories:
+            categories = pick_category_keys(f"onboarding:{user.id}")[:3]
+        await self.ml_facade.sync_onboarding_profile(
+            user_id=user.id,
+            ml_user_id=user.service_user_id,
+            favorite_categories=categories[:15],
+            import_transactions=import_transactions,
+        )

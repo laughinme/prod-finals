@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 from contextlib import suppress
 from uuid import uuid4
 
@@ -17,9 +18,11 @@ if SRC not in sys.path:
 from core.config import clear_settings_cache, get_settings
 from database.redis import close_redis, get_redis
 from database.relational_db import UoW, dispose_engine, get_engine, get_session_factory
+from domain.dating.category_catalog import load_category_definitions
 from main import create_app
-from service.dev_seed import ensure_dev_seed
 from service.media import get_media_storage_service
+from service.seeding import run_registered_seeders
+from service.seeding.base import SeedContext
 from tests.helpers import auth_header
 
 
@@ -111,8 +114,9 @@ async def _answer_onboarding_filters(
     age_min: int,
     age_max: int,
     interests: list[str] | None = None,
+    import_transactions: bool = True,
 ) -> None:
-    interests = interests or ["coffee", "music", "travel"]
+    interests = interests or [item.key for item in load_category_definitions()[:3]]
     responses = [
         await client.post(
             "/api/v1/onboarding/answers",
@@ -128,7 +132,11 @@ async def _answer_onboarding_filters(
         ),
         await client.post(
             "/api/v1/onboarding/answers",
-            json={"step_key": "interests", "answers": interests},
+            json={
+                "step_key": "interests",
+                "answers": interests,
+                "import_transactions": import_transactions,
+            },
             headers=auth_header(access_token),
         ),
     ]
@@ -175,6 +183,9 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert steps["match_preferences"]["required_for_feed"] is False
     assert steps["match_preferences"]["step_type"] == "multi_select"
     assert steps["interests"]["min_answers"] == 3
+    assert steps["interests"]["import_transactions_enabled"] is True
+    assert steps["interests"]["import_transactions_default"] is True
+    assert steps["interests"]["import_transactions_value"] is True
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
@@ -186,6 +197,25 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     )
     assert answer.status_code == 200
     assert answer.json() == {"step_key": "match_preferences", "saved": True, "quiz_started": True}
+
+    interests_answer = await client.post(
+        "/api/v1/onboarding/answers",
+        json={
+            "step_key": "interests",
+            "answers": [item.key for item in load_category_definitions()[:3]],
+            "import_transactions": False,
+        },
+        headers=auth_header(access_a),
+    )
+    assert interests_answer.status_code == 200
+
+    updated_onboarding_config = await client.get(
+        "/api/v1/onboarding/config",
+        headers=auth_header(access_a),
+    )
+    assert updated_onboarding_config.status_code == 200
+    updated_steps = {step["step_key"]: step for step in updated_onboarding_config.json()["steps"]}
+    assert updated_steps["interests"]["import_transactions_value"] is False
 
     profile_a = await _complete_profile(
         client,
@@ -218,6 +248,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         genders=["male"],
         age_min=24,
         age_max=36,
+        import_transactions=False,
     )
     await _answer_onboarding_filters(
         client,
@@ -252,6 +283,17 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert profile_b["id"] in candidate_ids_a
     assert profile_c["id"] not in candidate_ids_a
     card_a = next(card for card in feed_a.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
+    assert 0 <= card_a["compatibility"]["score_percent"] <= 100
+    assert card_a["compatibility"]["category_breakdown"]
+    assert len(card_a["compatibility"]["category_breakdown"]) <= 5
+    assert all(
+        {
+            "category_key",
+            "label",
+            "score_percent",
+        }.issubset(entry.keys())
+        for entry in card_a["compatibility"]["category_breakdown"]
+    )
 
     explanation = await client.get(
         f"/api/v1/feed/items/{card_a['serve_item_id']}/explanation",
@@ -520,15 +562,19 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
 
 @pytest.mark.asyncio
 async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
-    os.environ["DEV_SEED_ENABLED"] = "true"
+    os.environ["MOCK_USER_SEED_ENABLED"] = "true"
     clear_settings_cache()
+    storage = get_media_storage_service()
+    await asyncio.to_thread(storage.ensure_buckets)
     session_factory = get_session_factory()
     async with session_factory() as session:
         async with UoW(session) as uow:
-            await ensure_dev_seed(
-                uow=uow,
-                storage=get_media_storage_service(),
-                settings=get_settings(),
+            await run_registered_seeders(
+                SeedContext(
+                    settings=get_settings(),
+                    uow=uow,
+                    storage=storage,
+                )
             )
     application = create_app(enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False)
     application.dependency_overrides[get_redis] = lambda: redis_client
@@ -536,7 +582,7 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
     async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
         login = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": "anna.demo@example.com", "password": "DemoPass123!"},
+            json={"email": "mock-user-0001@example.com", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert login.status_code == 200

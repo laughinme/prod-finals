@@ -20,6 +20,9 @@ export interface OnboardingStepDto {
   range_max?: number | null;
   range_min_label?: string | null;
   range_max_label?: string | null;
+  import_transactions_enabled?: boolean;
+  import_transactions_default?: boolean;
+  import_transactions_value?: boolean | null;
 }
 
 export interface OnboardingConfigResponseDto {
@@ -29,6 +32,7 @@ export interface OnboardingConfigResponseDto {
 export interface OnboardingAnswersRequestDto {
   step_key: string;
   answers: string[];
+  import_transactions?: boolean;
 }
 
 export interface OnboardingAnswersResponseDto {

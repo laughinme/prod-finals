@@ -74,6 +74,9 @@ class OnboardingStep(BaseModel):
     range_max: int | None = None
     range_min_label: str | None = None
     range_max_label: str | None = None
+    import_transactions_enabled: bool = False
+    import_transactions_default: bool = True
+    import_transactions_value: bool | None = None
     options: list[OnboardingStepOption] = Field(default_factory=list)
 
 
@@ -84,6 +87,7 @@ class OnboardingConfigResponse(BaseModel):
 class OnboardingAnswersRequest(BaseModel):
     step_key: str
     answers: list[str] = Field(default_factory=list)
+    import_transactions: bool | None = None
 
 
 class OnboardingAnswersResponse(BaseModel):
@@ -101,10 +105,18 @@ class FeedCandidate(BaseModel):
     avatar_url: str | None = None
 
 
+class CompatibilityCategoryScore(BaseModel):
+    category_key: str
+    label: str
+    score_percent: int = Field(..., ge=0, le=100)
+
+
 class CompatibilityPreview(BaseModel):
     score: float = Field(..., ge=0, le=1)
+    score_percent: int = Field(..., ge=0, le=100)
     preview: str
     reason_codes: list[str] = Field(default_factory=list)
+    category_breakdown: list[CompatibilityCategoryScore] = Field(default_factory=list)
 
 
 class FeedCardActions(BaseModel):
@@ -308,6 +320,7 @@ class FeedCandidateContext(BaseModel):
     city: str | None = None
     gender: Gender | None = None
     search_preferences: SearchPreferences = Field(default_factory=SearchPreferences)
+    interests: list[str] = Field(default_factory=list)
     bio: str | None = None
     avatar_url: str | None = None
     profile_completion_percent: int = Field(default=0, ge=0, le=100)
@@ -317,6 +330,7 @@ class RankedCandidate(BaseModel):
     candidate_user_id: UUID
     score: float = Field(..., ge=0, le=1)
     reason_codes: list[CompatibilityReasonCode] = Field(default_factory=list)
+    category_keys: list[str] = Field(default_factory=list)
 
 
 class RankedCandidates(BaseModel):

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Navigate } from "react-router-dom";
@@ -35,6 +35,7 @@ export function QuizFlow() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [importTransactions, setImportTransactions] = useState<Record<string, boolean>>({});
   const [showProfilePreview, setShowProfilePreview] = useState(false);
 
   const {
@@ -81,6 +82,37 @@ export function QuizFlow() {
 
     return { genders, ageMin, ageMax };
   }, [currentAnswer, question]);
+
+  const currentImportTransactions = useMemo(() => {
+    if (!question?.importTransactionsEnabled) {
+      return undefined;
+    }
+    return (
+      importTransactions[question.stepKey] ??
+      question.importTransactionsValue ??
+      question.importTransactionsDefault ??
+      true
+    );
+  }, [importTransactions, question]);
+
+  useEffect(() => {
+    if (!question?.importTransactionsEnabled) {
+      return;
+    }
+
+    setImportTransactions((prev) => {
+      if (question.stepKey in prev) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [question.stepKey]:
+          question.importTransactionsValue ??
+          question.importTransactionsDefault ??
+          true,
+      };
+    });
+  }, [question]);
 
   if (isConfigLoading) {
     return (
@@ -150,7 +182,11 @@ export function QuizFlow() {
     }
 
     try {
-      if (finalAnswers.length === 0 && question.optional) {
+      if (
+        finalAnswers.length === 0 &&
+        question.optional &&
+        !question.importTransactionsEnabled
+      ) {
         moveToNext();
         return;
       }
@@ -158,6 +194,9 @@ export function QuizFlow() {
       await answerMutation.mutateAsync({
         stepKey: question.stepKey,
         answers: finalAnswers,
+        importTransactions: question.importTransactionsEnabled
+          ? currentImportTransactions
+          : undefined,
       });
 
       if (isLastQuestion) {
@@ -267,17 +306,45 @@ export function QuizFlow() {
           })}
         </div>
 
-        <div className="rounded-3xl border border-border/50 bg-secondary/35 p-5 text-sm leading-6 text-muted-foreground">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-              ✓
-            </span>
-            <p>
-              Мы также используем агрегированные данные о ваших привычках, чтобы
-              сделать рекомендации еще точнее. Это приватно и безопасно.
-            </p>
-          </div>
-        </div>
+        {q.importTransactionsEnabled && (
+          <button
+            type="button"
+            onClick={() =>
+              setImportTransactions((prev) => ({
+                ...prev,
+                [q.stepKey]: !currentImportTransactions,
+              }))
+            }
+            className={cn(
+              "w-full rounded-3xl border p-5 text-left transition-all",
+              currentImportTransactions
+                ? "border-primary/40 bg-primary/10 shadow-sm"
+                : "border-border/50 bg-secondary/35",
+            )}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Использовать транзакции для ML-рекомендаций
+                </p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Помогаем модели точнее понять ваш ритм жизни по агрегированным
+                  банковским транзакциям. По умолчанию согласие включено.
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition-colors",
+                  currentImportTransactions
+                    ? "border-primary bg-primary justify-end"
+                    : "border-border bg-background justify-start",
+                )}
+              >
+                <span className="size-5 rounded-full bg-white shadow-sm" />
+              </span>
+            </div>
+          </button>
+        )}
       </div>
     );
   };
@@ -585,7 +652,8 @@ export function QuizFlow() {
                 <Loader2 className="animate-spin" />
               ) : isLastQuestion ? (
                 t("common.finish")
-              ) : currentAnswer.length === 0 ? (
+              ) : currentAnswer.length === 0 &&
+                !question?.importTransactionsEnabled ? (
                 "Пропустить"
               ) : (
                 t("common.continue")

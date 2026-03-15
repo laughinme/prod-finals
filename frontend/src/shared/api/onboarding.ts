@@ -27,6 +27,9 @@ export interface OnboardingStep {
   rangeMax?: number | null;
   rangeMinLabel?: string | null;
   rangeMaxLabel?: string | null;
+  importTransactionsEnabled?: boolean;
+  importTransactionsDefault?: boolean;
+  importTransactionsValue?: boolean | null;
 }
 
 export interface OnboardingConfigResponse {
@@ -36,6 +39,7 @@ export interface OnboardingConfigResponse {
 export interface OnboardingAnswersRequest {
   stepKey: string;
   answers: string[];
+  importTransactions?: boolean;
 }
 
 export interface OnboardingAnswersResponse {
@@ -62,6 +66,9 @@ const toStep = (dto: OnboardingStepDto): OnboardingStep => ({
   rangeMax: dto.range_max,
   rangeMinLabel: dto.range_min_label,
   rangeMaxLabel: dto.range_max_label,
+  importTransactionsEnabled: dto.import_transactions_enabled,
+  importTransactionsDefault: dto.import_transactions_default,
+  importTransactionsValue: dto.import_transactions_value,
 });
 
 const toConfigResponse = (
@@ -83,6 +90,7 @@ const toAnswersRequestDto = (
 ): OnboardingAnswersRequestDto => ({
   step_key: data.stepKey,
   answers: data.answers,
+  import_transactions: data.importTransactions,
 });
 
 export const getOnboardingConfig =
