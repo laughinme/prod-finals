@@ -12,6 +12,7 @@ from domain.notifications import (
     ConversationClosedEventPayload,
     MatchCreatedEventPayload,
     MessageCreatedEventPayload,
+    MessageReceivedEventPayload,
     RealtimeConnectionResponse,
     RealtimeSubscriptionResponse,
 )
@@ -91,19 +92,25 @@ class RealtimeService:
         )
 
     async def publish_match_created(self, *, user_id, payload: MatchCreatedEventPayload) -> None:
-        if not self.is_enabled:
-            return
-        publication = {
-            "channel": self.build_personal_channel(user_id=user_id),
-            "data": {
-                "type": "match_created",
-                "payload": payload.model_dump(mode="json"),
-            },
-        }
-        try:
-            await asyncio.to_thread(self._post_publication, publication)
-        except (OSError, urllib_error.URLError, urllib_error.HTTPError) as exc:
-            logger.warning("Failed to publish realtime match notification: %s", exc)
+        await self._publish_event(
+            channel=self.build_personal_channel(user_id=user_id),
+            event_type="match_created",
+            payload=payload.model_dump(mode="json"),
+            log_label="match notification",
+        )
+
+    async def publish_message_received(
+        self,
+        *,
+        user_id,
+        payload: MessageReceivedEventPayload,
+    ) -> None:
+        await self._publish_event(
+            channel=self.build_personal_channel(user_id=user_id),
+            event_type="message_received",
+            payload=payload.model_dump(mode="json"),
+            log_label="message notification",
+        )
 
     async def publish_message_created(
         self,
