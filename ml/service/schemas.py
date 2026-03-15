@@ -247,14 +247,9 @@ class ErrorResponse(StrictModel):
 class UserProfileUpdateRequest(StrictModel):
     trace_id: UUID
     user_id: str | int
-    # Список любимых категорий, которые выбрал юзер (например: ["Фастфуд", "Кино", "Супермаркеты"])
     favorite_categories: list[str] = Field(min_length=1, max_length=15)
-    
-    # Опционально: можно передавать дефолтный часовой пояс или время активности
+    import_transactions: bool = Field(default=False, description="Флаг согласия на импорт банковских транзакций")
     preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
-
-# Добавить импорты, если их нет
-# from typing import Optional, List
 
 class RawTransaction(StrictModel):
     transaction_id: str

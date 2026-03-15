@@ -133,14 +133,12 @@ class MlRuntime:
             else:
                 self._startup_error = f"Pipeline init failed: {exc}"
     def _load_inference_artifacts(self):
-        """Поднимаем в память Scaler, список фичей и Catboost модель"""
-        models_dir = Path("/app/ml/models") # Вынеси путь в settings.from_env
+        models_dir = Path("/app/ml/models") 
         try:
             self._scaler = joblib.load(models_dir / "scaler.joblib")
             self._features_list = joblib.load(models_dir / "features_list.joblib")
             
             self._catboost = CatBoostClassifier()
-            # Предполагается, что ты сохранил её как model.save_model('imputer.cbm') в qdrant.py
             self._catboost.load_model(models_dir / "imputer.cbm") 
             self._has_artifacts = True
             print("✅ ML Artifacts loaded successfully")
@@ -159,28 +157,18 @@ class MlRuntime:
         if not self._has_artifacts or self._qdrant_client is None:
             return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
 
-        # 1. Формируем "сырой" вектор (распределение любимых категорий)
         raw_vector = np.zeros(len(self._features_list))
-        
-        # Находим индексы фичей в features_list
+
         weight_per_cat = 1.0 / len(favorite_categories) if favorite_categories else 0
         
         for cat in favorite_categories:
             if cat in self._features_list:
                 idx = self._features_list.index(cat)
                 raw_vector[idx] = weight_per_cat
-                
-        # 2. Обрабатываем фичу "Средний час транзакций" (hour). Она всегда последняя в списке?
-        # Или ищем явно:
         if "hour" in self._features_list:
             hour_idx = self._features_list.index("hour")
-            raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0 # Дефолтный час
-
-        # 3. Нормализуем через scaler (обученный ранее)
-        # scaler.transform ждет 2D массив
+            raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0 
         scaled_vector = self._scaler.transform([raw_vector])[0]
-
-        # 4. Сохраняем в Qdrant
         user_uuid = _string_to_uuid(_normalize_user_id(user_id))
         self._qdrant_client.upsert(
             collection_name="user_profiles",
@@ -190,7 +178,7 @@ class MlRuntime:
                     vector=scaled_vector.tolist(),
                     payload={
                         "party_rk": str(user_id),
-                        "is_warm": False, # Метка, что юзер пришел с холодного старта
+                        "is_warm": False, 
                         "updated_at": _utcnow().isoformat()
                     }
                 )
@@ -198,33 +186,23 @@ class MlRuntime:
         )
         print(f"[{trace_id}] Cold start profile generated for user {user_id}")
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
-
-    # ========================================================
-    # 2. ФИЧА: ФОНОВОЕ ОБОГАЩЕНИЕ ТРАНЗАКЦИЙ
-    # ========================================================
     def process_transactions_sync_background(self, payload: Any):
-        """Эта функция крутится в фоне. Не блокирует API."""
-        from ml.service.schemas import TransactionSyncRequest # локальный импорт во избежание циклов
+        from ml.service.schemas import TransactionSyncRequest 
         request: TransactionSyncRequest = payload
 
         if not self._has_artifacts or self._qdrant_client is None:
             return
 
         user_id_str = str(request.user_id)
-        
-        # 1. Переводим транзакции в DataFrame для Pandas/Catboost
+
         df = pd.DataFrame([t.model_dump() for t in request.transactions])
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df['hour'] = df['timestamp'].dt.hour
         df['day_of_week'] = df['timestamp'].dt.dayofweek
-        
-        # 2. Заполняем пропуски через CatBoost (Inference Mode)
         predict_df = df[df['category_nm'].isna() | (df['category_nm'] == '')].copy()
         if not predict_df.empty:
             preds = self._catboost.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
             df.loc[predict_df.index, 'category_nm'] = preds.flatten()
-
-        # 3. Вычисляем профиль (аналог того, что в qdrant.py)
         cat_counts = df['category_nm'].value_counts()
         total = cat_counts.sum()
         
@@ -233,16 +211,10 @@ class MlRuntime:
             if cat in self._features_list:
                 idx = self._features_list.index(cat)
                 raw_vector[idx] = count / total if total > 0 else 0
-
-        # Считаем средний час
         if "hour" in self._features_list:
             hour_idx = self._features_list.index("hour")
             raw_vector[hour_idx] = df['hour'].mean()
-
-        # 4. Скалируем (тут мы можем БЛЕНДИТЬ данные, если надо)
         scaled_vector = self._scaler.transform([raw_vector])[0]
-
-        # 5. Обновляем вектор в Qdrant
         user_uuid = _string_to_uuid(_normalize_user_id(request.user_id))
         
         top_cat = df['category_nm'].mode().iloc[0] if not df['category_nm'].empty else "unknown"
@@ -255,7 +227,7 @@ class MlRuntime:
                     vector=scaled_vector.tolist(),
                     payload={
                         "party_rk": user_id_str,
-                        "is_warm": True, # У него появились реальные транзакции!
+                        "is_warm": True, 
                         "top_cat": top_cat,
                         "transactions_count": len(df),
                         "updated_at": _utcnow().isoformat()
@@ -328,8 +300,6 @@ class MlRuntime:
         warnings: list[str] = []
         decision_mode = RecommendationDecisionMode.fallback
         candidates: list[RecommendationCandidate] = []
-
-        # Попробуем использовать Qdrant для рекомендаций (с дообучением)
         if self._qdrant_client is not None:
             qdrant_candidates = self._recommend_via_qdrant(
                 request_user_id=request.request_user_id,

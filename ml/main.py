@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
+from datetime import datetime, timezone
 from ml.service.auth import require_service_token
 from ml.service.runtime import MlRuntime
 from ml.service.schemas import (
@@ -21,6 +21,7 @@ from ml.service.schemas import (
     RecommendationResponse,
     SwipeFeedbackRequest,
     UserProfileUpdateRequest,
+    TransactionSyncRequest
 )
 
 
@@ -247,21 +248,30 @@ async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckRespons
 
 
 @app.post(
-    "/v1/profiles/favorites",
+    "/v1/profiles/onboarding",
     tags=["onboarding"],
-    operation_id="postUpdateFavorites",
+    operation_id="postOnboarding",
     response_model=AckResponse,
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(require_service_token)],
 )
-async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckResponse:
-    """Холодный старт: создание вектора по выбранным категориям"""
-    return runtime.update_user_profile_favorites(
+async def post_onboarding(
+    payload: UserProfileUpdateRequest,
+    background_tasks: BackgroundTasks
+) -> AckResponse:
+    runtime.update_user_profile_favorites(
         user_id=payload.user_id,
         favorite_categories=payload.favorite_categories,
         trace_id=payload.trace_id,
         preferred_hour=payload.preferred_activity_hour
     )
+    if payload.import_transactions:
+        background_tasks.add_task(
+            runtime.pull_and_process_user_transactions, 
+            user_id=payload.user_id, 
+            trace_id=payload.trace_id
+        )
+    return AckResponse(status=AckStatus.accepted, received_at=datetime.now(timezone.utc))
 
 @app.post(
     "/v1/transactions/sync",
