@@ -171,15 +171,23 @@ class FeedService(BaseDatingService):
         requester_prefs = requester_context.search_preferences
         candidate_prefs = candidate_context.search_preferences
 
-        if requester_prefs.looking_for_genders and candidate_context.gender not in requester_prefs.looking_for_genders:
+        if (
+            requester_prefs.looking_for_genders
+            and candidate_context.gender is not None
+            and candidate_context.gender not in requester_prefs.looking_for_genders
+        ):
             return False
-        if candidate_prefs.looking_for_genders and requester_context.gender not in candidate_prefs.looking_for_genders:
+        if (
+            candidate_prefs.looking_for_genders
+            and requester_context.gender is not None
+            and requester_context.gender not in candidate_prefs.looking_for_genders
+        ):
             return False
 
         if requester_prefs.age_range is not None:
-            if candidate_age is None:
-                return False
-            if not (requester_prefs.age_range.min <= candidate_age <= requester_prefs.age_range.max):
+            if candidate_age is not None and not (
+                requester_prefs.age_range.min <= candidate_age <= requester_prefs.age_range.max
+            ):
                 return False
         if candidate_prefs.age_range is not None and requester_age is not None:
             if not (candidate_prefs.age_range.min <= requester_age <= candidate_prefs.age_range.max):
@@ -187,10 +195,6 @@ class FeedService(BaseDatingService):
 
         if requester_prefs.goal and candidate_prefs.goal and requester_prefs.goal != candidate_prefs.goal:
             return False
-
-        if requester_prefs.distance_km is not None and requester_context.city and candidate_context.city:
-            if requester_context.city != candidate_context.city:
-                return False
 
         return True
 

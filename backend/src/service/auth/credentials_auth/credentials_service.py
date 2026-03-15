@@ -11,6 +11,7 @@ from database.relational_db import (
 from domain.auth import UserLogin, UserRegister
 from domain.auth.enums import DEFAULT_ROLE
 from core.crypto import hash_password, verify_password, needs_rehash
+from service.mock_identity import MockIdentityService
 from service.notifications import NotificationService
 from .exceptions import AlreadyExists, WrongCredentials
 from ..tokens import TokenService
@@ -25,12 +26,14 @@ class CredentialsService:
         role_repo: RolesInterface,
         token_service: TokenService,
         notification_service: NotificationService,
+        mock_identity_service: MockIdentityService,
     ):
         self.uow = uow
         self.user_repo = user_repo
         self.role_repo = role_repo
         self.token_service = token_service
         self.notification_service = notification_service
+        self.mock_identity_service = mock_identity_service
         self.settings = get_settings()
         
     @staticmethod
@@ -62,6 +65,7 @@ class CredentialsService:
             password_hash=password_hash,
             username=getattr(payload, "username", None),
         )
+        self.mock_identity_service.apply_registration_defaults(user)
         
         try:
             await self.user_repo.add(user)

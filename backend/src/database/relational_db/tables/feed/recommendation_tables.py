@@ -19,7 +19,7 @@ class RecommendationBatch(TimestampMixin, Base):
     batch_date: Mapped[date] = mapped_column(Date, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decision_mode: Mapped[str] = mapped_column(String(32), nullable=False)
-    daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=12)
+    daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
 
 
 class RecommendationItem(CreatedAtMixin, Base):

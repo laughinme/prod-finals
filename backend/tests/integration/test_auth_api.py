@@ -46,7 +46,9 @@ async def test_register_login_refresh_logout_flow(
     assert profile.status_code == 200
     assert profile.json()["email"] == payload["email"]
     assert profile.json()["username"] == payload["username"]
-    assert profile.json()["display_name"] is None
+    assert profile.json()["display_name"]
+    assert profile.json()["gender"] in {"male", "female"}
+    assert profile.json()["birth_date"] is not None
     assert profile.json()["avatar_status"] is None
     assert profile.json()["quiz_started"] is False
 

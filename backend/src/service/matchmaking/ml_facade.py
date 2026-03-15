@@ -77,10 +77,6 @@ class MockMlFacade(MlFacade):
             score = 0.08
             reason_codes: list[CompatibilityReasonCode] = []
 
-            if requester.city and candidate.city and requester.city == candidate.city:
-                score += 0.20
-                reason_codes.append(CompatibilityReasonCode.CITY_FIT)
-
             if self._has_mutual_gender_fit(requester, candidate):
                 score += 0.22
                 reason_codes.append(CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT)
@@ -108,7 +104,7 @@ class MockMlFacade(MlFacade):
                 RankedCandidate(
                     candidate_user_id=candidate.user_id,
                     score=round(min(score, 0.99), 2),
-                    reason_codes=reason_codes[:4] or [CompatibilityReasonCode.CITY_FIT],
+                    reason_codes=reason_codes[:4] or [CompatibilityReasonCode.PROFILE_QUALITY],
                 )
             )
 

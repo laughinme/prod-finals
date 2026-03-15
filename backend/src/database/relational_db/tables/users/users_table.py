@@ -21,6 +21,7 @@ class User(TimestampMixin, Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
     service_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    is_dataset_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     
     # Credentials
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
@@ -160,12 +161,11 @@ class User(TimestampMixin, Base):
         checks = [
             bool(self.resolved_display_name),
             self.birth_date is not None,
-            self.city_id is not None,
             self.gender is not None,
             bool(self.looking_for_genders),
             self.age_range_min is not None and self.age_range_max is not None,
-            self.goal is not None,
             self.bio is not None and bool(self.bio.strip()),
+            bool(self.interests),
             self.has_approved_photo,
         ]
         completed = sum(1 for item in checks if item)
