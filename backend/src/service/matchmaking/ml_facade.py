@@ -1,4 +1,8 @@
+import logging
 from datetime import date
+from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
+
+import httpx
 
 from domain.dating import (
     CompatibilityExplanationResponse,
@@ -24,6 +28,14 @@ def _age_for_birth_date(birth_date: date | None, today: date) -> int | None:
     if (today.month, today.day) < (birth_date.month, birth_date.day):
         years -= 1
     return years
+
+
+def _normalize_ml_id(raw: object) -> str:
+    return str(raw).strip().lower()
+
+
+def _deterministic_qdrant_uuid(raw: str) -> str:
+    return str(uuid5(NAMESPACE_DNS, raw))
 
 
 class MlFacade:
@@ -246,3 +258,187 @@ class MockMlFacade(MlFacade):
         }
         title, text, confidence = mapping[code]
         return CompatibilityReason(code=code.value, title=title, text=text, confidence=confidence)
+logger = logging.getLogger(__name__)
+
+# ML ReasonCode → backend CompatibilityReasonCode
+_ML_REASON_MAP: dict[str, CompatibilityReasonCode] = {
+    "lifestyle_similarity": CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT,
+    "activity_overlap": CompatibilityReasonCode.GOAL_FIT,
+    "communication_style_fit": CompatibilityReasonCode.CITY_FIT,
+    "meetup_rhythm_fit": CompatibilityReasonCode.AGE_FIT,
+    "locality_fit": CompatibilityReasonCode.CITY_FIT,
+    "novelty_boost": CompatibilityReasonCode.PROFILE_QUALITY,
+}
+
+
+class HttpMlFacade(MlFacade):
+    """MlFacade implementation that calls the real ML service over HTTP."""
+
+    def __init__(self, *, base_url: str, service_token: str) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._service_token = service_token
+        self._fallback = MockMlFacade()
+
+    def _headers(self) -> dict[str, str]:
+        return {"X-Service-Token": self._service_token}
+
+    def _map_reason_code(self, ml_code: str) -> CompatibilityReasonCode:
+        return _ML_REASON_MAP.get(ml_code, CompatibilityReasonCode.PROFILE_QUALITY)
+
+    def _map_decision_mode(self, ml_mode: str) -> DecisionMode:
+        if ml_mode == "model":
+            return DecisionMode.MODEL
+        return DecisionMode.FALLBACK
+
+    async def rank(
+        self,
+        requester: FeedCandidateContext,
+        candidates: list[FeedCandidateContext],
+        limit: int,
+    ) -> RankedCandidates:
+        trace_id = uuid4()
+        request_ml_id = requester.ml_user_id or str(requester.user_id)
+        request_ml_id_norm = _normalize_ml_id(request_ml_id)
+        query_limit = min(max(limit * 5, 50), 200)
+
+        candidate_id_map: dict[str, UUID] = {}
+        for candidate in candidates:
+            candidate_uuid = candidate.user_id
+            candidate_id_map[_normalize_ml_id(str(candidate_uuid))] = candidate_uuid
+            candidate_id_map[_deterministic_qdrant_uuid(_normalize_ml_id(str(candidate_uuid)))] = candidate_uuid
+            if candidate.ml_user_id:
+                ml_key = _normalize_ml_id(candidate.ml_user_id)
+                candidate_id_map[ml_key] = candidate_uuid
+                candidate_id_map[_deterministic_qdrant_uuid(ml_key)] = candidate_uuid
+
+        payload = {
+            "trace_id": str(trace_id),
+            "request_user_id": request_ml_id_norm,
+            "limit": query_limit,
+            "strategy": "balanced",
+            "exclusion": {"hard_exclude_user_ids": [request_ml_id_norm]},
+            "context": {
+                "request_ts": date.today().isoformat() + "T00:00:00Z",
+                "client": "web",
+                "decision_policy": "daily_batch",
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/v1/recommendations",
+                    json=payload,
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            logger.warning("ML service /v1/recommendations failed: %s, falling back to mock", exc)
+            return await self._fallback.rank(requester, candidates, limit)
+
+        ml_candidates = data.get("candidates", [])
+        decision_mode = self._map_decision_mode(data.get("decision_mode", "fallback"))
+
+        scored: list[RankedCandidate] = []
+        for ml_item in ml_candidates:
+            candidate_user_id_raw = _normalize_ml_id(ml_item.get("candidate_user_id", ""))
+            candidate_uuid = candidate_id_map.get(candidate_user_id_raw)
+            if candidate_uuid is None:
+                continue
+
+            reason_codes = []
+            for signal in ml_item.get("reason_signals", []):
+                code = self._map_reason_code(signal.get("code", ""))
+                if code not in reason_codes:
+                    reason_codes.append(code)
+
+            if not reason_codes:
+                reason_codes.append(CompatibilityReasonCode.PROFILE_QUALITY)
+
+            scored.append(
+                RankedCandidate(
+                    candidate_user_id=candidate_uuid,
+                    score=round(min(max(ml_item.get("score", 0.0), 0.0), 0.99), 2),
+                    reason_codes=reason_codes[:4],
+                )
+            )
+
+        scored.sort(key=lambda item: item.score, reverse=True)
+
+        if not scored:
+            logger.info("ML returned %d candidates but none matched backend user pool, falling back to mock", len(ml_candidates))
+            return await self._fallback.rank(requester, candidates, limit)
+
+        return RankedCandidates(
+            decision_mode=decision_mode,
+            candidates=scored[:limit],
+        )
+
+    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+        trace_id = uuid4()
+        requester_ml_id = payload.requester.ml_user_id or str(payload.requester.user_id)
+        candidate_ml_id = payload.candidate.ml_user_id or str(payload.candidate.user_id)
+        ml_payload = {
+            "trace_id": str(trace_id),
+            "requester_user_id": _normalize_ml_id(requester_ml_id),
+            "candidate_user_id": _normalize_ml_id(candidate_ml_id),
+            "channel": "feed",
+            "locale": "ru-RU",
+            "max_reasons": 3,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"{self._base_url}/v1/explanations/compatibility",
+                    json=ml_payload,
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            logger.warning("ML service /v1/explanations/compatibility failed: %s, falling back to mock", exc)
+            return await self._fallback.explain(payload)
+
+        reasons: list[CompatibilityReason] = []
+        for r in data.get("reasons", []):
+            code = self._map_reason_code(r.get("code", ""))
+            reasons.append(
+                CompatibilityReason(
+                    code=code.value,
+                    title=r.get("template_key", code.value),
+                    text=r.get("template_key", ""),
+                    confidence=r.get("confidence", 0.5),
+                )
+            )
+
+        if not reasons:
+            reasons.append(
+                CompatibilityReason(
+                    code=CompatibilityReasonCode.PROFILE_QUALITY.value,
+                    title="Strong profile signal",
+                    text="The profile contains enough detail to support a more stable recommendation.",
+                    confidence=0.63,
+                )
+            )
+
+        return CompatibilityExplanationResponse(
+            serve_item_id=payload.serve_item_id,
+            candidate_user_id=payload.candidate.user_id,
+            reasons=reasons,
+            disclaimer="These explanations use aggregated profile and ML signals.",
+        )
+
+    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
+        return self._fallback.build_preview(scored)
+
+    def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
+        return self._fallback.empty_state(code)
+
+    def build_icebreakers(
+        self,
+        requester: FeedCandidateContext,
+        candidate: FeedCandidateContext,
+    ) -> IcebreakersResponse:
+        return self._fallback.build_icebreakers(requester, candidate)

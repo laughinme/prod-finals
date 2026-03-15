@@ -58,6 +58,7 @@ class BaseDatingService:
     async def _build_feed_context(self, user: User) -> FeedCandidateContext:
         return FeedCandidateContext(
             user_id=user.id,
+            ml_user_id=user.service_user_id,
             display_name=user.resolved_display_name or "",
             birth_date=user.birth_date,
             city=user.city.name if user.city else None,

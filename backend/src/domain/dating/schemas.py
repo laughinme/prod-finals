@@ -302,6 +302,7 @@ class AuditEventsQuery(BaseModel):
 
 class FeedCandidateContext(BaseModel):
     user_id: UUID
+    ml_user_id: str | None = None
     display_name: str
     birth_date: date | None = None
     city: str | None = None

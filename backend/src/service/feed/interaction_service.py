@@ -106,11 +106,14 @@ class InteractionService(BaseDatingService):
                 "dwell_time_ms": payload.dwell_time_ms,
             },
         )
+        target_user = await self.user_repo.get_by_id(item.target_user_id)
+        actor_ml_id = user.service_user_id or str(user.id)
+        target_ml_id = (target_user.service_user_id if target_user else None) or str(item.target_user_id)
         await self.add_outbox_event(
             topic="ml.interactions.swipe",
             payload={
-                "actor_user_id": str(user.id),
-                "target_user_id": str(item.target_user_id),
+                "actor_user_id": actor_ml_id,
+                "target_user_id": target_ml_id,
                 "action": payload.action.value,
                 "opened_explanation": payload.opened_explanation,
                 "opened_profile": payload.opened_profile,

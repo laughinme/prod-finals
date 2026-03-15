@@ -16,8 +16,8 @@ from core.rate_limit import init_rate_limiters
 from database.redis import close_redis, init_redis
 from database.relational_db import UoW, dispose_engine, get_session_factory, wait_for_db
 from scheduler import init_scheduler, stop_scheduler
-from service.media import get_media_storage_service
 from service.dev_seed import ensure_dev_seed
+from service.media import get_media_storage_service
 
 
 logger = logging.getLogger(__name__)

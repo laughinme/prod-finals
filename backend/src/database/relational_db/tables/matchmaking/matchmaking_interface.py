@@ -335,3 +335,44 @@ class MatchmakingInterface:
             .order_by(User.created_at.asc())
         )
         return list(rows.all())
+
+    async def claim_pending_outbox_events(
+        self,
+        *,
+        topic: str,
+        limit: int,
+        now: datetime | None = None,
+    ) -> list[OutboxEvent]:
+        now = now or datetime.now(UTC)
+        stmt = (
+            select(OutboxEvent)
+            .where(
+                OutboxEvent.topic == topic,
+                OutboxEvent.status == "pending",
+                or_(OutboxEvent.available_at.is_(None), OutboxEvent.available_at <= now),
+            )
+            .order_by(OutboxEvent.created_at.asc())
+            .with_for_update(skip_locked=True)
+            .limit(limit)
+        )
+        rows = await self.session.scalars(stmt)
+        events = list(rows.all())
+        for event in events:
+            event.status = "processing"
+        await self.session.flush()
+        return events
+
+    async def update_outbox_event(
+        self,
+        *,
+        event_id: UUID,
+        status: str,
+        available_at: datetime | None = None,
+    ) -> OutboxEvent | None:
+        event = await self.session.get(OutboxEvent, event_id)
+        if event is None:
+            return None
+        event.status = status
+        event.available_at = available_at
+        await self.session.flush()
+        return event
