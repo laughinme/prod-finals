@@ -67,6 +67,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      centrifugo:
+        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -95,6 +97,8 @@ services:
       backend:
         condition: service_healthy
       minio:
+        condition: service_started
+      centrifugo:
         condition: service_started
     volumes:
       - caddy_data:/data
@@ -127,6 +131,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  centrifugo:
+    image: centrifugo/centrifugo:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-centrifugo
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET:-change-me-centrifugo-token-secret}
+      CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:-change-me-centrifugo-api-key}
+      CENTRIFUGO_ADMIN_ENABLED: "false"
+      CENTRIFUGO_ENGINE_TYPE: memory
     restart: unless-stopped
 
   minio:

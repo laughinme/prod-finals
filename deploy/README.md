@@ -82,6 +82,8 @@ Then reconnect so the docker group is applied.
 - Caddy terminates TLS, automatically obtains Let's Encrypt certificates, and proxies `/api/*` to backend and `/media-*` to MinIO.
 - Keep `VITE_API_BASE_URL=` empty in production if frontend and backend are served from one domain.
 - Backend migrations run automatically from `backend/entry.sh` when the backend container starts.
+- Centrifugo is deployed as an internal realtime service and proxied by Caddy on `/connection/*`.
+- Keep `CENTRIFUGO_WS_URL` empty when you want backend to derive it from `SITE_URL` automatically.
 - Ports `80` and `443` must be open on the VM for automatic HTTPS to work.
 - Set `SITE_URL` and `STORAGE_ENDPOINT_PUBLIC` to the final `https://...` domain, and keep `COOKIE_SECURE=true` in production.
 - ML model training is manual. Run on VM:
@@ -97,6 +99,7 @@ cd /opt/chupapis
 docker compose --env-file deploy/.env -f docker-compose.prod.yml ps
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f backend
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f caddy
+docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f centrifugo
 docker compose --env-file deploy/.env -f docker-compose.prod.yml logs -f ml-service
 docker compose --env-file deploy/.env -f docker-compose.prod.yml exec backend sh
 ```
@@ -106,5 +109,7 @@ What to look for first:
 - `DATABASE_URL` or `REDIS_URL` pointing to `localhost` instead of `db` / `redis`.
 - Short or missing `JWT_SECRET`.
 - `JWT_ALGO=RS256` left over after switching to shared-secret JWT signing.
+- `CENTRIFUGO_API_KEY` or `CENTRIFUGO_TOKEN_HMAC_SECRET` missing while `CENTRIFUGO_ENABLED=true`.
+- `SITE_URL` does not match the public host, so derived realtime `wss://...` URL points to the wrong domain.
 - Alembic migration errors from `backend/entry.sh`.
 - Caddy ACME errors if certificate issuance fails on first boot.
