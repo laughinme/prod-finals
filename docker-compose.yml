@@ -101,7 +101,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-centrifugo
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: dev-centrifugo-token-secret-change-me
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: http://localhost http://127.0.0.1
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost http://127.0.0.1}
       CENTRIFUGO_HTTP_API_KEY: dev-centrifugo-api-key-change-me
       CENTRIFUGO_ADMIN_ENABLED: "false"
       CENTRIFUGO_ENGINE_TYPE: memory
