@@ -27,7 +27,7 @@ export function MatchProfileMobileCard({
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
 
   return (
-    <div className="mx-auto w-full max-w-100">
+    <div className="mx-auto w-full max-w-100 select-none">
       <div className="relative aspect-4/7 overflow-hidden rounded-4xl bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
         {profile.image ? (
           <img
@@ -35,6 +35,7 @@ export function MatchProfileMobileCard({
             alt={profile.name}
             className="absolute inset-0 h-full w-full object-cover"
             referrerPolicy="no-referrer"
+            draggable="false"
           />
         ) : null}
 
