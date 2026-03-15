@@ -57,8 +57,10 @@ def run_ingestion():
     
     scaler = StandardScaler()
     profiles_scaled = pd.DataFrame(scaler.fit_transform(profiles), index=profiles.index, columns=profiles.columns)
-    joblib.dump(scaler, 'models/scaler.joblib')
-    joblib.dump(profiles.columns.tolist(), 'models/features_list.joblib')
+    import os
+    os.makedirs('/app/ml/models', exist_ok=True)
+    joblib.dump(scaler, '/app/ml/models/scaler.joblib')
+    joblib.dump(profiles.columns.tolist(), '/app/ml/models/features_list.joblib')
 
     # 4. Заливка в Qdrant
     print(f"4. Синхронизация с Qdrant (Коллекция: {config.COLLECTION_NAME})...")
