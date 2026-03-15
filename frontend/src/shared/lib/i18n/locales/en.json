@@ -50,6 +50,8 @@
     "update_name_bio": "Update your name and bio",
     "username": "Username",
     "enter_name": "Enter name",
+    "age": "Age",
+    "enter_age": "Enter age",
     "bio": "About me",
     "tell_about_yourself": "Tell us about yourself...",
     "update_success": "Profile updated",

@@ -16,6 +16,7 @@ import {
   getOnboardingConfig,
   postOnboardingAnswers,
 } from "@/shared/api/onboarding";
+import { ProfilePreviewStep } from "./ProfilePreviewStep";
 
 type MatchPreferencesState = {
   genders: string[];
@@ -27,13 +28,14 @@ export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth()!;
-  const { completeOnboarding } = useMatchmakingFlow();
-  const { markQuizCompleted } = useQuizCompletion();
+  useMatchmakingFlow();
+  useQuizCompletion();
 
   const quizStarted = user?.quiz_started ?? false;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [showProfilePreview, setShowProfilePreview] = useState(false);
 
   const {
     data: config,
@@ -92,6 +94,10 @@ export function QuizFlow() {
     return <Navigate to="/" replace />;
   }
 
+  if (showProfilePreview) {
+    return <ProfilePreviewStep />;
+  }
+
   const handleAnswerChange = (value: string | string[]) => {
     if (!question) return;
     const finalValue = Array.isArray(value) ? value : [value];
@@ -115,9 +121,7 @@ export function QuizFlow() {
 
   const moveToNext = () => {
     if (isLastQuestion) {
-      markQuizCompleted();
-      completeOnboarding();
-      navigate("/discovery", { replace: true });
+      setShowProfilePreview(true);
     } else {
       setCurrentIndex((prev) => prev + 1);
     }
@@ -157,9 +161,7 @@ export function QuizFlow() {
       });
 
       if (isLastQuestion) {
-        markQuizCompleted();
-        completeOnboarding();
-        navigate("/discovery", { replace: true });
+        setShowProfilePreview(true);
       } else {
         moveToNext();
       }

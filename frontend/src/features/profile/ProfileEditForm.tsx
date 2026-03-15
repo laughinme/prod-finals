@@ -10,7 +10,6 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription,
     CardFooter,
 } from "@/shared/components/ui/card";
 import { useUpdateProfile } from "@/features/profile/useProfile";
@@ -25,20 +24,23 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
     const [form, setForm] = useState<UserPatchPayload>({
         username: profile.username ?? "",
         bio: profile.bio ?? "",
+        birthDate: profile.birthDate ?? "",
     });
 
     useEffect(() => {
         setForm({
             username: profile.username ?? "",
             bio: profile.bio ?? "",
+            birthDate: profile.birthDate ?? "",
         });
-    }, [profile.username, profile.bio]);
+    }, [profile.username, profile.bio, profile.birthDate]);
 
     const { mutate: save, isPending } = useUpdateProfile();
 
     const hasChanges =
         (form.username ?? "") !== (profile.username ?? "") ||
-        (form.bio ?? "") !== (profile.bio ?? "");
+        (form.bio ?? "") !== (profile.bio ?? "") ||
+        (form.birthDate ?? "") !== (profile.birthDate ?? "");
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,6 +52,9 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         if ((form.bio ?? "") !== (profile.bio ?? "")) {
             payload.bio = form.bio || null;
         }
+        if ((form.birthDate ?? "") !== (profile.birthDate ?? "")) {
+            payload.birthDate = form.birthDate || null;
+        }
 
         save(payload);
     };
@@ -58,6 +63,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         setForm({
             username: profile.username ?? "",
             bio: profile.bio ?? "",
+            birthDate: profile.birthDate ?? "",
         });
     };
 
@@ -65,9 +71,6 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
                 <CardTitle className="text-2xl">{t("profile.personal_info")}</CardTitle>
-                <CardDescription className="text-base">
-                    {t("profile.update_name_bio")}
-                </CardDescription>
             </CardHeader>
 
             <form onSubmit={handleSubmit}>
@@ -82,6 +85,29 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                             onChange={(e) =>
                                 setForm((p) => ({ ...p, username: e.target.value }))
                             }
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label htmlFor="profile-age" className="text-sm font-semibold text-foreground/80">{t("profile.age")}</Label>
+                        <Input
+                            id="profile-age"
+                            type="number"
+                            min={18}
+                            max={120}
+                            placeholder={profile.birthDate ? String(Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / 31557600000)) : t("profile.enter_age")}
+                            className="h-11 px-4 text-base bg-muted/40 border-border/50 focus-visible:bg-transparent"
+                            value={form.birthDate ? String(Math.floor((Date.now() - new Date(form.birthDate).getTime()) / 31557600000)) : ""}
+                            onChange={(e) => {
+                                const age = Number(e.target.value);
+                                if (!age) {
+                                    setForm((p) => ({ ...p, birthDate: null }));
+                                    return;
+                                }
+                                const bd = new Date();
+                                bd.setFullYear(bd.getFullYear() - age);
+                                setForm((p) => ({ ...p, birthDate: bd.toISOString().split("T")[0] }));
+                            }}
                         />
                     </div>
 

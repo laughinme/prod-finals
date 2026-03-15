@@ -10,6 +10,7 @@ export type UserDto = {
     avatar_url?: string | null;
     profile_pic_url?: string | null;
     bio?: string | null;
+    birth_date?: string | null;
     is_onboarded: boolean;
     quiz_started: boolean;
     banned: boolean;
@@ -22,6 +23,7 @@ export type UserDto = {
 export type UserPatchPayloadDto = {
     username?: string | null;
     bio?: string | null;
+    birth_date?: string | null;
 };
 
 type AvatarPresignRequestDto = {
