@@ -9,9 +9,8 @@ import HomePage from "@/pages/Home";
 import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { HeaderLayout } from "@/app/layouts/HeaderLayout";
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useProfile } from "@/features/profile/useProfile";
-import { useQuizCompletion } from "@/features/quiz/model";
+import { useOnboardingState } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
@@ -53,21 +52,20 @@ export const RequireAuth = () => {
 
 export const RequireMatchmakingReady = () => {
   const { data: profile, isLoading } = useProfile();
-  const { isOnboardingComplete } = useMatchmakingFlow();
-  const { isQuizCompletedLocal } = useQuizCompletion();
+  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
 
-  if (!profile && isLoading) {
+  if ((!profile && isLoading) || isOnboardingStateLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
-  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
+  const isPhotoDone = Boolean(profile?.profilePicUrl);
+  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
   if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (!isQuizDone) {
+  if (shouldShowQuiz) {
     return <Navigate to="/quiz" replace />;
   }
 
@@ -76,16 +74,17 @@ export const RequireMatchmakingReady = () => {
 
 export const RequireIncompleteOnboarding = () => {
   const { data: profile, isLoading } = useProfile();
-  const { isOnboardingComplete } = useMatchmakingFlow();
+  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
 
-  if (!profile && isLoading) {
+  if ((!profile && isLoading) || isOnboardingStateLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
+  const isPhotoDone = Boolean(profile?.profilePicUrl);
+  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
   if (isPhotoDone) {
-    return <Navigate to="/quiz" replace />;
+    return <Navigate to={shouldShowQuiz ? "/quiz" : "/discovery"} replace />;
   }
 
   return <Outlet />;
@@ -93,17 +92,16 @@ export const RequireIncompleteOnboarding = () => {
 
 export const RequireIncompleteQuiz = () => {
   const { data: profile, isLoading } = useProfile();
-  const { isQuizCompletedLocal } = useQuizCompletion();
-  const { isOnboardingComplete } = useMatchmakingFlow();
+  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
 
-  if (!profile && isLoading) {
+  if ((!profile && isLoading) || isOnboardingStateLoading) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
-  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
+  const isPhotoDone = Boolean(profile?.profilePicUrl);
+  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
-  if (isQuizDone) {
+  if (!shouldShowQuiz) {
     return <Navigate to="/discovery" replace />;
   }
 

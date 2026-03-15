@@ -1,17 +1,15 @@
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useProfile } from "@/features/profile/useProfile";
-import { useQuizCompletion } from "@/features/quiz/model";
+import { useOnboardingState } from "@/features/quiz/model";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const { data: profile, isLoading } = useProfile();
-  const { isOnboardingComplete } = useMatchmakingFlow();
-  const { isQuizCompletedLocal } = useQuizCompletion();
+  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
 
-  if (isLoading) {
+  if (isLoading || isOnboardingStateLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary/20">
         <p className="text-lg text-muted-foreground">{t("common.preparing_scenario")}</p>
@@ -19,14 +17,14 @@ export default function HomePage() {
     );
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl) || isOnboardingComplete;
-  const isQuizDone = profile?.quizStarted || isQuizCompletedLocal;
+  const isPhotoDone = Boolean(profile?.profilePicUrl);
+  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
   if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (!isQuizDone) {
+  if (shouldShowQuiz) {
     return <Navigate to="/quiz" replace />;
   }
 

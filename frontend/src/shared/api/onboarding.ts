@@ -3,6 +3,7 @@ import {
   OnboardingAnswersRequestDto,
   OnboardingAnswersResponseDto,
   OnboardingConfigResponseDto,
+  OnboardingStateDto,
   OnboardingStepDto,
 } from "./onboarding-dto";
 
@@ -36,15 +37,24 @@ export interface OnboardingConfigResponse {
   steps: OnboardingStep[];
 }
 
+export interface OnboardingState {
+  quizStarted: boolean;
+  skipped: boolean;
+  completed: boolean;
+  shouldShow: boolean;
+  currentStepKey?: string | null;
+  completedStepKeys: string[];
+  answersByStep: Record<string, string[]>;
+}
+
 export interface OnboardingAnswersRequest {
   stepKey: string;
   answers: string[];
   importTransactions?: boolean;
 }
 
-export interface OnboardingAnswersResponse {
+export interface OnboardingAnswersResponse extends OnboardingState {
   stepKey: string;
-  quizStarted: boolean;
   saved?: boolean;
 }
 
@@ -77,12 +87,22 @@ const toConfigResponse = (
   steps: dto.steps.map(toStep),
 });
 
+const toOnboardingState = (dto: OnboardingStateDto): OnboardingState => ({
+  quizStarted: dto.quiz_started,
+  skipped: dto.skipped,
+  completed: dto.completed,
+  shouldShow: dto.should_show,
+  currentStepKey: dto.current_step_key ?? null,
+  completedStepKeys: dto.completed_step_keys ?? [],
+  answersByStep: dto.answers_by_step ?? {},
+});
+
 const toAnswersResponse = (
   dto: OnboardingAnswersResponseDto,
 ): OnboardingAnswersResponse => ({
   stepKey: dto.step_key,
-  quizStarted: dto.quiz_started,
   saved: dto.saved,
+  ...toOnboardingState(dto),
 });
 
 const toAnswersRequestDto = (
@@ -100,6 +120,11 @@ export const getOnboardingConfig =
     return toConfigResponse(response.data);
   };
 
+export const getOnboardingState = async (): Promise<OnboardingState> => {
+  const response = await apiProtected.get<OnboardingStateDto>("/onboarding/state");
+  return toOnboardingState(response.data);
+};
+
 export const postOnboardingAnswers = async (
   data: OnboardingAnswersRequest,
 ): Promise<OnboardingAnswersResponse> => {
@@ -108,4 +133,9 @@ export const postOnboardingAnswers = async (
     toAnswersRequestDto(data),
   );
   return toAnswersResponse(response.data);
+};
+
+export const postOnboardingSkip = async (): Promise<OnboardingState> => {
+  const response = await apiProtected.post<OnboardingStateDto>("/onboarding/skip");
+  return toOnboardingState(response.data);
 };

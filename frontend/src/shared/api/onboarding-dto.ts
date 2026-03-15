@@ -29,14 +29,23 @@ export interface OnboardingConfigResponseDto {
   steps: OnboardingStepDto[];
 }
 
+export interface OnboardingStateDto {
+  quiz_started: boolean;
+  skipped: boolean;
+  completed: boolean;
+  should_show: boolean;
+  current_step_key?: string | null;
+  completed_step_keys: string[];
+  answers_by_step: Record<string, string[]>;
+}
+
 export interface OnboardingAnswersRequestDto {
   step_key: string;
   answers: string[];
   import_transactions?: boolean;
 }
 
-export interface OnboardingAnswersResponseDto {
+export interface OnboardingAnswersResponseDto extends OnboardingStateDto {
   step_key: string;
-  quiz_started: boolean;
   saved?: boolean;
 }

@@ -2,19 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Navigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/react";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
 import type { Question } from "@/entities/quiz";
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
-import { useQuizCompletion } from "@/features/quiz/model";
+import { useOnboardingState } from "@/features/quiz/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
   getOnboardingConfig,
   postOnboardingAnswers,
+  postOnboardingSkip,
 } from "@/shared/api/onboarding";
 import { ProfilePreviewStep } from "./ProfilePreviewStep";
 
@@ -27,16 +26,19 @@ type MatchPreferencesState = {
 export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth()!;
-  useMatchmakingFlow();
-  useQuizCompletion();
-
-  const quizStarted = user?.quiz_started ?? false;
+  const queryClient = useQueryClient();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [importTransactions, setImportTransactions] = useState<Record<string, boolean>>({});
   const [showProfilePreview, setShowProfilePreview] = useState(false);
+  const [hasHydratedState, setHasHydratedState] = useState(false);
+
+  const {
+    data: onboardingState,
+    isLoading: isStateLoading,
+    isError: isStateError,
+  } = useOnboardingState();
 
   const {
     data: config,
@@ -45,11 +47,28 @@ export function QuizFlow() {
   } = useQuery({
     queryKey: ["onboarding", "config"],
     queryFn: getOnboardingConfig,
-    enabled: !quizStarted,
   });
 
   const answerMutation = useMutation({
     mutationFn: postOnboardingAnswers,
+    onSuccess: (nextState) => {
+      queryClient.setQueryData(["onboarding", "state"], {
+        quizStarted: nextState.quizStarted,
+        skipped: nextState.skipped,
+        completed: nextState.completed,
+        shouldShow: nextState.shouldShow,
+        currentStepKey: nextState.currentStepKey,
+        completedStepKeys: nextState.completedStepKeys,
+        answersByStep: nextState.answersByStep,
+      });
+    },
+  });
+
+  const skipMutation = useMutation({
+    mutationFn: postOnboardingSkip,
+    onSuccess: (nextState) => {
+      queryClient.setQueryData(["onboarding", "state"], nextState);
+    },
   });
 
   const steps = config?.steps || [];
@@ -114,7 +133,31 @@ export function QuizFlow() {
     });
   }, [question]);
 
-  if (isConfigLoading) {
+  useEffect(() => {
+    if (!config || !onboardingState || hasHydratedState) {
+      return;
+    }
+
+    setAnswers(onboardingState.answersByStep);
+    const nextIndex = Math.max(
+      0,
+      steps.findIndex((step) => step.stepKey === onboardingState.currentStepKey),
+    );
+    setCurrentIndex(nextIndex === -1 ? 0 : nextIndex);
+    setHasHydratedState(true);
+  }, [config, onboardingState, hasHydratedState, steps]);
+
+  useEffect(() => {
+    if (!config || !onboardingState?.currentStepKey) {
+      return;
+    }
+    const nextIndex = steps.findIndex((step) => step.stepKey === onboardingState.currentStepKey);
+    if (nextIndex >= 0) {
+      setCurrentIndex(nextIndex);
+    }
+  }, [config, onboardingState?.currentStepKey, steps]);
+
+  if (isConfigLoading || isStateLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary/20">
         <Loader2 className="size-12 animate-spin text-primary" />
@@ -122,8 +165,16 @@ export function QuizFlow() {
     );
   }
 
-  if (isConfigError || (!question && !isConfigLoading)) {
+  if (isConfigError || isStateError) {
     return <Navigate to="/" replace />;
+  }
+
+  if (!onboardingState?.shouldShow) {
+    return <Navigate to="/discovery" replace />;
+  }
+
+  if (!question && !isConfigLoading) {
+    return <Navigate to="/discovery" replace />;
   }
 
   if (showProfilePreview) {
@@ -151,14 +202,6 @@ export function QuizFlow() {
     ]);
   };
 
-  const moveToNext = () => {
-    if (isLastQuestion) {
-      setShowProfilePreview(true);
-    } else {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  };
-
   const handleNext = async () => {
     if (!question) return;
 
@@ -182,16 +225,7 @@ export function QuizFlow() {
     }
 
     try {
-      if (
-        finalAnswers.length === 0 &&
-        question.optional &&
-        !question.importTransactionsEnabled
-      ) {
-        moveToNext();
-        return;
-      }
-
-      await answerMutation.mutateAsync({
+      const nextState = await answerMutation.mutateAsync({
         stepKey: question.stepKey,
         answers: finalAnswers,
         importTransactions: question.importTransactionsEnabled
@@ -199,14 +233,30 @@ export function QuizFlow() {
           : undefined,
       });
 
-      if (isLastQuestion) {
+      if (nextState.completed) {
         setShowProfilePreview(true);
-      } else {
-        moveToNext();
+        return;
+      }
+
+      if (nextState.currentStepKey) {
+        const nextIndex = steps.findIndex((step) => step.stepKey === nextState.currentStepKey);
+        if (nextIndex >= 0) {
+          setCurrentIndex(nextIndex);
+        }
       }
     } catch (error) {
       Sentry.captureException(error);
       console.error("Failed to save answers", error);
+    }
+  };
+
+  const handleSkipAll = async () => {
+    try {
+      await skipMutation.mutateAsync();
+      navigate("/discovery", { replace: true });
+    } catch (error) {
+      Sentry.captureException(error);
+      console.error("Failed to skip onboarding", error);
     }
   };
 
@@ -597,18 +647,29 @@ export function QuizFlow() {
               transition={{ duration: 0.2 }}
               className="space-y-8"
             >
-              <div>
-                <span className="text-sm font-semibold tracking-wider text-primary/80 uppercase">
-                  Вопрос {currentIndex + 1} из {steps.length}
-                </span>
-                <h2 className="mt-2 text-2xl md:text-3xl font-bold text-foreground">
-                  {question!.title}
-                </h2>
-                {question!.description && (
-                  <p className="mt-2 text-muted-foreground">
-                    {question!.description}
-                  </p>
-                )}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="text-sm font-semibold tracking-wider text-primary/80 uppercase">
+                    Вопрос {currentIndex + 1} из {steps.length}
+                  </span>
+                  <h2 className="mt-2 text-2xl md:text-3xl font-bold text-foreground">
+                    {question!.title}
+                  </h2>
+                  {question!.description && (
+                    <p className="mt-2 text-muted-foreground">
+                      {question!.description}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="shrink-0 rounded-xl text-muted-foreground"
+                  disabled={answerMutation.isPending || skipMutation.isPending}
+                  onClick={handleSkipAll}
+                >
+                  Пропустить все
+                </Button>
               </div>
 
               <div className="min-h-50">
@@ -642,21 +703,20 @@ export function QuizFlow() {
             >
               {t("common.back")}
             </Button>
-            <Button
-              size="lg"
-              className="h-14 flex-2 rounded-2xl text-lg"
-              disabled={!isCurrentValid() || answerMutation.isPending}
-              onClick={handleNext}
-            >
-              {answerMutation.isPending ? (
-                <Loader2 className="animate-spin" />
-              ) : isLastQuestion ? (
-                t("common.finish")
-              ) : currentAnswer.length === 0 &&
-                !question?.importTransactionsEnabled ? (
-                "Пропустить"
-              ) : (
-                t("common.continue")
+              <Button
+                size="lg"
+                className="h-14 flex-2 rounded-2xl text-lg"
+                disabled={!isCurrentValid() || answerMutation.isPending || skipMutation.isPending}
+                onClick={handleNext}
+              >
+                {answerMutation.isPending ? (
+                  <Loader2 className="animate-spin" />
+                ) : isLastQuestion ? (
+                  t("common.finish")
+                ) : currentAnswer.length === 0 ? (
+                  "Пропустить"
+                ) : (
+                  t("common.continue")
               )}
             </Button>
           </div>
