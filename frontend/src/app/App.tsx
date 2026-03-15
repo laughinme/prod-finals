@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { MatchmakingFlowProvider } from "@/features/matchmaking/model";
 import { useAuth } from "@/app/providers/auth/useAuth";
+import { RealtimeProvider } from "@/app/providers/realtime";
 import { AppRoutes } from "@/app/routes/AppRoutes";
 
 function App() {
@@ -43,9 +44,11 @@ function App() {
 
   return (
     <BrowserRouter>
-      <MatchmakingFlowProvider>
-        <AppRoutes />
-      </MatchmakingFlowProvider>
+      <RealtimeProvider>
+        <MatchmakingFlowProvider>
+          <AppRoutes />
+        </MatchmakingFlowProvider>
+      </RealtimeProvider>
     </BrowserRouter>
   );
 }
