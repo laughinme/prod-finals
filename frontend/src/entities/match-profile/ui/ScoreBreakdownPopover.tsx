@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslation } from "react-i18next";
 
 import type { MatchProfileCategoryScore } from "../model/types";
 
@@ -12,6 +13,7 @@ export function ScoreBreakdownPopover({
   categories,
   children,
 }: ScoreBreakdownPopoverProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,7 @@ export function ScoreBreakdownPopover({
             className="absolute top-full left-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-xl"
           >
             <p className="mb-2.5 text-xs font-semibold text-muted-foreground">
-              Совместимость по категориям
+              {t("common.compatibility_by_categories")}
             </p>
             <div className="space-y-2.5">
               {categories.map((cat) => (

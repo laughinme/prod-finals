@@ -375,11 +375,10 @@ export function QuizFlow() {
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-foreground">
-                  Использовать транзакции для ML-рекомендаций
+                  {t("profile.ml_recommendations_label")}
                 </p>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Помогаем модели точнее понять ваш ритм жизни по агрегированным
-                  банковским транзакциям. По умолчанию согласие включено.
+                  {t("profile.ml_recommendations_description")}
                 </p>
               </div>
               <span
@@ -423,7 +422,7 @@ export function QuizFlow() {
       <div className="space-y-8 py-2">
         <div className="space-y-4">
           <p className="text-sm font-medium text-muted-foreground">
-            Кого показывать в первую очередь
+            {t("quiz.show_first")}
           </p>
           <div className="flex flex-wrap gap-3">
             {q.options.map((option) => {
@@ -451,7 +450,7 @@ export function QuizFlow() {
           <div className="space-y-6">
             <div className="space-y-3">
               <label className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                <span>От</span>
+                <span>{t("common.from")}</span>
                 <span className="text-foreground">{state.ageMin}</span>
               </label>
               <input
@@ -581,7 +580,7 @@ export function QuizFlow() {
       <div className="flex flex-col gap-8 py-6">
         <div className="space-y-4">
           <label className="text-sm font-medium text-muted-foreground flex justify-between">
-            <span>От:</span>
+            <span>{t("common.from")}</span>
             <span className="text-foreground font-bold">{currentMin}</span>
           </label>
           <input
@@ -650,7 +649,7 @@ export function QuizFlow() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <span className="text-sm font-semibold tracking-wider text-primary/80 uppercase">
-                    Вопрос {currentIndex + 1} из {steps.length}
+                    {t("quiz.question_step", { current: currentIndex + 1, total: steps.length })}
                   </span>
                   <h2 className="mt-2 text-2xl md:text-3xl font-bold text-foreground">
                     {question!.title}
@@ -668,7 +667,7 @@ export function QuizFlow() {
                   disabled={answerMutation.isPending || skipMutation.isPending}
                   onClick={handleSkipAll}
                 >
-                  Пропустить все
+                  {t("common.skip_all")}
                 </Button>
               </div>
 
@@ -714,7 +713,7 @@ export function QuizFlow() {
                 ) : isLastQuestion ? (
                   t("common.finish")
                 ) : currentAnswer.length === 0 ? (
-                  "Пропустить"
+                  t("common.skip")
                 ) : (
                   t("common.continue")
               )}

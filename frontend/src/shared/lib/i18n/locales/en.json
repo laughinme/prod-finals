@@ -20,7 +20,13 @@
     "dashboard": "Dashboard",
     "matches": "Matches",
     "slogan": "reliable dating preview",
-    "to": "to"
+    "to": "to",
+    "from": "From",
+    "you": "You",
+    "skip": "Skip",
+    "skip_all": "Skip all",
+    "compatibility_by_categories": "Compatibility by categories",
+    "save_and_start": "Save and start"
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",
@@ -71,7 +77,12 @@
     "tab_filters": "Filters",
     "preferences_saved": "Preferences saved",
     "preferences_error": "Failed to save preferences",
-    "no_preferences": "No preferences available"
+    "no_preferences": "No preferences available",
+    "who_to_show": "Who to show",
+    "ml_recommendations_label": "ML recommendations by transactions",
+    "ml_recommendations_description": "We use aggregated banking transactions to better understand your rhythm of life. Consent is enabled by default.",
+    "add_description_hint": "Click to add description...",
+    "profile_ready_title": "Your profile is ready!"
   },
   "onboarding": {
     "title_part1": "Dating by",
@@ -93,7 +104,10 @@
     "report_profile": "Report profile",
     "pass_profile": "Pass profile",
     "like_profile": "Like profile",
-    "why_matched": "Why did you match?"
+    "why_matched": "Why did you match?",
+    "report_profile_aria": "Report profile",
+    "pass_profile_aria": "Pass profile",
+    "like_profile_aria": "Like profile"
   },
   "match": {
     "its_a_match": "It's a match!",
@@ -122,5 +136,26 @@
     "report_sent": "Report sent. User blocked.",
     "send_message_error": "Failed to send message.",
     "write_message_placeholder": "Write a message..."
+  },
+  "quiz": {
+    "question_step": "Question {{current}} of {{total}}",
+    "show_first": "Who to show first"
+  },
+  "photo_upload": {
+    "title": "Add your photo",
+    "add_photo": "Add photo",
+    "uploading": "Uploading...",
+    "done_great": "Great!",
+    "change": "Change",
+    "error_unsupported_type": "Only JPEG, PNG and WebP are supported",
+    "error_too_large": "Maximum file size is 10 MB",
+    "error_failed": "Failed to upload photo. Please try again."
+  },
+  "safety": {
+    "report_sent_success": "Report sent",
+    "report_error": "Failed to send report"
+  },
+  "errors": {
+    "failed_to_get_explanation": "Failed to get compatibility explanation for this card."
   }
 }

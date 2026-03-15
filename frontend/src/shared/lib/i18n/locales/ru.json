@@ -20,7 +20,13 @@
     "dashboard": "Дашборд",
     "matches": "Совпадения",
     "slogan": "Сервис знакомств",
-    "to": "До"
+    "to": "До",
+    "from": "От",
+    "you": "Вы",
+    "skip": "Пропустить",
+    "skip_all": "Пропустить все",
+    "compatibility_by_categories": "Совместимость по категориям",
+    "save_and_start": "Сохранить и начать"
   },
   "auth": {
     "invalid_credentials": "Неверный email или пароль",
@@ -71,7 +77,12 @@
     "tab_filters": "Фильтры",
     "preferences_saved": "Предпочтения сохранены",
     "preferences_error": "Не удалось сохранить предпочтения",
-    "no_preferences": "Нет доступных предпочтений"
+    "no_preferences": "Нет доступных предпочтений",
+    "who_to_show": "Кого показывать",
+    "ml_recommendations_label": "ML-рекомендации по транзакциям",
+    "ml_recommendations_description": "Помогаем модели точнее понять ваш ритм жизни по агрегированным банковским транзакциям. По умолчанию согласие включено.",
+    "add_description_hint": "Нажмите, чтобы добавить описание...",
+    "profile_ready_title": "Ваша анкета готова!"
   },
   "onboarding": {
     "title_part1": "Знакомства по",
@@ -93,7 +104,10 @@
     "report_profile": "Пожаловаться на профиль",
     "pass_profile": "Пропустить профиль",
     "like_profile": "Лайкнуть профиль",
-    "why_matched": "Почему вы подходите?"
+    "why_matched": "Почему вы подходите?",
+    "report_profile_aria": "Пожаловаться на профиль",
+    "pass_profile_aria": "Пропустить профиль",
+    "like_profile_aria": "Лайкнуть профиль"
   },
   "match": {
     "its_a_match": "Это мэтч!",
@@ -122,5 +136,26 @@
     "report_sent": "Жалоба отправлена. Пользователь заблокирован.",
     "send_message_error": "Не удалось отправить сообщение.",
     "write_message_placeholder": "Написать сообщение..."
+  },
+  "quiz": {
+    "question_step": "Вопрос {{current}} из {{total}}",
+    "show_first": "Кого показывать в первую очередь"
+  },
+  "photo_upload": {
+    "title": "Добавьте фото",
+    "add_photo": "Добавить фото",
+    "uploading": "Загрузка...",
+    "done_great": "Отлично!",
+    "change": "Изменить",
+    "error_unsupported_type": "Поддерживаются только JPEG, PNG и WebP",
+    "error_too_large": "Максимальный размер файла — 10 МБ",
+    "error_failed": "Не удалось загрузить фото. Попробуйте ещё раз."
+  },
+  "safety": {
+    "report_sent_success": "Жалоба отправлена",
+    "report_error": "Не удалось отправить жалобу"
+  },
+  "errors": {
+    "failed_to_get_explanation": "Не удалось получить описание совместимости для этой карточки."
   }
 }

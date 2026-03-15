@@ -40,7 +40,7 @@ export default function MatchPage() {
             {profile?.profilePicUrl ? (
               <img
                 src={profile.profilePicUrl}
-                alt="You"
+                alt={t("common.you")}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />

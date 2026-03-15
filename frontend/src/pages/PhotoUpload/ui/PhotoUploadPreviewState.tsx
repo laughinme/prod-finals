@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Camera, CheckCircle2, Upload } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/shared/components/ui/button";
 import type { PhotoUploadState } from "@/pages/PhotoUpload/model";
@@ -19,6 +20,8 @@ export function PhotoUploadPreviewState({
   progress,
   uploadState,
 }: PhotoUploadPreviewStateProps) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       key="preview-area"
@@ -58,7 +61,9 @@ export function PhotoUploadPreviewState({
               >
                 <Upload className="size-10 text-white" />
               </motion.div>
-              <p className="text-lg font-semibold text-white">Загрузка...</p>
+              <p className="text-lg font-semibold text-white">
+                {t("photo_upload.uploading")}
+              </p>
               <div className="mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-white/20">
                 <motion.div
                   className="h-full rounded-full bg-white"
@@ -91,7 +96,7 @@ export function PhotoUploadPreviewState({
                 transition={{ delay: 0.2 }}
                 className="mt-4 text-xl font-semibold text-white"
               >
-                Отлично!
+                {t("photo_upload.done_great")}
               </motion.p>
             </motion.div>
           ) : null}
@@ -104,7 +109,7 @@ export function PhotoUploadPreviewState({
               className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-black/50 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70"
             >
               <Camera className="size-4" />
-              Изменить
+              {t("photo_upload.change")}
             </button>
 
             <Button
@@ -112,7 +117,7 @@ export function PhotoUploadPreviewState({
               className="absolute bottom-4 left-1/2 h-11 min-w-36 -translate-x-1/2 rounded-full px-6 text-sm font-semibold shadow-lg shadow-primary/30"
               onClick={onUpload}
             >
-              Продолжить
+              {t("common.continue")}
               <ArrowRight className="size-4" />
             </Button>
           </>

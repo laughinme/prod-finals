@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslation } from "react-i18next";
 
 import { usePhotoUpload } from "@/pages/PhotoUpload/model";
 import { PhotoUploadBackground } from "./PhotoUploadBackground";
@@ -6,6 +7,7 @@ import { PhotoUploadIdleState } from "./PhotoUploadIdleState";
 import { PhotoUploadPreviewState } from "./PhotoUploadPreviewState";
 
 export default function PhotoUploadPage() {
+  const { t } = useTranslation();
   const {
     dropZoneRef,
     error,
@@ -48,7 +50,7 @@ export default function PhotoUploadPage() {
             transition={{ delay: 0.2 }}
             className="w-full text-center text-4xl font-black uppercase tracking-wide text-black"
           >
-            Добавьте фото
+            {t("photo_upload.title")}
           </motion.h1>
         </div>
 

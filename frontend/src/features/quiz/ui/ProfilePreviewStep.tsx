@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Pencil } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { useProfile, useUpdateProfile } from "@/features/profile/useProfile";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
@@ -9,8 +10,10 @@ import { useQuizCompletion } from "@/features/quiz/model";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import * as Sentry from "@sentry/react";
 
 export function ProfilePreviewStep() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { data: profile, isLoading } = useProfile();
@@ -40,8 +43,8 @@ export function ProfilePreviewStep() {
       markQuizCompleted();
       completeOnboarding();
       navigate("/discovery", { replace: true });
-    } catch {
-      // Error handled by useUpdateProfile (toast)
+    } catch (e) {
+      Sentry.captureException(e);
     }
   };
 
@@ -56,7 +59,7 @@ export function ProfilePreviewStep() {
           onChange={(e) => setBio(e.target.value)}
           maxLength={500}
           autoFocus
-          placeholder="Расскажите о себе..."
+          placeholder={t("profile.tell_about_yourself")}
           className="h-32 w-full resize-none bg-transparent text-base leading-relaxed text-foreground/80 outline-none md:h-44 md:text-lg"
           onBlur={() => setIsEditing(false)}
         />
@@ -65,7 +68,7 @@ export function ProfilePreviewStep() {
           <p className="text-base leading-relaxed text-foreground/80 line-clamp-3 md:text-lg">
             {currentBio || (
               <span className="text-muted-foreground italic">
-                Нажмите, чтобы добавить описание...
+                {t("profile.add_description_hint")}
               </span>
             )}
           </p>
@@ -85,7 +88,7 @@ export function ProfilePreviewStep() {
       {updateProfile.isPending ? (
         <Loader2 className="animate-spin" />
       ) : (
-        "Сохранить и начать"
+        t("common.save_and_start")
       )}
     </Button>
   );
@@ -99,7 +102,7 @@ export function ProfilePreviewStep() {
           className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5"
         >
           <h1 className="text-center text-2xl font-bold text-foreground">
-            Ваша анкета готова!
+            {t("profile.profile_ready_title")}
           </h1>
 
           {/* Mobile card with inline bio editor */}
@@ -132,7 +135,7 @@ export function ProfilePreviewStep() {
                       onChange={(e) => setBio(e.target.value)}
                       maxLength={500}
                       autoFocus
-                      placeholder="Расскажите о себе..."
+                      placeholder={t("profile.tell_about_yourself")}
                       className="h-24 w-full resize-none bg-transparent text-sm leading-relaxed text-gray-100 placeholder:text-gray-400 outline-none"
                       onBlur={() => setIsEditing(false)}
                     />
@@ -141,7 +144,7 @@ export function ProfilePreviewStep() {
                       <p className="text-sm leading-relaxed text-gray-200 line-clamp-4">
                         {currentBio || (
                           <span className="text-gray-400 italic">
-                            Нажмите, чтобы добавить описание...
+                            {t("profile.add_description_hint")}
                           </span>
                         )}
                       </p>
@@ -153,9 +156,7 @@ export function ProfilePreviewStep() {
             </div>
           </div>
 
-          <div className="mt-auto pt-4">
-            {saveButton}
-          </div>
+          <div className="mt-auto pt-4">{saveButton}</div>
         </motion.div>
       </div>
     );
@@ -170,7 +171,7 @@ export function ProfilePreviewStep() {
       >
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground md:text-4xl">
-            Ваша анкета готова!
+            {t("profile.profile_ready_title")}
           </h1>
         </div>
 
@@ -201,9 +202,7 @@ export function ProfilePreviewStep() {
               </div>
             </div>
 
-            <div className="mb-6">
-              {bioEditor}
-            </div>
+            <div className="mb-6">{bioEditor}</div>
 
             <div className="mt-auto" />
           </div>

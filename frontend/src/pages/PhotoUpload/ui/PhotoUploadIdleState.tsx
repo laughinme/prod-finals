@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { ImagePlus } from "lucide-react";
 import type { RefObject } from "react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/shared/lib/utils";
 
@@ -21,6 +22,8 @@ export function PhotoUploadIdleState({
   onDrop,
   onOpenFilePicker,
 }: PhotoUploadIdleStateProps) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       key="dropzone"
@@ -56,7 +59,7 @@ export function PhotoUploadIdleState({
           />
         </div>
 
-        <p className="text-2xl font-bold text-black">Добавить фото</p>
+        <p className="text-2xl font-bold text-black">{t("photo_upload.add_photo")}</p>
       </div>
     </motion.div>
   );

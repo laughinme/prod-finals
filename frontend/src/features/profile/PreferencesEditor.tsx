@@ -173,7 +173,7 @@ export function PreferencesEditor() {
             <div className="space-y-6">
                 <div className="space-y-3">
                     <p className="text-sm font-medium text-muted-foreground">
-                        Кого показывать
+                        {t("profile.who_to_show")}
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {q.options.map((option) => {
@@ -201,7 +201,7 @@ export function PreferencesEditor() {
                     <div className="space-y-5">
                         <div className="space-y-2">
                             <label className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                                <span>От</span>
+                                <span>{t("common.from")}</span>
                                 <span className="text-foreground">{state.ageMin}</span>
                             </label>
                             <input
@@ -220,7 +220,7 @@ export function PreferencesEditor() {
                         </div>
                         <div className="space-y-2">
                             <label className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-                                <span>До</span>
+                                <span>{t("common.to")}</span>
                                 <span className="text-foreground">{state.ageMax}</span>
                             </label>
                             <input
@@ -304,7 +304,7 @@ export function PreferencesEditor() {
                     >
                         <div className="flex items-center justify-between gap-3">
                             <p className="text-sm font-medium text-foreground">
-                                ML-рекомендации по транзакциям
+                                {t("profile.ml_recommendations_label")}
                             </p>
                             <span
                                 className={cn(

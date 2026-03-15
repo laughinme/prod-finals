@@ -1,4 +1,5 @@
 import { Heart, MapPin, ShieldAlert, Sparkles, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
 import { ScoreBreakdownPopover } from "@/entities/match-profile/ui/ScoreBreakdownPopover";
@@ -18,6 +19,8 @@ export function DiscoveryMobileProfileCard({
   showActions = true,
   showReportButton = true,
 }: DiscoveryMobileProfileCardProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="mx-auto w-full max-w-100">
       <div className="relative aspect-4/7 overflow-hidden rounded-4xl bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
@@ -52,7 +55,7 @@ export function DiscoveryMobileProfileCard({
                 <button
                   onClick={onOpenReport}
                   className="flex size-10 items-center justify-center rounded-full bg-[#2A2A2A]/80 text-white backdrop-blur-md transition-colors hover:bg-[#383838]"
-                  aria-label="Пожаловаться на профиль"
+                  aria-label={t("discovery.report_profile_aria")}
                 >
                   <ShieldAlert className="size-5" />
                 </button>
@@ -92,7 +95,7 @@ export function DiscoveryMobileProfileCard({
               <button
                 onClick={onPass}
                 className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-[#2A2A2A] text-white transition-colors hover:bg-[#333333]"
-                aria-label="Пропустить профиль"
+                aria-label={t("discovery.pass_profile_aria")}
               >
                 <X className="size-6" strokeWidth={2.5} />
               </button>
@@ -100,7 +103,7 @@ export function DiscoveryMobileProfileCard({
               <button
                 onClick={onLike}
                 className="flex h-16 flex-1 items-center justify-center rounded-3xl bg-primary text-black shadow-[0_0_40px_rgba(255,221,45,0.3)] transition-colors hover:bg-[#FFD100]"
-                aria-label="Лайкнуть профиль"
+                aria-label={t("discovery.like_profile_aria")}
               >
                 <Heart className="size-6 fill-current" strokeWidth={2.5} />
               </button>

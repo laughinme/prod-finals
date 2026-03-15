@@ -7,12 +7,14 @@ import {
   type DragEvent,
 } from "react";
 import * as Sentry from "@sentry/react";
+import { useTranslation } from "react-i18next";
 
 import { useUploadAvatar } from "@/features/profile/useProfile";
 
 export type PhotoUploadState = "idle" | "preview" | "uploading" | "done";
 
 export function usePhotoUpload() {
+  const { t } = useTranslation();
   const { mutateAsync: uploadAvatar } = useUploadAvatar();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,12 +39,12 @@ export function usePhotoUpload() {
     (selectedFile: File) => {
       const validTypes = ["image/jpeg", "image/png", "image/webp"];
       if (!validTypes.includes(selectedFile.type)) {
-        setError("Поддерживаются только JPEG, PNG и WebP");
+        setError(t("photo_upload.error_unsupported_type"));
         return;
       }
 
       if (selectedFile.size > 10 * 1024 * 1024) {
-        setError("Максимальный размер файла — 10 МБ");
+        setError(t("photo_upload.error_too_large"));
         return;
       }
 
@@ -55,7 +57,7 @@ export function usePhotoUpload() {
       setUploadState("preview");
       setError(null);
     },
-    [preview],
+    [preview, t],
   );
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -114,7 +116,7 @@ export function usePhotoUpload() {
       clearInterval(progressInterval);
       setProgress(0);
       setUploadState("preview");
-      setError("Не удалось загрузить фото. Попробуйте ещё раз.");
+      setError(t("photo_upload.error_failed"));
     }
   };
 

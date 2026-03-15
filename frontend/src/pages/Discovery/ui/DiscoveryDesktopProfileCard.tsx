@@ -1,4 +1,5 @@
 import { Info, MapPin, ShieldAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { DiscoveryProfileCardViewProps } from "./DiscoveryProfileCard";
 import { Badge } from "@/shared/components/ui/badge";
@@ -16,6 +17,7 @@ export function DiscoveryDesktopProfileCard({
   showMatchScore = true,
   showReportButton = true,
 }: DiscoveryDesktopProfileCardProps) {
+  const { t } = useTranslation();
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
   const hasMeta = Boolean(profile.location || profile.activity);
 
@@ -115,7 +117,7 @@ export function DiscoveryDesktopProfileCard({
               <Info className="size-6" />
             </div>
             <div>
-              <h4 className="mb-2 text-lg font-semibold">Почему вы совпали?</h4>
+              <h4 className="mb-2 text-lg font-semibold">{t("discovery.why_matched")}</h4>
               <p className="leading-relaxed text-muted-foreground">
                 {profile.explanation}
               </p>
