@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
@@ -24,6 +25,11 @@ export function Header() {
       label: t("common.messages"),
       to: "/chat",
       icon: MessageCircle,
+    },
+    {
+      label: t("common.matches"),
+      to: "/matches",
+      icon: Users,
     },
     {
       label: t("common.dashboard"),
