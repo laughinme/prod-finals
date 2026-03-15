@@ -51,10 +51,10 @@ export const RequireAuth = () => {
 };
 
 export const RequireMatchmakingReady = () => {
-  const { data: profile, isLoading } = useProfile();
-  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
+  const { data: profile, isPending } = useProfile();
+  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
 
-  if ((!profile && isLoading) || isOnboardingStateLoading) {
+  if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 
@@ -73,10 +73,10 @@ export const RequireMatchmakingReady = () => {
 };
 
 export const RequireIncompleteOnboarding = () => {
-  const { data: profile, isLoading } = useProfile();
-  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
+  const { data: profile, isPending } = useProfile();
+  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
 
-  if ((!profile && isLoading) || isOnboardingStateLoading) {
+  if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 
@@ -91,10 +91,10 @@ export const RequireIncompleteOnboarding = () => {
 };
 
 export const RequireIncompleteQuiz = () => {
-  const { data: profile, isLoading } = useProfile();
-  const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
+  const { data: profile, isPending } = useProfile();
+  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
 
-  if ((!profile && isLoading) || isOnboardingStateLoading) {
+  if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 

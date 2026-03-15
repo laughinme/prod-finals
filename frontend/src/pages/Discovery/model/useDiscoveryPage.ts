@@ -44,7 +44,7 @@ function getExplanationText(
 
 export function useDiscoveryPage() {
   const navigate = useNavigate();
-  const { profiles, notifyVisible, removeProfile } = useFeed();
+  const { profiles, isLoading: isFeedLoading, notifyVisible, removeProfile } = useFeed();
   const feedReactionMutation = useFeedReaction();
   const [showReport, setShowReport] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
@@ -165,6 +165,7 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
+    isFeedLoading,
     exitX,
     showReport,
     openReport: () => setShowReport(true),

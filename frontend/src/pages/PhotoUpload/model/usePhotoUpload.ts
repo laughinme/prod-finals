@@ -9,13 +9,19 @@ import {
 import * as Sentry from "@sentry/react";
 import { useTranslation } from "react-i18next";
 
-import { useUploadAvatar } from "@/features/profile/useProfile";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { uploadProfilePicture } from "@/shared/api/profile";
+import type { User } from "@/entities/user/model";
 
 export type PhotoUploadState = "idle" | "preview" | "uploading" | "done";
 
+const PROFILE_KEY = ["profile", "me"] as const;
+const DONE_ANIMATION_MS = 1500;
+
 export function usePhotoUpload() {
   const { t } = useTranslation();
-  const { mutateAsync: uploadAvatar } = useUploadAvatar();
+  const queryClient = useQueryClient();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -107,10 +113,15 @@ export function usePhotoUpload() {
     }, 200);
 
     try {
-      await uploadAvatar(file);
+      const updatedProfile = await uploadProfilePicture(file);
       clearInterval(progressInterval);
       setProgress(100);
       setUploadState("done");
+
+      // Let the green checkmark animation play, then update the cache
+      // so the route guard picks up the change and navigates away.
+      await new Promise((r) => setTimeout(r, DONE_ANIMATION_MS));
+      queryClient.setQueryData<User>(PROFILE_KEY, updatedProfile);
     } catch (error) {
       Sentry.captureException(error);
       clearInterval(progressInterval);

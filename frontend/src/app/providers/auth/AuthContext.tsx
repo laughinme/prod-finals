@@ -10,6 +10,7 @@ import {
 } from "@/shared/api/axiosInstance";
 import { AuthContext } from "./AuthContextObject";
 import type { AuthContextValue, AuthCredentials, AuthTokens, AuthUser } from "@/entities/auth/model";
+import { resetFeedStore } from "@/features/matchmaking/model/useFeed";
 
 const SKIP_SESSION_RESTORE_STORAGE_KEY = "auth:skip-session-restore";
 
@@ -54,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAccessToken(null);
     setAxiosAccessToken(null);
     queryClient.removeQueries({ queryKey: ["me"] });
+    resetFeedStore();
   }, [queryClient]);
 
   const setSkipSessionRestore = useCallback((value: boolean): void => {
@@ -113,14 +115,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logoutMutation = useMutation<void, unknown, void>({
     mutationFn: api.logoutUser,
-    onSuccess: () => {
+    onSettled: () => {
       clearSession();
       queryClient.clear();
     },
-    onError: () => {
-      clearSession();
-      queryClient.clear();
-    }
   });
 
   const handleLogout = useCallback((): void => {

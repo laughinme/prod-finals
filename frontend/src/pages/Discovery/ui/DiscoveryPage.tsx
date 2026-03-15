@@ -12,6 +12,7 @@ export default function DiscoveryPage() {
   const { t } = useTranslation();
   const {
     currentProfile,
+    isFeedLoading,
     exitX,
     showReport,
     openReport,
@@ -23,7 +24,18 @@ export default function DiscoveryPage() {
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-secondary/20 p-4 md:p-8">
       <AnimatePresence initial={false}>
-        {!currentProfile ? (
+        {isFeedLoading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col items-center p-8 text-center"
+          >
+            <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="text-muted-foreground">{t("common.loading_scenario")}</p>
+          </motion.div>
+        ) : !currentProfile ? (
           <motion.div
             key="empty"
             initial={{ opacity: 0, y: 20 }}
