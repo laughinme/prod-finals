@@ -38,22 +38,14 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
     const { mutate: save, isPending } = useUpdateProfile();
 
     const hasChanges =
-        (form.username ?? "") !== (profile.username ?? "") ||
-        (form.bio ?? "") !== (profile.bio ?? "") ||
-        (form.birthDate ?? "") !== (profile.birthDate ?? "");
+        (form.bio ?? "") !== (profile.bio ?? "");
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         const payload: UserPatchPayload = {};
-        if ((form.username ?? "") !== (profile.username ?? "")) {
-            payload.username = form.username || null;
-        }
         if ((form.bio ?? "") !== (profile.bio ?? "")) {
             payload.bio = form.bio || null;
-        }
-        if ((form.birthDate ?? "") !== (profile.birthDate ?? "")) {
-            payload.birthDate = form.birthDate || null;
         }
 
         save(payload);
@@ -79,12 +71,10 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         <Label htmlFor="profile-username" className="text-sm font-semibold text-foreground/80">{t("profile.username")}</Label>
                         <Input
                             id="profile-username"
-                            placeholder={t("profile.enter_name")}
-                            className="h-11 px-4 text-base bg-muted/40 border-border/50 focus-visible:bg-transparent"
+                            disabled
+                            className="h-11 px-4 text-base bg-muted/60 border-border/30 text-muted-foreground cursor-not-allowed opacity-60"
                             value={form.username ?? ""}
-                            onChange={(e) =>
-                                setForm((p) => ({ ...p, username: e.target.value }))
-                            }
+                            readOnly
                         />
                     </div>
 
@@ -93,21 +83,10 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         <Input
                             id="profile-age"
                             type="number"
-                            min={18}
-                            max={120}
-                            placeholder={profile.birthDate ? String(Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / 31557600000)) : t("profile.enter_age")}
-                            className="h-11 px-4 text-base bg-muted/40 border-border/50 focus-visible:bg-transparent"
+                            disabled
+                            className="h-11 px-4 text-base bg-muted/60 border-border/30 text-muted-foreground cursor-not-allowed opacity-60"
                             value={form.birthDate ? String(Math.floor((Date.now() - new Date(form.birthDate).getTime()) / 31557600000)) : ""}
-                            onChange={(e) => {
-                                const age = Number(e.target.value);
-                                if (!age) {
-                                    setForm((p) => ({ ...p, birthDate: null }));
-                                    return;
-                                }
-                                const bd = new Date();
-                                bd.setFullYear(bd.getFullYear() - age);
-                                setForm((p) => ({ ...p, birthDate: bd.toISOString().split("T")[0] }));
-                            }}
+                            readOnly
                         />
                     </div>
 
