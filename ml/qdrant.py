@@ -16,7 +16,9 @@ def string_to_uuid(string: str) -> str:
 def run_ingestion():
     client = QdrantClient(host="qdrant", port=6333)    
     print("1. Загрузка и очистка данных...")
-    df = pd.read_csv("/app/ml/transaction_600_new.csv")
+    import os
+    data_path = os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv")
+    df = pd.read_csv(data_path)
     unique_users = df['party_rk'].unique()[:config.LIMIT_USERS]
     df = df[df['party_rk'].isin(unique_users)].copy()
 
