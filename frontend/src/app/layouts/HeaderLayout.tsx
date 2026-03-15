@@ -16,7 +16,7 @@ export function HeaderLayout() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2, ease: "easeInOut" }}
-          className="flex flex-1 flex-col"
+          className="flex flex-1 flex-col pb-16 md:pb-0"
         >
           <Outlet />
         </motion.div>

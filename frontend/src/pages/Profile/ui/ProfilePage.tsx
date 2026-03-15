@@ -10,6 +10,8 @@ import { useProfile } from "@/features/profile/useProfile";
 import { ProfileAvatarUpload } from "@/features/profile/ProfileAvatarUpload";
 import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
 import { DiscoveryDesktopProfileCard } from "@/pages/Discovery/ui/DiscoveryDesktopProfileCard";
+import { DiscoveryMobileProfileCard } from "@/pages/Discovery/ui/DiscoveryMobileProfileCard";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import type { MatchProfile } from "@/entities/match-profile/model";
 
 const container = {
@@ -45,6 +47,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
+  const isMobile = useIsMobile();
   const { data: profile, isLoading, isError } = useProfile();
 
   function formatDate(iso: string | null | undefined): string {
@@ -61,9 +64,9 @@ export default function ProfilePage() {
 
   return (
     <div className="relative flex-1">
-      <div className="absolute top-0 left-0 right-0 z-0 h-48 border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-64"></div>
+      <div className="absolute top-0 left-0 right-0 z-0 h-36 border-b border-border/40 bg-linear-to-r from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 sm:h-48 md:h-64"></div>
 
-      <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-40 pb-12 lg:px-6 sm:pt-56">
+      <main className="relative z-10 mx-auto flex-1 w-full max-w-5xl px-4 pt-28 pb-8 sm:pt-40 md:pb-12 md:pt-56 lg:px-6">
         {isLoading && <ProfileSkeleton />}
 
         {isError && (
@@ -92,7 +95,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="w-full space-y-1">
-                <h1 className="truncate text-3xl font-extrabold tracking-tight">
+                <h1 className="truncate text-2xl font-extrabold tracking-tight md:text-3xl">
                   {profile.username || profile.email}
                 </h1>
                 <p className="truncate text-base font-medium text-muted-foreground">
@@ -171,32 +174,46 @@ export default function ProfilePage() {
             <h2 className="mb-6 text-2xl font-bold tracking-tight">
               {t("profile.my_questionnaire")}
             </h2>
-            <DiscoveryDesktopProfileCard
-              profile={
-                {
-                  id: profile.email,
-                  candidateUserId: null,
-                  name: profile.username || profile.email,
-                  age: null,
-                  image: profile.profilePicUrl,
-                  bio: profile.bio,
-                  matchScore: 0,
-                  tags: [],
-                  explanation: "",
-                  location: "",
-                  activity: "",
-                  reasonCodes: [],
-                  detailsAvailable: false,
-                  actions: null,
-                  source: "feed",
-                } satisfies MatchProfile
-              }
-              onLike={() => {}}
-              onPass={() => {}}
-              onOpenReport={() => {}}
-              showMatchScore={false}
-              showReportButton={false}
-            />
+            {(() => {
+              const previewProfile = {
+                id: profile.email,
+                candidateUserId: null,
+                name: profile.username || profile.email,
+                age: null,
+                image: profile.profilePicUrl,
+                bio: profile.bio,
+                matchScore: 0,
+                tags: [],
+                explanation: "",
+                location: "",
+                activity: "",
+                reasonCodes: [],
+                detailsAvailable: false,
+                actions: null,
+                source: "feed",
+              } satisfies MatchProfile;
+
+              return isMobile ? (
+                <DiscoveryMobileProfileCard
+                  profile={previewProfile}
+                  onLike={() => {}}
+                  onPass={() => {}}
+                  onOpenReport={() => {}}
+                  showMatchScore={false}
+                  showActions={false}
+                  showReportButton={false}
+                />
+              ) : (
+                <DiscoveryDesktopProfileCard
+                  profile={previewProfile}
+                  onLike={() => {}}
+                  onPass={() => {}}
+                  onOpenReport={() => {}}
+                  showMatchScore={false}
+                  showReportButton={false}
+                />
+              );
+            })()}
           </motion.div>
         )}
       </main>

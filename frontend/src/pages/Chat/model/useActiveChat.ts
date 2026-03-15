@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useMatches } from "@/features/match";
@@ -18,6 +18,7 @@ export function useActiveChat() {
     routeState?.matchId ?? requestedMatchId ?? null,
   );
   const [search, setSearch] = useState("");
+  const manualDeselect = useRef(false);
 
   const matches = matchesResponse?.matches;
   const activeMatches = useMemo(
@@ -41,6 +42,10 @@ export function useActiveChat() {
   const isLoadingInitialChat = isLoadingMatches && !matchesResponse;
 
   useEffect(() => {
+    if (manualDeselect.current) {
+      return;
+    }
+
     const hasSelectedActiveMatch =
       activeMatchId != null &&
       activeMatches.some((match) => match.matchId === activeMatchId);
@@ -96,6 +101,15 @@ export function useActiveChat() {
     navigate("/discovery");
   };
 
+  const selectMatch = (matchId: string | null) => {
+    if (matchId === null) {
+      manualDeselect.current = true;
+    } else {
+      manualDeselect.current = false;
+    }
+    setActiveMatchId(matchId);
+  };
+
   return {
     activeConversationId,
     activeMatch,
@@ -104,7 +118,7 @@ export function useActiveChat() {
     isLoadingInitialChat,
     moveAwayFromMatch,
     search,
-    selectMatch: (matchId: string) => setActiveMatchId(matchId),
+    selectMatch,
     setSearch,
     visibleMatches,
   };
