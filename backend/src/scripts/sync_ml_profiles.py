@@ -3,10 +3,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import math
+import random
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
 import httpx
 from sqlalchemy import select
@@ -51,6 +53,10 @@ def _stable_seed(value: str) -> int:
     return int(digest[:16], 16)
 
 
+def _point_id_for_ml_user_id(ml_user_id: str) -> str:
+    return str(uuid5(NAMESPACE_DNS, _normalize_ml_user_id(ml_user_id)))
+
+
 def _build_favorite_categories(
     *,
     profile: BackendUserProfile,
@@ -90,6 +96,22 @@ def _build_favorite_categories(
 
 def _preferred_hour(ml_user_id: str) -> float:
     return float(_stable_seed(ml_user_id) % 24)
+
+
+def _fallback_vector(profile: BackendUserProfile, *, size: int) -> list[float]:
+    seed = _stable_seed(profile.ml_user_id)
+    rng = random.Random(seed)
+    vector = [rng.uniform(-0.05, 0.05) for _ in range(size)]
+
+    for rank, raw_interest in enumerate(profile.interests[:5], start=1):
+        index = _stable_seed(raw_interest.lower()) % size
+        vector[index] += 1.0 / rank
+
+    vector[-1] += (_preferred_hour(profile.ml_user_id) - 12.0) / 12.0
+    norm = math.sqrt(sum(value * value for value in vector))
+    if norm <= 1e-12:
+        return [0.0] * size
+    return [float(value / norm) for value in vector]
 
 
 async def _ensure_ml_user_ids() -> tuple[list[BackendUserProfile], int]:
@@ -232,6 +254,41 @@ async def _delete_orphans(
     return deleted
 
 
+async def _direct_upsert_profiles(
+    *,
+    client: httpx.AsyncClient,
+    qdrant_url: str,
+    collection: str,
+    users_to_sync: list[BackendUserProfile],
+    vector_size: int,
+    batch_size: int,
+) -> int:
+    upserted = 0
+    for start in range(0, len(users_to_sync), batch_size):
+        chunk = users_to_sync[start : start + batch_size]
+        points = []
+        for profile in chunk:
+            points.append(
+                {
+                    "id": _point_id_for_ml_user_id(profile.ml_user_id),
+                    "vector": _fallback_vector(profile, size=vector_size),
+                    "payload": {
+                        "party_rk": profile.ml_user_id,
+                        "top_cat": profile.interests[0] if profile.interests else "unknown",
+                        "is_fallback_synced": True,
+                    },
+                }
+            )
+
+        response = await client.put(
+            f"{qdrant_url}/collections/{collection}/points?wait=true",
+            json={"points": points},
+        )
+        response.raise_for_status()
+        upserted += len(chunk)
+    return upserted
+
+
 async def _upsert_profiles_via_ml(
     *,
     client: httpx.AsyncClient,
@@ -345,6 +402,39 @@ async def _run(args: argparse.Namespace) -> int:
             bootstrap_categories=bootstrap_categories,
         )
 
+    async with httpx.AsyncClient(timeout=30.0) as qdrant_client:
+        snapshot_after_ml = await _read_qdrant_snapshot(
+            client=qdrant_client,
+            qdrant_url=qdrant_url,
+            collection=args.collection,
+            backend_ids_normalized=backend_ids_normalized,
+        )
+
+        remaining_missing_ids = backend_ids_normalized - snapshot_after_ml.normalized_party_ids
+        direct_upserted = 0
+        if remaining_missing_ids and args.direct_upsert_fallback:
+            direct_upserted = await _direct_upsert_profiles(
+                client=qdrant_client,
+                qdrant_url=qdrant_url,
+                collection=args.collection,
+                users_to_sync=[
+                    users_by_normalized_id[user_id]
+                    for user_id in remaining_missing_ids
+                    if user_id in users_by_normalized_id
+                ],
+                vector_size=args.vector_size,
+                batch_size=args.batch_size,
+            )
+            snapshot_final = await _read_qdrant_snapshot(
+                client=qdrant_client,
+                qdrant_url=qdrant_url,
+                collection=args.collection,
+                backend_ids_normalized=backend_ids_normalized,
+            )
+        else:
+            snapshot_final = snapshot_after_ml
+        remaining_missing_ids = backend_ids_normalized - snapshot_final.normalized_party_ids
+
     print("users_total:", len(users))
     print("service_user_id_assigned:", assigned)
     print("qdrant_points_before_sync:", snapshot.points_count)
@@ -352,9 +442,15 @@ async def _run(args: argparse.Namespace) -> int:
     print("users_planned_for_ml_upsert:", len(users_to_sync))
     print("ml_upsert_ok:", synced_ok)
     print("ml_upsert_failed:", synced_failed)
+    print("direct_qdrant_upserted:", direct_upserted)
+    print("qdrant_points_after_sync:", snapshot_final.points_count)
+    print("missing_after_sync:", len(remaining_missing_ids))
     print("bootstrap_categories:", ", ".join(bootstrap_categories))
 
-    if synced_failed:
+    if synced_failed or remaining_missing_ids:
+        if remaining_missing_ids:
+            sample = sorted(list(remaining_missing_ids))[:10]
+            print("missing_party_rk_sample:", sample)
         return 1
     return 0
 
@@ -384,6 +480,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="Comma separated categories used for cold-start sync fallback",
     )
+    parser.add_argument(
+        "--no-direct-upsert-fallback",
+        action="store_false",
+        dest="direct_upsert_fallback",
+        help="Disable direct Qdrant fallback upsert for users still missing after ML sync",
+    )
+    parser.set_defaults(direct_upsert_fallback=True)
     return parser
 
 

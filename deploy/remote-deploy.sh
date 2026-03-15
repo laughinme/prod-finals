@@ -148,6 +148,7 @@ run_ml_profile_sync() {
   local default_categories
   local delete_orphans
   local upsert_existing
+  local direct_upsert_fallback
   local sync_args=()
 
   collection="$(read_env_value ML_SYNC_COLLECTION)"
@@ -156,6 +157,7 @@ run_ml_profile_sync() {
   default_categories="$(read_env_value ML_SYNC_DEFAULT_CATEGORIES)"
   delete_orphans="$(read_env_value ML_SYNC_DELETE_ORPHANS)"
   upsert_existing="$(read_env_value ML_SYNC_UPSERT_EXISTING)"
+  direct_upsert_fallback="$(read_env_value ML_SYNC_DIRECT_UPSERT_FALLBACK)"
 
   if [[ -z "$collection" ]]; then
     collection="user_profiles"
@@ -168,6 +170,9 @@ run_ml_profile_sync() {
   fi
   if [[ -z "$upsert_existing" ]]; then
     upsert_existing="false"
+  fi
+  if [[ -z "$direct_upsert_fallback" ]]; then
+    direct_upsert_fallback="true"
   fi
 
   sync_args+=(python -m scripts.sync_ml_profiles)
@@ -185,6 +190,9 @@ run_ml_profile_sync() {
   fi
   if is_truthy "$upsert_existing"; then
     sync_args+=(--upsert-existing)
+  fi
+  if ! is_truthy "$direct_upsert_fallback"; then
+    sync_args+=(--no-direct-upsert-fallback)
   fi
 
   echo "Running ML profile sync..."

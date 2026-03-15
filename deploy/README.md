@@ -96,6 +96,7 @@ Then reconnect so the docker group is applied.
   - `ML_SYNC_ON_DEPLOY` (default `true`)
   - `ML_SYNC_DELETE_ORPHANS` (default `true`)
   - `ML_SYNC_UPSERT_EXISTING` (default `false`)
+  - `ML_SYNC_DIRECT_UPSERT_FALLBACK` (default `true`; direct Qdrant upsert if ML endpoint accepts but does not write vectors)
   - `ML_SYNC_COLLECTION` (default `user_profiles`)
   - `ML_SYNC_BATCH_SIZE` (default `200`)
   - `ML_SYNC_DEFAULT_CATEGORIES` (fallback categories for cold-start upserts)
