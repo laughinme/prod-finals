@@ -1,13 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle } from "lucide-react";
-import { format } from "date-fns";
 
 import { useMatches } from "@/features/match/model/useMatches";
 import { useMatchNotifications } from "@/app/providers/realtime";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
-import { Card, CardContent } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export default function MatchesPage() {
@@ -17,97 +12,59 @@ export default function MatchesPage() {
   const matchNotifications = useMatchNotifications();
 
   return (
-    <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">{t("common.matches")}</h1>
-        <p className="text-muted-foreground">
-          {t("chat.no_active_chats_description")}
-        </p>
-      </div>
+    <main className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <h1 className="text-3xl font-bold tracking-tight">{t("common.matches")}</h1>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="columns-2 gap-4 space-y-4 md:columns-3 lg:columns-4 xl:columns-5 sm:gap-6 sm:space-y-6">
           {[...Array(6)].map((_, i) => (
-            <Card key={i} className="overflow-hidden border-border bg-card">
-              <CardContent className="p-0">
-                <div className="aspect-square w-full">
-                  <Skeleton className="h-full w-full rounded-none" />
-                </div>
-                <div className="p-4 space-y-3">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              </CardContent>
-            </Card>
+            <div key={i} className="mb-4 break-inside-avoid overflow-hidden rounded-3xl sm:mb-6">
+              <Skeleton className="aspect-[4/5] w-full rounded-3xl" />
+            </div>
           ))}
         </div>
       ) : data?.matches.length === 0 ? (
-        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-2xl border border-dashed text-center p-8">
-          <MessageCircle className="mb-4 size-12 text-muted-foreground/50" />
-          <h2 className="mb-2 text-xl font-semibold">{t("chat.no_active_chats")}</h2>
-          <p className="text-muted-foreground max-w-sm">
-            {t("chat.no_active_chats_description")}
-          </p>
-        </div>
+        <p className="py-16 text-center text-lg text-muted-foreground">
+          Пока что тут пусто
+        </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="columns-2 gap-4 space-y-4 md:columns-3 lg:columns-4 xl:columns-5 sm:gap-6 sm:space-y-6">
           {data?.matches.map((match) => (
-            <Card 
-              key={match.matchId} 
-              className="group cursor-pointer overflow-hidden border-border bg-card transition-colors hover:border-primary/50"
+            <button
+              key={match.matchId}
+              type="button"
+              className="group relative mb-4 block w-full break-inside-avoid cursor-pointer overflow-hidden rounded-2xl bg-gray-100 text-left sm:mb-6"
               onClick={() => {
                 void matchNotifications?.markMatchAsSeen(match.matchId);
-                navigate(`/chat?match=${match.matchId}`);
+                navigate(`/chat?match=${match.matchId}`, {
+                  state: {
+                    matchId: match.matchId,
+                    conversationId: match.conversationId,
+                  },
+                });
               }}
             >
-              <CardContent className="p-0 relative">
-                <div className="aspect-square w-full bg-secondary">
-                  <img
-                    src={match.avatarUrl || `https://api.dicebear.com/9.x/notionists/svg?seed=${match.candidateUserId}`}
-                    alt={match.displayName}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+              <img
+                src={match.avatarUrl}
+                alt={match.displayName}
+                className="h-auto w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+
+              <div className="absolute right-0 bottom-0 left-0 p-4 text-white transition-transform duration-300 group-hover:translate-y-0 sm:p-5">
+                <div className="mb-1 flex items-baseline gap-2">
+                  <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                    {match.displayName}
+                  </h2>
                 </div>
-                {match.unreadCount > 0 && (
-                  <Badge 
-                    className="absolute top-3 right-3 rounded-full px-2"
-                    variant="default"
-                  >
-                    {match.unreadCount} new
-                  </Badge>
-                )}
-                {matchNotifications?.unseenMatchIds.includes(match.matchId) ? (
-                  <Badge
-                    className="absolute top-3 left-3 rounded-full px-2"
-                    variant="secondary"
-                  >
-                    {t("match.new_match_badge")}
-                  </Badge>
-                ) : null}
-                <div className="p-4 bg-card/95 backdrop-blur-sm">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-lg line-clamp-1">{match.displayName}</h3>
-                    {match.lastMessageAt && (
-                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                        {format(new Date(match.lastMessageAt), "MMM d")}
-                      </span>
-                    )}
-                  </div>
-                  {match.lastMessagePreview ? (
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {match.lastMessagePreview}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      {t("match.write_message")}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </button>
           ))}
         </div>
       )}
-    </div>
+    </main>
   );
 }

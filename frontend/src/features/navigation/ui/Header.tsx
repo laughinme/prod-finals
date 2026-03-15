@@ -41,7 +41,7 @@ export function Header() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="sticky top-0 z-50 w-full border-b border-border bg-card/90 backdrop-blur supports-backdrop-filter:bg-card/80"
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <NavLink to="/discovery" className="flex items-center gap-3">
           <motion.div
             whileHover={{ scale: 1.05 }}
@@ -58,7 +58,7 @@ export function Header() {
           </div>
         </NavLink>
 
-        <nav className="hidden items-center gap-1 rounded-full border border-border bg-background/80 p-1 md:flex">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-background/80 p-1 md:flex">
           {navItems.map((item) => {
             const Icon = item.icon;
 

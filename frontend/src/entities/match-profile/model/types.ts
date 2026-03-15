@@ -61,9 +61,3 @@ export type MatchChatMessage = {
   sender: "me" | "them";
   time: string;
 };
-
-export type MatchmakingDraft = {
-  photoUploaded: boolean;
-  name: string;
-  age: string;
-};
