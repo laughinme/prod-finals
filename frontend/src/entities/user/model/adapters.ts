@@ -10,6 +10,10 @@ export const toUser = (dto: UserDto): User => ({
     profilePicUrl: dto.avatar_url ?? dto.profile_pic_url ?? null,
     bio: dto.bio ?? null,
     birthDate: dto.birth_date ?? null,
+    lookingForGenders: dto.looking_for_genders ?? [],
+    ageRange: dto.age_range ?? null,
+    interests: dto.interests ?? [],
+    importTransactions: dto.import_transactions ?? true,
     isOnboarded: dto.is_onboarded,
     quizStarted: dto.quiz_started,
     banned: dto.banned,
@@ -24,5 +28,9 @@ export const toUserPatchDto = (patch: UserPatchPayload): UserPatchPayloadDto => 
     if (patch.lastName !== undefined) dto.last_name = patch.lastName;
     if (patch.bio !== undefined) dto.bio = patch.bio;
     if (patch.birthDate !== undefined) dto.birth_date = patch.birthDate;
+    if (patch.lookingForGenders !== undefined) dto.looking_for_genders = patch.lookingForGenders;
+    if (patch.ageRange !== undefined) dto.age_range = patch.ageRange;
+    if (patch.interests !== undefined) dto.interests = patch.interests;
+    if (patch.importTransactions !== undefined) dto.import_transactions = patch.importTransactions;
     return dto;
 };

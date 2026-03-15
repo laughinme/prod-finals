@@ -12,6 +12,10 @@ export type UserDto = {
     profile_pic_url?: string | null;
     bio?: string | null;
     birth_date?: string | null;
+    looking_for_genders?: string[];
+    age_range?: { min: number; max: number } | null;
+    interests?: string[];
+    import_transactions?: boolean;
     is_onboarded: boolean;
     quiz_started: boolean;
     banned: boolean;
@@ -26,6 +30,10 @@ export type UserPatchPayloadDto = {
     last_name?: string | null;
     bio?: string | null;
     birth_date?: string | null;
+    looking_for_genders?: string[] | null;
+    age_range?: { min: number; max: number } | null;
+    interests?: string[] | null;
+    import_transactions?: boolean | null;
 };
 
 type AvatarPresignRequestDto = {

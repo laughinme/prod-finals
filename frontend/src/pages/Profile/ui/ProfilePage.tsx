@@ -179,7 +179,7 @@ export default function ProfilePage() {
                 >
                   {mobileTabBar}
                   <div className="mt-4 md:mt-0 md:pt-16">
-                    <PreferencesEditor />
+                    <PreferencesEditor profile={profile} />
                   </div>
                 </motion.div>
               )}

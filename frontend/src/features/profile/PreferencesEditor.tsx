@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import * as Sentry from "@sentry/react";
 
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import {
-    getOnboardingConfig,
-    postOnboardingAnswers,
-} from "@/shared/api/onboarding";
+import { getOnboardingConfig } from "@/shared/api/onboarding";
+import { useUpdateProfile } from "@/features/profile/useProfile";
+import type { User } from "@/entities/user/model";
 import type { Question } from "@/entities/quiz";
 import { FEED_REFRESH_EVENT } from "@/features/matchmaking/model/useFeed";
 
@@ -20,7 +17,7 @@ type MatchPreferencesState = {
     ageMax: number;
 };
 
-export function PreferencesEditor() {
+export function PreferencesEditor({ profile }: { profile: User }) {
     const { t } = useTranslation();
 
     const {
@@ -31,17 +28,7 @@ export function PreferencesEditor() {
         queryFn: getOnboardingConfig,
     });
 
-    const answerMutation = useMutation({
-        mutationFn: postOnboardingAnswers,
-        onSuccess: () => {
-            toast.success(t("profile.preferences_saved"));
-            window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
-        },
-        onError: (error) => {
-            Sentry.captureException(error);
-            toast.error(t("profile.preferences_error"));
-        },
-    });
+    const { mutateAsync: updateProfile, isPending } = useUpdateProfile();
 
     const [answers, setAnswers] = useState<Record<string, string[]>>({});
     const [importTransactions, setImportTransactions] = useState<Record<string, boolean>>({});
@@ -95,6 +82,27 @@ export function PreferencesEditor() {
         });
     }, [question]);
 
+    useEffect(() => {
+        if (!config?.steps?.length) return;
+
+        const nextAnswers: Record<string, string[]> = {};
+        nextAnswers.match_preferences = [
+            ...profile.lookingForGenders.map((gender) => `gender:${gender}`),
+            `age_min:${profile.ageRange?.min ?? 18}`,
+            `age_max:${profile.ageRange?.max ?? 99}`,
+        ];
+        nextAnswers.interests = [...profile.interests];
+        setAnswers(nextAnswers);
+        setImportTransactions({ interests: profile.importTransactions });
+    }, [
+        config?.steps,
+        profile.ageRange?.max,
+        profile.ageRange?.min,
+        profile.importTransactions,
+        profile.interests,
+        profile.lookingForGenders,
+    ]);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -129,28 +137,29 @@ export function PreferencesEditor() {
     const handleSave = async () => {
         if (!question) return;
 
-        let finalAnswers = currentAnswer;
+        const payload =
+            question.stepKey === "match_preferences" && currentMatchPreferences
+                ? {
+                    lookingForGenders: currentMatchPreferences.genders,
+                    ageRange: {
+                        min: currentMatchPreferences.ageMin,
+                        max: currentMatchPreferences.ageMax,
+                    },
+                }
+                : question.stepKey === "interests"
+                    ? {
+                        interests: currentAnswer,
+                        importTransactions: currentImportTransactions ?? true,
+                    }
+                    : null;
 
-        if (question.stepType === "range" && finalAnswers.length < 2) {
-            const min = question.rangeMin ?? 18;
-            const max = question.rangeMax ?? 99;
-            finalAnswers = [String(min), String(max)];
-        }
-
-        if (question.stepType === "range" && finalAnswers.length >= 2 && finalAnswers[0] === finalAnswers[1]) {
-            finalAnswers = [finalAnswers[0], finalAnswers[1] + " "];
-        }
+        if (!payload) return;
 
         try {
-            await answerMutation.mutateAsync({
-                stepKey: question.stepKey,
-                answers: finalAnswers,
-                importTransactions: question.importTransactionsEnabled
-                    ? currentImportTransactions
-                    : undefined,
-            });
+            await updateProfile(payload);
+            window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
         } catch {
-            // handled by mutation callbacks
+            // handled in profile mutation hook
         }
     };
 
@@ -390,9 +399,9 @@ export function PreferencesEditor() {
                     <Button
                         className="h-11 rounded-xl px-8 font-semibold"
                         onClick={handleSave}
-                        disabled={answerMutation.isPending || currentAnswer.length === 0}
+                        disabled={isPending || currentAnswer.length === 0}
                     >
-                        {answerMutation.isPending ? (
+                        {isPending ? (
                             <Loader2 className="animate-spin" />
                         ) : (
                             t("common.save")

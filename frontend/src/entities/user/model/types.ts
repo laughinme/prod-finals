@@ -7,6 +7,10 @@ export type User = {
     profilePicUrl: string | null;
     bio: string | null;
     birthDate: string | null;
+    lookingForGenders: string[];
+    ageRange: { min: number; max: number } | null;
+    interests: string[];
+    importTransactions: boolean;
     isOnboarded: boolean;
     quizStarted: boolean;
     banned: boolean;
@@ -20,4 +24,8 @@ export type UserPatchPayload = {
     lastName?: string | null;
     bio?: string | null;
     birthDate?: string | null;
+    lookingForGenders?: string[] | null;
+    ageRange?: { min: number; max: number } | null;
+    interests?: string[] | null;
+    importTransactions?: boolean | null;
 };
