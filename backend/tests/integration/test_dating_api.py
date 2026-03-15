@@ -384,6 +384,48 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert message.status_code == 201
     assert message.json()["status"] == "sent"
 
+    message_notifications_b = await client.get(
+        "/api/v1/notifications/messages",
+        params={"unseen_only": "true"},
+        headers=auth_header(access_b),
+    )
+    assert message_notifications_b.status_code == 200
+    assert message_notifications_b.json()["unseen_count"] == 2
+    latest_message_notification = next(
+        item for item in message_notifications_b.json()["items"] if item["message_id"] == message.json()["message_id"]
+    )
+    assert latest_message_notification["conversation_id"] == match["conversation_id"]
+    assert latest_message_notification["sender"]["user_id"] == profile_a["id"]
+
+    matches_b_with_unread = await client.get("/api/v1/matches", headers=auth_header(access_b))
+    assert matches_b_with_unread.status_code == 200
+    assert matches_b_with_unread.json()["items"][0]["unread_count"] == 2
+
+    mark_message_seen = await client.post(
+        f"/api/v1/notifications/messages/{latest_message_notification['notification_id']}/seen",
+        headers=auth_header(access_b),
+    )
+    assert mark_message_seen.status_code == 200
+
+    message_notifications_b_after_seen = await client.get(
+        "/api/v1/notifications/messages",
+        params={"unseen_only": "true"},
+        headers=auth_header(access_b),
+    )
+    assert message_notifications_b_after_seen.status_code == 200
+    assert message_notifications_b_after_seen.json()["unseen_count"] == 1
+
+    mark_read = await client.post(
+        f"/api/v1/conversations/{match['conversation_id']}/read",
+        headers=auth_header(access_b),
+    )
+    assert mark_read.status_code == 200
+    assert mark_read.json()["conversation_id"] == match["conversation_id"]
+
+    matches_b_after_read = await client.get("/api/v1/matches", headers=auth_header(access_b))
+    assert matches_b_after_read.status_code == 200
+    assert matches_b_after_read.json()["items"][0]["unread_count"] == 0
+
     messages = await client.get(
         f"/api/v1/conversations/{match['conversation_id']}/messages",
         headers=auth_header(access_b),
