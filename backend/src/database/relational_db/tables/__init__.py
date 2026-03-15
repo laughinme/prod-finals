@@ -5,6 +5,7 @@ from .conversations import *
 from .feed import *
 from .matches import *
 from .matchmaking import *
+from .notifications import *
 from .onboarding import *
 from .safety import *
 from .users import *

@@ -1,58 +1,24 @@
-import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Coffee, ShieldAlert } from "lucide-react";
-import * as Sentry from "@sentry/react";
 
-import { useMatchmakingFlow, SwipeableCard } from "@/features/matchmaking";
+import { SwipeableCard } from "@/features/matchmaking";
+import { useDiscoveryPage } from "@/pages/Discovery/model";
 import { Button } from "@/shared/components/ui/button";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 export default function DiscoveryPage() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const {
     currentProfile,
-    likeCurrentProfile,
-    passCurrentProfile,
-    resetDiscovery,
-    isReactionPending,
-  } = useMatchmakingFlow();
-  const [showReport, setShowReport] = useState(false);
-  const [exitX, setExitX] = useState<number>(0);
-
-  const handleLike = async () => {
-    if (isReactionPending) {
-      return;
-    }
-
-    setExitX(1000);
-    try {
-      const result = await likeCurrentProfile();
-      if (result.isMatch) {
-        window.setTimeout(() => navigate("/match"), 300);
-      }
-    } catch (error) {
-      Sentry.captureException(error);
-      setExitX(0);
-    }
-  };
-
-  const handlePass = async () => {
-    if (isReactionPending) {
-      return;
-    }
-
-    setExitX(-1000);
-    try {
-      await passCurrentProfile();
-    } catch (error) {
-      Sentry.captureException(error);
-      setExitX(0);
-    }
-  };
+    exitX,
+    showReport,
+    openReport,
+    closeReport,
+    handleLike,
+    handlePass,
+  } = useDiscoveryPage();
 
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-secondary/20 p-4 md:p-8">
@@ -68,18 +34,12 @@ export default function DiscoveryPage() {
             <div className="mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-card shadow-sm">
               <Coffee className="size-12 text-muted-foreground" />
             </div>
-            <h2 className="mb-4 text-3xl font-bold">{t("discovery.no_more_today")}</h2>
+            <h2 className="mb-4 text-3xl font-bold">
+              {t("discovery.no_more_today")}
+            </h2>
             <p className="mb-8 max-w-md text-lg text-muted-foreground">
               {t("discovery.analyzing_habits")}
             </p>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-2xl"
-              onClick={resetDiscovery}
-            >
-              {t("discovery.refresh_recommendations")}
-            </Button>
           </motion.div>
         ) : (
           <SwipeableCard
@@ -88,7 +48,7 @@ export default function DiscoveryPage() {
             isMobile={isMobile}
             onLike={() => void handleLike()}
             onPass={() => void handlePass()}
-            onOpenReport={() => setShowReport(true)}
+            onOpenReport={openReport}
             exitX={exitX}
           />
         )}
@@ -124,7 +84,7 @@ export default function DiscoveryPage() {
                   variant="outline"
                   className="h-14 w-full justify-start rounded-2xl text-left text-base"
                   onClick={() => {
-                    setShowReport(false);
+                    closeReport();
                     void handlePass();
                   }}
                 >
@@ -134,7 +94,7 @@ export default function DiscoveryPage() {
                   variant="outline"
                   className="h-14 w-full justify-start rounded-2xl text-left text-base text-destructive hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => {
-                    setShowReport(false);
+                    closeReport();
                     void handlePass();
                   }}
                 >
@@ -143,7 +103,7 @@ export default function DiscoveryPage() {
                 <Button
                   variant="ghost"
                   className="mt-4 h-14 w-full rounded-2xl text-base"
-                  onClick={() => setShowReport(false)}
+                  onClick={closeReport}
                 >
                   {t("common.cancel")}
                 </Button>

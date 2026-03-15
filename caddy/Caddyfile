@@ -5,6 +5,10 @@
         reverse_proxy backend:8080
     }
 
+    handle /connection/* {
+        reverse_proxy centrifugo:8000
+    }
+
     handle /media-public/* {
         reverse_proxy minio:9000
     }

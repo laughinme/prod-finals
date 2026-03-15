@@ -18,6 +18,7 @@
     "discovery": "Discovery",
     "messages": "Messages",
     "dashboard": "Dashboard",
+    "matches": "Matches",
     "slogan": "reliable dating preview",
     "to": "to"
   },
@@ -64,10 +65,6 @@
     "your_name": "Your name",
     "name_placeholder": "e.g. Alexander",
     "age": "Age",
-    "interests_title": "Your Interests",
-    "interests_description": "Choose 3 to 5 tags. This helps us find better matches based on your lifestyle.",
-    "privacy_note": "We also use aggregated data about your habits to make recommendations even more accurate. This is 100% safe and private.",
-    "start_discovery": "Start discovery",
     "load_error": "Failed to load profile. Please try refreshing the page.",
     "online_since": "Online since {{date}}",
     "banned": "Banned",
@@ -87,7 +84,6 @@
   "discovery": {
     "no_more_today": "That's all for today",
     "analyzing_habits": "We are analyzing new data about your lifestyle to find perfect matches.",
-    "refresh_recommendations": "Refresh recommendations",
     "safety": "Safety",
     "safety_description": "We make sure communication is comfortable. Choose an action for this profile.",
     "dont_show_again": "Don't show again",
@@ -99,7 +95,10 @@
   "match": {
     "its_a_match": "It's a match!",
     "match_description": "You and {{name}} liked each other. It's time to start chatting.",
-    "write_message": "Write a message"
+    "write_message": "Write a message",
+    "maybe_later": "Maybe later",
+    "realtime_match_hint": "You have a fresh match and can start the conversation right away.",
+    "new_match_badge": "New match"
   },
   "chat": {
     "match_score_short": "Match {{score}}%",
@@ -109,6 +108,9 @@
     "no_active_chats_description": "When a match happens, the conversation will appear here. For now, you can go back to discovery.",
     "back_to_discovery": "Back to discovery",
     "messages_title": "Messages",
+    "close_match": "Close match",
+    "close_match_error": "Failed to close match.",
+    "no_messages_yet": "No messages yet",
     "report_block": "Report / Block",
     "report_sent": "Report sent. User blocked.",
     "write_message_placeholder": "Write a message..."

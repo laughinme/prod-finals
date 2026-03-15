@@ -2,8 +2,9 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -28,6 +29,12 @@ class Settings(BaseSettings):
     FEED_DAILY_LIMIT: int = 12
     PAIR_COOLDOWN_DAYS: int = 30
     DEV_SEED_ENABLED: bool = False
+    CENTRIFUGO_ENABLED: bool = False
+    CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api/publish"
+    CENTRIFUGO_WS_URL: str = ""
+    CENTRIFUGO_API_KEY: str = ""
+    CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
+    CENTRIFUGO_TOKEN_TTL_SEC: int = 900
 
     # API settings
     API_PORT: int = 8080
@@ -122,6 +129,19 @@ class Settings(BaseSettings):
         if not isinstance(value, str):
             return value
         return value.rstrip("/")
+
+    @model_validator(mode="after")
+    def _populate_centrifugo_ws_url(self) -> "Settings":
+        if self.CENTRIFUGO_WS_URL or not self.SITE_URL:
+            return self
+
+        parsed = urlsplit(self.SITE_URL)
+        if not parsed.scheme or not parsed.netloc:
+            return self
+
+        ws_scheme = "wss" if parsed.scheme == "https" else "ws"
+        self.CENTRIFUGO_WS_URL = urlunsplit((ws_scheme, parsed.netloc, "/connection/websocket", "", ""))
+        return self
 
 
 @lru_cache

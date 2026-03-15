@@ -3,16 +3,18 @@ import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import {
   HeartHandshake,
-  LayoutDashboard,
   MessageCircle,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
+import { useMatchNotifications } from "@/app/providers/realtime";
 import { cn } from "@/shared/lib/utils";
 
 export function Header() {
   const { t } = useTranslation();
+  const matchNotifications = useMatchNotifications();
 
   const navItems = [
     {
@@ -26,9 +28,9 @@ export function Header() {
       icon: MessageCircle,
     },
     {
-      label: t("common.dashboard"),
-      to: "/dashboard",
-      icon: LayoutDashboard,
+      label: t("common.matches"),
+      to: "/matches",
+      icon: Users,
     },
   ];
 
@@ -72,12 +74,17 @@ export function Header() {
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )
                 }
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </NavLink>
-            );
-          })}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                  {item.to === "/matches" && (matchNotifications?.unseenMatchCount ?? 0) > 0 ? (
+                    <span className="rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground">
+                      {matchNotifications?.unseenMatchCount}
+                    </span>
+                  ) : null}
+                </NavLink>
+              );
+            })}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -94,10 +101,6 @@ export function Header() {
           >
             <MessageCircle className="size-4" />
           </NavLink>
-
-          <div className="hidden rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground lg:block">
-            mock flow
-          </div>
 
           <HeaderUserMenu />
         </div>

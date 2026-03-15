@@ -73,8 +73,11 @@ print_diagnostics() {
   echo "----- caddy logs -----"
   "${compose_cmd[@]}" logs --tail=120 caddy || true
   echo
+  echo "----- centrifugo logs -----"
+  "${compose_cmd[@]}" logs --tail=120 centrifugo || true
+  echo
   echo "----- infra logs -----"
-  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init || true
+  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init centrifugo || true
 }
 
 wait_for_backend_health() {
@@ -160,7 +163,7 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend caddy; then
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service centrifugo backend caddy; then
   echo "Failed to start application services." >&2
   print_diagnostics
   exit 1
@@ -174,6 +177,12 @@ fi
 
 if ! wait_for_service_running caddy 60; then
   echo "Caddy did not start correctly." >&2
+  print_diagnostics
+  exit 1
+fi
+
+if ! wait_for_service_running centrifugo 60; then
+  echo "Centrifugo did not start correctly." >&2
   print_diagnostics
   exit 1
 fi

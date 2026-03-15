@@ -21,6 +21,7 @@ import PhotoUploadPage from "@/pages/PhotoUpload/ui/PhotoUploadPage";
 import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
 import MatchPage from "@/pages/Match/ui/MatchPage";
 import ChatPage from "@/pages/Chat/ui/ChatPage";
+import MatchesPage from "@/pages/Matches/ui/MatchesPage";
 import { QuizPage } from "@/pages/Onboarding/ui/QuizPage";
 import RedirectIfAuthenticated from "./RedirectIfAuthenticated";
 
@@ -90,6 +91,7 @@ export const routes: RouteObject[] = [
             children: [
               { path: "discovery", element: <DiscoveryPage /> },
               { path: "chat", element: <ChatPage /> },
+              { path: "matches", element: <MatchesPage /> },
             ],
           },
           { path: "profile", element: <ProfilePage /> },

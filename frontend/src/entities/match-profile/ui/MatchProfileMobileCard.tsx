@@ -28,12 +28,14 @@ export function MatchProfileMobileCard({
   return (
     <div className="mx-auto w-full max-w-100">
       <div className="relative aspect-4/7 overflow-hidden rounded-4xl bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
-        <img
-          src={profile.image}
-          alt={profile.name}
-          className="absolute inset-0 h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        {profile.image ? (
+          <img
+            src={profile.image}
+            alt={profile.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : null}
 
         <div className="absolute inset-0 bg-linear-to-t from-[#0A0A0A] via-[#0A0A0A]/55 to-transparent" />
 
