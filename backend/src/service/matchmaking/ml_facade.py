@@ -382,7 +382,8 @@ class HttpMlFacade(MlFacade):
         trace_id = uuid4()
         request_ml_id = requester.ml_user_id or str(requester.user_id)
         request_ml_id_norm = _normalize_ml_id(request_ml_id)
-        query_limit = min(max(limit * 5, 50), 200)
+        # Internal ML API validates limit <= 50.
+        query_limit = min(max(limit * 3, limit), 50)
 
         candidate_id_map: dict[str, UUID] = {}
         for candidate in candidates:
