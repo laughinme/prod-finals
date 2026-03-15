@@ -400,6 +400,27 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
 
 
 @pytest.mark.asyncio
+async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, faker: Faker):
+    _, access = await _register_user(client, faker, "equalage")
+
+    answer = await client.post(
+        "/api/v1/onboarding/answers",
+        json={"step_key": "preferred_age_range", "answers": ["18", "18"]},
+        headers=auth_header(access),
+    )
+    assert answer.status_code == 200
+    assert answer.json() == {
+        "step_key": "preferred_age_range",
+        "saved": True,
+        "quiz_started": True,
+    }
+
+    me = await client.get("/api/v1/users/me", headers=auth_header(access))
+    assert me.status_code == 200
+    assert me.json()["age_range"] == {"min": 18, "max": 18}
+
+
+@pytest.mark.asyncio
 async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Faker):
     credentials_a, access_a = await _register_user(client, faker, "admincandidate")
     _, access_b = await _register_user(client, faker, "blocked")

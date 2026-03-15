@@ -36,7 +36,7 @@ class OnboardingService(BaseDatingService):
         )
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
-        normalized = list(dict.fromkeys(answer.strip() for answer in answers if answer and answer.strip()))
+        normalized = [answer.strip() for answer in answers if answer and answer.strip()]
 
         if step.step_type.value == "range":
             if len(normalized) != 2:
@@ -54,6 +54,7 @@ class OnboardingService(BaseDatingService):
                 raise BadRequestError("Range lower bound must be less than or equal to upper bound")
             return [str(lower), str(upper)]
 
+        normalized = list(dict.fromkeys(normalized))
         if step.min_answers is not None and len(normalized) < step.min_answers:
             raise BadRequestError("Not enough answers provided for the step")
         if step.max_answers is not None and len(normalized) > step.max_answers:
