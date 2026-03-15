@@ -15,6 +15,7 @@ from domain.dating import (
     MessageStatus,
     SendMessageRequest,
 )
+from domain.notifications import ConversationClosedEventPayload, MessageCreatedEventPayload, RealtimeSubscriptionResponse
 
 from service.matchmaking import BaseDatingService, ConversationNotFoundError, ConversationUnavailableError
 
@@ -76,6 +77,20 @@ class ConversationService(BaseDatingService):
             next_cursor=next_cursor,
         )
 
+    async def get_realtime_token(
+        self,
+        *,
+        user: User,
+        conversation_id,
+    ) -> RealtimeSubscriptionResponse:
+        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+        if row is None:
+            raise ConversationNotFoundError()
+        return self.realtime_service.build_subscription_response(
+            user_id=user.id,
+            channel=self.realtime_service.build_conversation_channel(conversation_id=conversation_id),
+        )
+
     async def send_message(
         self,
         *,
@@ -106,13 +121,25 @@ class ConversationService(BaseDatingService):
             payload={"match_id": str(match.id)},
         )
         await self.uow.commit()
-        return MessageResponse(
+        response = MessageResponse(
             message_id=message.id,
             sender_user_id=message.sender_user_id,
             text=message.text,
             created_at=message.created_at,
             status=MessageStatus.SENT,
         )
+        await self.realtime_service.publish_message_created(
+            conversation_id=conversation.id,
+            payload=MessageCreatedEventPayload(
+                conversation_id=conversation.id,
+                message_id=message.id,
+                sender_user_id=message.sender_user_id,
+                text=message.text,
+                created_at=message.created_at,
+                status=MessageStatus.SENT.value,
+            ),
+        )
+        return response
 
     async def get_icebreakers(self, *, user: User, conversation_id) -> IcebreakersResponse:
         row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)

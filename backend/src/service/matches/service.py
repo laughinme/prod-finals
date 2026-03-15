@@ -12,6 +12,7 @@ from domain.dating import (
     MatchListResponse,
     MatchStatus,
 )
+from domain.notifications import ConversationClosedEventPayload
 
 from service.matchmaking import BaseDatingService, InvalidMatchStateError, MatchNotFoundError
 
@@ -69,5 +70,14 @@ class MatchService(BaseDatingService):
             payload={"reason_code": payload.reason_code.value},
         )
         await self.uow.commit()
+        if conversation is not None:
+            await self.realtime_service.publish_conversation_closed(
+                conversation_id=conversation.id,
+                payload=ConversationClosedEventPayload(
+                    conversation_id=conversation.id,
+                    status=conversation.status,
+                    closed_at=conversation.closed_at or now,
+                ),
+            )
 
         return CloseMatchResponse(status="closed", removed_from_future_feed=True)

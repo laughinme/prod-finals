@@ -8,6 +8,7 @@ from domain.dating import (
     ReportRequest,
     ReportResponse,
 )
+from domain.notifications import ConversationClosedEventPayload
 
 from service.matchmaking import AlreadyBlockedError, BaseDatingService, InvalidSafetyTargetError
 
@@ -48,6 +49,17 @@ class SafetyService(BaseDatingService):
             payload={"target_user_id": str(target.id), "reason_code": payload.reason_code.value},
         )
         await self.uow.commit()
+        if conversation_closed and pair_state.conversation_id:
+            conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
+            if conversation is not None:
+                await self.realtime_service.publish_conversation_closed(
+                    conversation_id=conversation.id,
+                    payload=ConversationClosedEventPayload(
+                        conversation_id=conversation.id,
+                        status=conversation.status,
+                        closed_at=conversation.closed_at or self.now(),
+                    ),
+                )
 
         return BlockResponse(
             status="blocked",
