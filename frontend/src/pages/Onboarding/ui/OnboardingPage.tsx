@@ -93,7 +93,7 @@ export default function OnboardingPage() {
             <Button
               size="lg"
               className="h-14 w-full gap-2 rounded-2xl text-lg font-semibold"
-              onClick={() => navigate("/photo-upload")}
+              onClick={() => navigate("/photo-upload", { replace: true })}
             >
               {t("onboarding.create_profile")}
               <ArrowRight className="size-5" />

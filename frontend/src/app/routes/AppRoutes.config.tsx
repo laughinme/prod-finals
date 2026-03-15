@@ -72,14 +72,60 @@ export const RequireMatchmakingReady = () => {
   return <Outlet />;
 };
 
+export const RequireIncompleteOnboarding = () => {
+  const { isOnboardingComplete } = useMatchmakingFlow();
+  const { data: profile, isLoading } = useProfile();
+
+  if (isLoading) {
+    return <MatchmakingLoadingState />;
+  }
+
+  if (profile?.isOnboarded || isOnboardingComplete) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+};
+
+export const RequireIncompleteQuiz = () => {
+  const { data: profile, isLoading } = useProfile();
+  const { isQuizCompletedLocal } = useQuizCompletion();
+  const { isOnboardingComplete } = useMatchmakingFlow();
+
+  if (isLoading) {
+    return <MatchmakingLoadingState />;
+  }
+
+  if (profile?.quizStarted || isQuizCompletedLocal) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!profile?.isOnboarded && !isOnboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <Outlet />;
+};
+
 export const routes: RouteObject[] = [
   {
     path: "/",
     element: <RequireAuth />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "onboarding", element: <OnboardingPage /> },
-      { path: "photo-upload", element: <PhotoUploadPage /> },
+      {
+        element: <RequireIncompleteOnboarding />,
+        children: [
+          { path: "onboarding", element: <OnboardingPage /> },
+          { path: "photo-upload", element: <PhotoUploadPage /> },
+        ],
+      },
+      {
+        element: <RequireIncompleteQuiz />,
+        children: [
+          { path: "quiz", element: <QuizPage /> },
+        ],
+      },
       { path: "match", element: <MatchPage /> },
       {
         element: <HeaderLayout />,
@@ -106,5 +152,4 @@ export const routes: RouteObject[] = [
     path: "*",
     element: <Navigate to="/" replace />,
   },
-  { path: "/quiz", element: <QuizPage /> },
 ];
