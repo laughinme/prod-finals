@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Centrifuge, UnauthorizedError } from "centrifuge";
@@ -18,7 +25,9 @@ type RealtimeProviderProps = {
   children: ReactNode;
 };
 
-const toMatchNotification = (dto: MatchNotificationItemDto): MatchNotification => ({
+const toMatchNotification = (
+  dto: MatchNotificationItemDto,
+): MatchNotification => ({
   notificationId: dto.notification_id,
   matchId: dto.match_id,
   conversationId: dto.conversation_id,
@@ -65,7 +74,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   const removeNotification = useCallback((notificationId: string) => {
     setNotifications((prev) =>
-      prev.filter((notification) => notification.notificationId !== notificationId),
+      prev.filter(
+        (notification) => notification.notificationId !== notificationId,
+      ),
     );
   }, []);
 
@@ -86,7 +97,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   const markMatchAsSeen = useCallback(
     async (matchId: string) => {
-      const notification = notifications.find((item) => item.matchId === matchId);
+      const notification = notifications.find(
+        (item) => item.matchId === matchId,
+      );
       if (!notification) {
         return;
       }
@@ -97,7 +110,8 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   const currentNotification = notifications[0] ?? null;
   const unseenMatchIds = useMemo(
-    () => notifications.filter((item) => !item.seenAt).map((item) => item.matchId),
+    () =>
+      notifications.filter((item) => !item.seenAt).map((item) => item.matchId),
     [notifications],
   );
   const unseenMatchCount = unseenMatchIds.length;
@@ -140,8 +154,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
         if (!cancelled) {
           mergeNotifications(initial.items.map(toMatchNotification));
         }
-      } catch {
-      }
+      } catch {}
 
       try {
         const connection = await getRealtimeConnectionToken();
@@ -170,7 +183,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           if (!String(ctx.channel).startsWith("personal-")) {
             return;
           }
-          const event = ctx.data as { type?: string; payload?: MatchCreatedRealtimePayload };
+          const event = ctx.data as {
+            type?: string;
+            payload?: MatchCreatedRealtimePayload;
+          };
           if (event.type !== "match_created" || !event.payload) {
             return;
           }

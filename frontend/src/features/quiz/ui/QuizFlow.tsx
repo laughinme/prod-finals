@@ -370,7 +370,7 @@ export function QuizFlow() {
             <Button
               variant="outline"
               size="lg"
-              className="h-14 flex-1 rounded-2xl"
+              className="h-14 flex-1 rounded-2xl text-lg"
               onClick={handleBack}
               disabled={answerMutation.isPending}
             >
@@ -378,7 +378,7 @@ export function QuizFlow() {
             </Button>
             <Button
               size="lg"
-              className="h-14 flex-2 rounded-2xl text-lg"
+              className="h-14 flex-1 rounded-2xl text-lg"
               disabled={!isCurrentValid() || answerMutation.isPending}
               onClick={handleNext}
             >
