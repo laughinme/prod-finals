@@ -6,10 +6,6 @@ import {
 } from "react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
-import {
-  EMPTY_MATCHMAKING_DRAFT,
-  type MatchmakingDraft,
-} from "@/entities/match-profile/model";
 
 import type {
   MatchmakingFlowContextValue,
@@ -19,7 +15,6 @@ import { MatchmakingFlowContext } from "./useMatchmakingFlow";
 
 function getInitialPersistedState(): PersistedMatchmakingState {
   return {
-    draft: EMPTY_MATCHMAKING_DRAFT,
     isOnboardingComplete: false,
   };
 }
@@ -50,10 +45,6 @@ function readPersistedState(
     ) as Partial<PersistedMatchmakingState>;
 
     return {
-      draft: {
-        ...EMPTY_MATCHMAKING_DRAFT,
-        ...parsedValue.draft,
-      },
       isOnboardingComplete: parsedValue.isOnboardingComplete ?? false,
     };
   } catch (error) {
@@ -79,34 +70,28 @@ export function MatchmakingFlowProvider({ children }: { children: ReactNode }) {
     auth?.user?.email as string | null | undefined,
   );
 
-  const [draft, setDraft] = useState<MatchmakingDraft>(EMPTY_MATCHMAKING_DRAFT);
   const [isOnboardingComplete, setIsOnboardingComplete] =
     useState<boolean>(false);
 
   useEffect(() => {
     const persistedState = readPersistedState(storageKey);
-    setDraft(persistedState.draft);
     setIsOnboardingComplete(persistedState.isOnboardingComplete);
   }, [storageKey]);
 
   useEffect(() => {
     writePersistedState(storageKey, {
-      draft,
       isOnboardingComplete,
     });
-  }, [draft, isOnboardingComplete, storageKey]);
+  }, [isOnboardingComplete, storageKey]);
 
-  const completeOnboarding = (nextDraft: MatchmakingDraft) => {
-    setDraft(nextDraft);
+  const completeOnboarding = () => {
     setIsOnboardingComplete(true);
   };
 
   return (
     <MatchmakingFlowContext.Provider
       value={{
-        draft,
         isOnboardingComplete,
-        setDraft,
         completeOnboarding,
       }}
     >

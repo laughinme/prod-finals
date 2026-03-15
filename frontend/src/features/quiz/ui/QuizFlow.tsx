@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
 import type { Question } from "@/entities/quiz";
+import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useQuizCompletion } from "@/features/quiz/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -20,6 +21,7 @@ export function QuizFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth()!;
+  const { completeOnboarding } = useMatchmakingFlow();
   const { markQuizCompleted } = useQuizCompletion();
 
   const quizStarted = user?.quiz_started ?? false;
@@ -74,7 +76,8 @@ export function QuizFlow() {
   const moveToNext = () => {
     if (isLastQuestion) {
       markQuizCompleted();
-      navigate("/profile-setup", { replace: true });
+      completeOnboarding();
+      navigate("/discovery", { replace: true });
     } else {
       setCurrentIndex((prev) => prev + 1);
     }
@@ -115,7 +118,8 @@ export function QuizFlow() {
 
       if (response.completed || isLastQuestion) {
         markQuizCompleted();
-        navigate("/profile-setup", { replace: true });
+        completeOnboarding();
+        navigate("/discovery", { replace: true });
       } else if (response.nextStepKey) {
         const nextIndex = steps.findIndex(
           (s) => s.stepKey === response.nextStepKey,

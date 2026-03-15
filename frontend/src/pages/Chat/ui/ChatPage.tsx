@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   MessageCircle,
@@ -27,12 +27,14 @@ type ChatNavigationState = {
 export default function ChatPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { data: matchesResponse } = useMatches();
   const closeMatchMutation = useCloseMatch();
   const routeState = location.state as ChatNavigationState | null;
+  const requestedMatchId = searchParams.get("match");
   const [activeMatchId, setActiveMatchId] = useState<string | null>(
-    routeState?.matchId ?? null,
+    routeState?.matchId ?? requestedMatchId ?? null,
   );
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
@@ -77,6 +79,11 @@ export default function ChatPage() {
             (match) =>
               match.matchId === routeState.matchId && match.status === "active",
           )) ??
+        (requestedMatchId &&
+          matches.find(
+            (match) =>
+              match.matchId === requestedMatchId && match.status === "active",
+          )) ??
         visibleMatches[0] ??
         null;
 
@@ -84,7 +91,7 @@ export default function ChatPage() {
         setActiveMatchId(initialActiveMatch.matchId);
       }
     }
-  }, [activeMatchId, matches, routeState?.matchId, visibleMatches]);
+  }, [activeMatchId, matches, requestedMatchId, routeState?.matchId, visibleMatches]);
 
   const handleSend = () => {
     if (!activeChatId || !input.trim()) {

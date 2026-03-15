@@ -16,7 +16,6 @@ import { useQuizCompletion } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
-import ProfileSetupPage from "@/pages/ProfileSetup/ui/ProfileSetupPage";
 import PhotoUploadPage from "@/pages/PhotoUpload/ui/PhotoUploadPage";
 import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
 import MatchPage from "@/pages/Match/ui/MatchPage";
@@ -81,7 +80,6 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: "onboarding", element: <OnboardingPage /> },
       { path: "photo-upload", element: <PhotoUploadPage /> },
-      { path: "profile-setup", element: <ProfileSetupPage /> },
       { path: "match", element: <MatchPage /> },
       {
         element: <HeaderLayout />,

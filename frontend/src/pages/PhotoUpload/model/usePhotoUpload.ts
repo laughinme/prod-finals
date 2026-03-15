@@ -2,14 +2,12 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEv
 import { useNavigate } from "react-router-dom";
 import * as Sentry from "@sentry/react";
 
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
 import { useUploadAvatar } from "@/features/profile/useProfile";
 
 export type PhotoUploadState = "idle" | "preview" | "uploading" | "done";
 
 export function usePhotoUpload() {
   const navigate = useNavigate();
-  const { setDraft, draft } = useMatchmakingFlow();
   const { mutateAsync: uploadAvatar } = useUploadAvatar();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,7 +106,6 @@ export function usePhotoUpload() {
       setUploadState("done");
 
       setTimeout(() => {
-        setDraft({ ...draft, photoUploaded: true });
         navigate("/quiz", { replace: true });
       }, 1500);
     } catch (error) {
