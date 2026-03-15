@@ -228,11 +228,19 @@ async def post_compatibility_explanation(
         ) from None
 
 
+@app.post(
+    "/v1/profile/favorites",
+    tags=["feedback"],
+    operation_id="postProfileFavorites",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
 async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckResponse:
-    # Передаем логику в runtime
     return runtime.update_user_profile_favorites(
         user_id=payload.user_id,
         favorite_categories=payload.favorite_categories,
         trace_id=payload.trace_id,
-        preferred_hour=payload.preferred_activity_hour
+        preferred_hour=payload.preferred_activity_hour,
     )

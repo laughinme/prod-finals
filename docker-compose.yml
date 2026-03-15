@@ -152,6 +152,7 @@ services:
       CENTRIFUGO_API_KEY: dev-centrifugo-api-key-change-me
       CENTRIFUGO_TOKEN_HMAC_SECRET: dev-centrifugo-token-secret-change-me
       CENTRIFUGO_TOKEN_TTL_SEC: 900
+      SCHEDULER_ENABLED: "true"
     depends_on:
       db:
         condition: service_healthy

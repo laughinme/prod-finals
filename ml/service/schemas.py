@@ -137,8 +137,8 @@ class HardFilters(StrictModel):
 
 
 class ExclusionSet(StrictModel):
-    hard_exclude_user_ids: list[int] | None = Field(default=None, max_length=20000)
-    soft_seen_user_ids: list[int] | None = Field(default=None, max_length=20000)
+    hard_exclude_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
+    soft_seen_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
 
 
 class RecommendationContext(StrictModel):
@@ -246,7 +246,7 @@ class ErrorResponse(StrictModel):
 
 class UserProfileUpdateRequest(StrictModel):
     trace_id: UUID
-    user_id: int
+    user_id: str | int
     # Список любимых категорий, которые выбрал юзер (например: ["Фастфуд", "Кино", "Супермаркеты"])
     favorite_categories: list[str] = Field(min_length=1, max_length=15)
     
