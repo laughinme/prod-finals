@@ -14,6 +14,7 @@ from domain.dating import (
     MatchStatus,
     SafetySourceContext,
 )
+from domain.notifications import MatchCreatedEventPayload, NotificationPeer
 
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, normalize_pair
 
@@ -56,6 +57,8 @@ class InteractionService(BaseDatingService):
         item.reaction_action = payload.action.value
 
         match_link = None
+        notification_payload = None
+        notification_user_id = None
         result = FeedReactionResult.LIKED
         if payload.action == FeedAction.LIKE and counterpart_action == FeedAction.LIKE.value:
             match, conversation = await self._ensure_match(user.id, item.target_user_id)
@@ -64,6 +67,12 @@ class InteractionService(BaseDatingService):
             pair_state.conversation_id = conversation.id
             result = FeedReactionResult.MATCHED
             match_link = MatchLink(match_id=match.id, conversation_id=conversation.id)
+            notification_payload, notification_user_id = await self._build_match_notification(
+                actor=user,
+                peer_user_id=item.target_user_id,
+                match=match,
+                conversation=conversation,
+            )
         elif payload.action == FeedAction.LIKE:
             pair_state.status = "one_way_like"
             result = FeedReactionResult.LIKED
@@ -109,8 +118,40 @@ class InteractionService(BaseDatingService):
             },
         )
         await self.uow.commit()
+        if notification_payload is not None and notification_user_id is not None:
+            await self.realtime_service.publish_match_created(
+                user_id=notification_user_id,
+                payload=notification_payload,
+            )
 
         return FeedReactionResponse(result=result, match=match_link, next_card_hint="next_available")
+
+    async def _build_match_notification(
+        self,
+        *,
+        actor: User,
+        peer_user_id,
+        match: Match,
+        conversation: Conversation,
+    ) -> tuple[MatchCreatedEventPayload, object]:
+        notification = await self.notification_repo.add_match_notification(
+            user_id=peer_user_id,
+            match_id=match.id,
+            conversation_id=conversation.id,
+            peer_user_id=actor.id,
+        )
+        payload = MatchCreatedEventPayload(
+            notification_id=notification.id,
+            match_id=match.id,
+            conversation_id=conversation.id,
+            peer=NotificationPeer(
+                user_id=actor.id,
+                display_name=actor.resolved_display_name or "",
+                avatar_url=actor.avatar_url,
+            ),
+            created_at=notification.created_at,
+        )
+        return payload, peer_user_id
 
     async def _ensure_match(self, user_a_id, user_b_id) -> tuple[Match, Conversation]:
         existing = await self.matchmaking_repo.get_match_for_users(user_a_id, user_b_id)

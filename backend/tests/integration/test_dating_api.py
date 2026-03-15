@@ -299,6 +299,46 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert match["match_id"]
     assert match["conversation_id"]
 
+    realtime_token = await client.get(
+        "/api/v1/realtime/connection-token",
+        headers=auth_header(access_a),
+    )
+    assert realtime_token.status_code == 200
+    assert realtime_token.json()["enabled"] is False
+
+    notifications_a = await client.get(
+        "/api/v1/notifications/matches",
+        params={"unseen_only": "true"},
+        headers=auth_header(access_a),
+    )
+    assert notifications_a.status_code == 200
+    assert notifications_a.json()["unseen_count"] == 1
+    assert notifications_a.json()["items"][0]["match_id"] == match["match_id"]
+    assert notifications_a.json()["items"][0]["conversation_id"] == match["conversation_id"]
+    assert notifications_a.json()["items"][0]["peer"]["user_id"] == profile_b["id"]
+
+    notifications_b = await client.get(
+        "/api/v1/notifications/matches",
+        params={"unseen_only": "true"},
+        headers=auth_header(access_b),
+    )
+    assert notifications_b.status_code == 200
+    assert notifications_b.json()["unseen_count"] == 0
+
+    mark_seen = await client.post(
+        f"/api/v1/notifications/matches/{notifications_a.json()['items'][0]['notification_id']}/seen",
+        headers=auth_header(access_a),
+    )
+    assert mark_seen.status_code == 200
+
+    notifications_seen = await client.get(
+        "/api/v1/notifications/matches",
+        params={"unseen_only": "true"},
+        headers=auth_header(access_a),
+    )
+    assert notifications_seen.status_code == 200
+    assert notifications_seen.json()["unseen_count"] == 0
+
     matches_a = await client.get("/api/v1/matches", headers=auth_header(access_a))
     assert matches_a.status_code == 200
     assert matches_a.json()["items"][0]["status"] == "active"

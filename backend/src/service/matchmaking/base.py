@@ -2,8 +2,17 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from core.config import Settings, get_settings
-from database.relational_db import AuditLog, MatchmakingInterface, OutboxEvent, UoW, User, UserInterface
+from database.relational_db import (
+    AuditLog,
+    MatchmakingInterface,
+    NotificationInterface,
+    OutboxEvent,
+    UoW,
+    User,
+    UserInterface,
+)
 from domain.dating import AuditEntityType, FeedCandidateContext, FeedLockReason, ProfileStatus
+from service.realtime import RealtimeService
 
 from .ml_facade import MlFacade
 
@@ -19,12 +28,16 @@ class BaseDatingService:
         uow: UoW,
         user_repo: UserInterface,
         matchmaking_repo: MatchmakingInterface,
+        notification_repo: NotificationInterface,
+        realtime_service: RealtimeService,
         ml_facade: MlFacade,
         settings: Settings | None = None,
     ):
         self.uow = uow
         self.user_repo = user_repo
         self.matchmaking_repo = matchmaking_repo
+        self.notification_repo = notification_repo
+        self.realtime_service = realtime_service
         self.ml_facade = ml_facade
         self.settings = settings or get_settings()
         self._tz = ZoneInfo(self.settings.APP_TIMEZONE)
