@@ -15,14 +15,7 @@ from domain.dating import (
     MessageStatus,
     SendMessageRequest,
 )
-from domain.notifications import (
-    ConversationClosedEventPayload,
-    ConversationReadResponse,
-    MessageCreatedEventPayload,
-    MessageReceivedEventPayload,
-    NotificationPeer,
-    RealtimeSubscriptionResponse,
-)
+from domain.notifications import ConversationClosedEventPayload, MessageCreatedEventPayload, RealtimeSubscriptionResponse
 
 from service.matchmaking import BaseDatingService, ConversationNotFoundError, ConversationUnavailableError
 
@@ -56,7 +49,6 @@ class ConversationService(BaseDatingService):
         row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
         if row is None:
             raise ConversationNotFoundError()
-        conversation, _match, _peer = row
         try:
             parsed_cursor = datetime.fromisoformat(cursor) if cursor else None
         except ValueError as exc:
@@ -71,7 +63,7 @@ class ConversationService(BaseDatingService):
             next_cursor = messages[-1].created_at.isoformat()
             messages = messages[:-1]
         messages = list(reversed(messages))
-        response = ConversationMessagesResponse(
+        return ConversationMessagesResponse(
             items=[
                 MessageResponse(
                     message_id=message.id,
@@ -84,14 +76,6 @@ class ConversationService(BaseDatingService):
             ],
             next_cursor=next_cursor,
         )
-        if cursor is None:
-            await self.notification_repo.mark_conversation_message_notifications_read(
-                user_id=user.id,
-                conversation_id=conversation.id,
-                read_at=self.now(),
-            )
-            await self.uow.commit()
-        return response
 
     async def get_realtime_token(
         self,
@@ -117,7 +101,7 @@ class ConversationService(BaseDatingService):
         row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
         if row is None:
             raise ConversationNotFoundError()
-        conversation, match, peer = row
+        conversation, match, _peer = row
         if conversation.status != ConversationStatus.ACTIVE.value:
             raise ConversationUnavailableError()
 
@@ -135,13 +119,6 @@ class ConversationService(BaseDatingService):
             entity_id=str(conversation.id),
             actor_user_id=user.id,
             payload={"match_id": str(match.id)},
-        )
-        notification = await self.notification_repo.add_message_notification(
-            user_id=peer.id,
-            match_id=match.id,
-            conversation_id=conversation.id,
-            message_id=message.id,
-            sender_user_id=user.id,
         )
         await self.uow.commit()
         response = MessageResponse(
@@ -162,41 +139,7 @@ class ConversationService(BaseDatingService):
                 status=MessageStatus.SENT.value,
             ),
         )
-        await self.realtime_service.publish_message_received(
-            user_id=peer.id,
-            payload=MessageReceivedEventPayload(
-                notification_id=notification.id,
-                match_id=match.id,
-                conversation_id=conversation.id,
-                message_id=message.id,
-                sender=NotificationPeer(
-                    user_id=user.id,
-                    display_name=user.resolved_display_name or "",
-                    avatar_url=user.avatar_url,
-                ),
-                text=message.text,
-                created_at=message.created_at,
-            ),
-        )
         return response
-
-    async def mark_read(
-        self,
-        *,
-        user: User,
-        conversation_id,
-    ) -> ConversationReadResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
-        if row is None:
-            raise ConversationNotFoundError()
-        now = self.now()
-        await self.notification_repo.mark_conversation_message_notifications_read(
-            user_id=user.id,
-            conversation_id=conversation_id,
-            read_at=now,
-        )
-        await self.uow.commit()
-        return ConversationReadResponse(conversation_id=conversation_id, read_at=now)
 
     async def get_icebreakers(self, *, user: User, conversation_id) -> IcebreakersResponse:
         row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)

@@ -50,9 +50,6 @@ fi
 
 "${compose_cmd[@]}" run "${run_args[@]}" ml-service python -m ml.scripts.train_model
 
-echo "Syncing users to Qdrant..."
-"${compose_cmd[@]}" run "${run_args[@]}" ml-service python ml/qdrant.py
-
 echo "Restarting ml-service to reload artifact from volume..."
 "${compose_cmd[@]}" up -d --force-recreate ml-service
 "${compose_cmd[@]}" ps ml-service

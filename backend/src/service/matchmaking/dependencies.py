@@ -1,18 +1,12 @@
 from fastapi import Depends
 
-from core.config import Settings, get_settings
 from database.relational_db import MatchmakingInterface, NotificationInterface, UoW, UserInterface, get_uow
 from service.realtime import RealtimeService, get_realtime_service
 
-from .ml_facade import HttpMlFacade, MlFacade, MockMlFacade
+from .ml_facade import MlFacade, MockMlFacade
 
 
-def get_ml_facade(settings: Settings = Depends(get_settings)) -> MlFacade:
-    if settings.ML_SERVICE_URL:
-        return HttpMlFacade(
-            base_url=settings.ML_SERVICE_URL,
-            service_token=settings.ML_SERVICE_TOKEN,
-        )
+def get_ml_facade() -> MlFacade:
     return MockMlFacade()
 
 

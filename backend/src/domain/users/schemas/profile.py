@@ -32,7 +32,6 @@ class UserModel(TimestampModel):
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None
-    interests: list[str] = Field(default_factory=list)
     quiz_started: bool = False
     is_onboarded: bool
     onboarding_status: str
@@ -55,15 +54,12 @@ class UserPatch(BaseModel):
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None
-    interests: list[str] | None = Field(None, min_length=1, max_length=20)
     search_preferences: SearchPreferences | None = None
 
     @model_validator(mode="after")
     def normalize_lists(self):
         if self.looking_for_genders is not None:
             self.looking_for_genders = list(dict.fromkeys(self.looking_for_genders))
-        if self.interests is not None:
-            self.interests = list(dict.fromkeys(value.strip() for value in self.interests if value and value.strip()))
         return self
 
 

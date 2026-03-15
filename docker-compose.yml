@@ -101,7 +101,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-centrifugo
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: dev-centrifugo-token-secret-change-me
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost http://127.0.0.1}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: http://localhost http://127.0.0.1
       CENTRIFUGO_HTTP_API_KEY: dev-centrifugo-api-key-change-me
       CENTRIFUGO_ADMIN_ENABLED: "false"
       CENTRIFUGO_ENGINE_TYPE: memory
@@ -119,14 +119,14 @@ services:
       DEBUG: "true"
       API_HOST: 0.0.0.0
       API_PORT: 8080
-      SITE_URL: ${SITE_URL:-http://localhost}
+      SITE_URL: http://localhost
       MAX_PHOTO_SIZE: 5
       DATABASE_URL: postgresql+asyncpg://postgres:secret@db:5432/templatepg
       REDIS_URL: redis://redis:6379/0
       ML_SERVICE_URL: http://ml-service:8080
       ML_SERVICE_TOKEN: dev-ml-token
       STORAGE_ENDPOINT_INTERNAL: http://minio:9000
-      STORAGE_ENDPOINT_PUBLIC: ${STORAGE_ENDPOINT_PUBLIC:-http://localhost}
+      STORAGE_ENDPOINT_PUBLIC: http://localhost:9000
       STORAGE_REGION: us-east-1
       STORAGE_ACCESS_KEY: minioadmin
       STORAGE_SECRET_KEY: minioadmin
@@ -145,7 +145,7 @@ services:
       CORS_ALLOW_ORIGINS: http://localhost,http://localhost:80
       CORS_ALLOW_ORIGIN_REGEX: ""
       NOTIFICATIONS_PROVIDER: noop
-      DEV_SEED_ENABLED: "true"
+      DEV_SEED_ENABLED: "false"
       CENTRIFUGO_ENABLED: "true"
       CENTRIFUGO_API_URL: http://centrifugo:8000/api/publish
       CENTRIFUGO_WS_URL: ""

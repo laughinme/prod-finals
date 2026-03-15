@@ -10,15 +10,11 @@ import {
 
 import { HeaderUserMenu } from "./HeaderUserMenu";
 import { useMatchNotifications } from "@/app/providers/realtime";
-import { useMatches } from "@/features/match";
 import { cn } from "@/shared/lib/utils";
 
 export function Header() {
   const { t } = useTranslation();
   const matchNotifications = useMatchNotifications();
-  const { data: matchesResponse } = useMatches();
-  const unreadMessagesCount =
-    matchesResponse?.matches.reduce((total, match) => total + match.unreadCount, 0) ?? 0;
 
   const navItems = [
     {

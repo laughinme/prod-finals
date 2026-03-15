@@ -25,31 +25,3 @@ class MatchNotification(CreatedAtMixin, Base):
         UniqueConstraint("user_id", "match_id", name="uq_match_notifications_user_match"),
         Index("ix_match_notifications_user_seen_created", "user_id", "seen_at", "created_at"),
     )
-
-
-class MessageNotification(CreatedAtMixin, Base):
-    __tablename__ = "message_notifications"
-
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
-    user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    match_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("matches.id", ondelete="CASCADE"))
-    conversation_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"),
-    )
-    message_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"))
-    sender_user_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    notification_type: Mapped[str] = mapped_column(String(32), nullable=False, default="message_received")
-    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint("user_id", "message_id", name="uq_message_notifications_user_message"),
-        Index("ix_message_notifications_user_seen_created", "user_id", "seen_at", "created_at"),
-        Index(
-            "ix_message_notifications_user_conversation_read",
-            "user_id",
-            "conversation_id",
-            "read_at",
-            "created_at",
-        ),
-    )

@@ -5,11 +5,6 @@ echo "Running Alembic migrations..."
 cd src
 alembic upgrade head
 
-if [ "${DEV_SEED_ENABLED:-false}" = "true" ] && [ "${APP_STAGE:-dev}" != "prod" ]; then
-  echo "Running mock user seed..."
-  python -m scripts.seed_mock_users
-fi
-
 echo "Starting the application..."
 exec uvicorn main:app \
   --host "${API_HOST:-0.0.0.0}" \

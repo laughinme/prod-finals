@@ -7,7 +7,6 @@ from database.relational_db import (
     UserInterface,
     get_uow,
 )
-from service.mock_identity import MockIdentityService, get_mock_identity_registry
 from service.notifications import NotificationService, get_notification_service
 from .credentials_service import CredentialsService
 from ..tokens import TokenService, get_token_service
@@ -20,10 +19,6 @@ async def get_credentials_service(
 ) -> CredentialsService:
     user_repo = UserInterface(uow.session)
     role_repo = RolesInterface(uow.session)
-    mock_identity_service = MockIdentityService(
-        user_repo,
-        get_mock_identity_registry(),
-    )
 
     return CredentialsService(
         uow,
@@ -31,5 +26,4 @@ async def get_credentials_service(
         role_repo,
         token_service,
         notification_service,
-        mock_identity_service,
     )

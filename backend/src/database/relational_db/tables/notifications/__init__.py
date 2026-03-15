@@ -1,2 +1,2 @@
 from .notifications_interface import NotificationInterface
-from .notifications_table import MatchNotification, MessageNotification
+from .notifications_table import MatchNotification

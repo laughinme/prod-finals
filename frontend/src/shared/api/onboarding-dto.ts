@@ -23,6 +23,7 @@ export interface OnboardingStepDto {
 }
 
 export interface OnboardingConfigResponseDto {
+  quiz_optional: boolean;
   steps: OnboardingStepDto[];
 }
 
@@ -32,7 +33,9 @@ export interface OnboardingAnswersRequestDto {
 }
 
 export interface OnboardingAnswersResponseDto {
-  step_key: string;
-  quiz_started: boolean;
+  quiz_status: string;
+  recommendation_mode: string;
+  next_step_key: string | null;
+  completed: boolean;
   saved?: boolean;
 }

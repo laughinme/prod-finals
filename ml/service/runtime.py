@@ -99,11 +99,6 @@ def _string_to_uuid(string: str) -> str:
     return str(uuid5(NAMESPACE_DNS, string))
 
 
-def _normalize_user_id(user_id: str | int) -> str:
-    """Normalize user IDs to ensure string representation for Qdrant hashing."""
-    return str(user_id).strip().lower()
-
-
 class MlRuntime:
     def __init__(self, settings: RuntimeSettings | None = None) -> None:
         self._settings = settings or RuntimeSettings.from_env()
@@ -321,7 +316,7 @@ class MlRuntime:
         soft_seen_user_ids: Iterable[str | int],
         strategy: str,
         trace_seed: int,
-    ) -> list[RecommendationCandidate]:
+    ) -> list[RecommendationItem]:
         """
         Ищет рекомендации через Qdrant, используя обновленные векторы (с дообучением).
         """
@@ -330,8 +325,7 @@ class MlRuntime:
             user_id_str = _string_to_uuid(_normalize_user_id(request_user_id))
             user_points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
-                ids=[user_id_str],
-                with_vectors=True
+                ids=[user_id_str]
             )
             if not user_points:
                 return []  # Пользователь не найден в Qdrant
@@ -342,15 +336,15 @@ class MlRuntime:
             exclude_ids.add(user_id_str)  # Исключаем самого себя
 
             # Ищем ближайших в Qdrant
-            search_result = self._qdrant_client.query_points(
+            search_result = self._qdrant_client.search(
                 collection_name="user_profiles",
-                query=user_vector,
+                query_vector=user_vector,
                 limit=limit * 2,  # Больше, чтобы учесть фильтры
                 score_threshold=0.5,  # Минимальный скор
             )
 
             items = []
-            for hit in search_result.points:
+            for hit in search_result:
                 if hit.id in exclude_ids:
                     continue
                 # Преобразуем id обратно в user_id (из payload или из id)
@@ -365,14 +359,7 @@ class MlRuntime:
                 # Soft seen
                 if candidate_user_id in soft_seen_user_ids:
                     score = max(0.0, score - 0.15)
-                # Ensure we return a structured item
-                from .schemas import RecommendationCandidate
-                items.append(RecommendationCandidate(
-                    candidate_user_id=candidate_user_id, 
-                    score=score,
-                    reason_signals=_reason_signals_by_score(score, fallback_mode=False),
-                    policy_flags=[]
-                ))
+                items.append(RecommendationItem(candidate_user_id, score))
                 if len(items) >= limit:
                     break
 
@@ -389,75 +376,67 @@ class MlRuntime:
             event_type="swipe",
         )
         
-        # Обновляем вектор на основании лайка или дизлайка
-        if payload.action in ("like", "pass") and self._qdrant_client is not None:
-            self._update_user_vector_on_swipe(payload.actor_user_id, payload.target_user_id, payload.action, payload.trace_id)
+        # Обрабатываем дообучение только для "pass" (отказ)
+        if payload.action == "pass" and self._qdrant_client is not None:
+            self._update_user_vector_on_pass(payload.actor_user_id, payload.target_user_id, payload.trace_id)
         
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
 
-    def _update_user_vector_on_swipe(self, actor_user_id: str | int, target_user_id: str | int, action: str, trace_id: UUID) -> None:
+    def _update_user_vector_on_pass(self, actor_user_id: int, target_user_id: int, trace_id: UUID) -> None:
         """
-        Обновляет вектор актора: если лайк - приближает к таргету, если пас - отдаляет.
+        Обновляет вектор пользователя actor_user_id, чтобы он стал менее похожим на target_user_id.
+        Это реализует дообучение по свайпам "pass".
         """
         try:
+            # Получаем векторы из Qdrant
             actor_id = _string_to_uuid(str(actor_user_id))
             target_id = _string_to_uuid(str(target_user_id))
             
-            # ВАЖНО: Добавили with_payload=True
             points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
                 ids=[actor_id, target_id],
-                with_vectors=True,
-                with_payload=True 
+                with_vectors=True
             )
             
             if len(points) != 2:
-                print(f"[{trace_id}] Не найдены векторы для юзеров {actor_user_id} и {target_user_id}")
+                print(f"[{trace_id}] Could not retrieve vectors for users {actor_user_id} and {target_user_id}")
                 return
             
-            actor_vector, target_vector, actor_payload = None, None, None
+            actor_vector = None
+            target_vector = None
             for point in points:
                 if point.id == actor_id:
                     actor_vector = point.vector
-                    actor_payload = point.payload # ВАЖНО: Сохраняем payload
                 elif point.id == target_id:
                     target_vector = point.vector
             
             if actor_vector is None or target_vector is None:
+                print(f"[{trace_id}] Missing vectors for update")
                 return
             
-            # ВАЖНО: Увеличили шаг, чтобы результат был заметен сразу!
-            alpha = 0.1
+            # Корректируем вектор актора: вычитаем часть вектора цели
+            # alpha - коэффициент обучения, можно настроить
+            alpha = 0.01  # маленький шаг, чтобы не переобучить сильно
+            new_vector = [
+                actor - alpha * target
+                for actor, target in zip(actor_vector, target_vector)
+            ]
             
-            if action == "like":
-                # Приближаем: складываем векторы с весом
-                new_vector = [
-                    actor + alpha * target
-                    for actor, target in zip(actor_vector, target_vector)
-                ]
-                print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} приблизился к {target_user_id} (like)"
-            else:
-                # Отдаляем: вычитаем, как было
-                new_vector = [
-                    actor - alpha * target
-                    for actor, target in zip(actor_vector, target_vector)
-                ]
-                print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} отдалился от {target_user_id} (pass)"
-            
-            # Нормализация
+            # Нормализуем вектор, чтобы сохранить единичную длину (для косинусного расстояния)
             norm = np.linalg.norm(new_vector)
             if norm > 0:
-                new_vector = [float(x / norm) for x in new_vector] # Приводим к float для JSON
+                new_vector = [x / norm for x in new_vector]
             
-            # ВАЖНО: Передаем payload обратно
+            # Обновляем вектор в Qdrant
             self._qdrant_client.upsert(
                 collection_name="user_profiles",
-                points=[PointStruct(id=actor_id, vector=new_vector, payload=actor_payload)]
+                points=[PointStruct(id=actor_id, vector=new_vector)]
             )
-            print(print_msg)
+            
+            print(f"[{trace_id}] Updated vector for user {actor_user_id} based on pass to {target_user_id}")
             
         except Exception as exc:
-            print(f"[{trace_id}] Ошибка обновления вектора: {exc}")
+            print(f"[{trace_id}] Error updating user vector: {exc}")
     def update_user_profile_favorites(
         self, 
         user_id: int, 

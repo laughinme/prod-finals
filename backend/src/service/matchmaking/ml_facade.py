@@ -1,8 +1,4 @@
-import logging
 from datetime import date
-from uuid import UUID, uuid4
-
-import httpx
 
 from domain.dating import (
     CompatibilityExplanationResponse,
@@ -85,11 +81,6 @@ class MockMlFacade(MlFacade):
                 score += 0.16
                 reason_codes.append(CompatibilityReasonCode.GOAL_FIT)
 
-            shared_interests = sorted(set(requester.interests).intersection(candidate.interests))
-            if shared_interests:
-                score += min(0.18, 0.06 * len(shared_interests))
-                reason_codes.append(CompatibilityReasonCode.INTERESTS_OVERLAP)
-
             requester_age = _age_for_birth_date(requester.birth_date, today)
             candidate_age = _age_for_birth_date(candidate.birth_date, today)
             if self._has_mutual_age_fit(requester, candidate, requester_age, candidate_age):
@@ -140,7 +131,6 @@ class MockMlFacade(MlFacade):
             CompatibilityReasonCode.AGE_FIT: "Your expected age ranges align both ways.",
             CompatibilityReasonCode.GOAL_FIT: "You are looking for a similar kind of connection.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Your mutual preferences line up well.",
-            CompatibilityReasonCode.INTERESTS_OVERLAP: "You have overlapping interests to build on.",
             CompatibilityReasonCode.PROFILE_QUALITY: "This profile gives enough signal for a confident match.",
         }
         return CompatibilityPreview(
@@ -248,11 +238,6 @@ class MockMlFacade(MlFacade):
                 "Your mutual preferences suggest the match is viable from both sides.",
                 0.81,
             ),
-            CompatibilityReasonCode.INTERESTS_OVERLAP: (
-                "Shared interests",
-                "You have overlapping interests that can help start a conversation naturally.",
-                0.72,
-            ),
             CompatibilityReasonCode.PROFILE_QUALITY: (
                 "Strong profile signal",
                 "The profile contains enough detail to support a more stable recommendation.",
@@ -261,181 +246,3 @@ class MockMlFacade(MlFacade):
         }
         title, text, confidence = mapping[code]
         return CompatibilityReason(code=code.value, title=title, text=text, confidence=confidence)
-
-
-logger = logging.getLogger(__name__)
-
-# ML ReasonCode → backend CompatibilityReasonCode
-_ML_REASON_MAP: dict[str, CompatibilityReasonCode] = {
-    "lifestyle_similarity": CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT,
-    "activity_overlap": CompatibilityReasonCode.GOAL_FIT,
-    "communication_style_fit": CompatibilityReasonCode.CITY_FIT,
-    "meetup_rhythm_fit": CompatibilityReasonCode.AGE_FIT,
-    "locality_fit": CompatibilityReasonCode.CITY_FIT,
-    "novelty_boost": CompatibilityReasonCode.PROFILE_QUALITY,
-}
-
-
-class HttpMlFacade(MlFacade):
-    """MlFacade implementation that calls the real ML service over HTTP."""
-
-    def __init__(self, *, base_url: str, service_token: str) -> None:
-        self._base_url = base_url.rstrip("/")
-        self._service_token = service_token
-        self._fallback = MockMlFacade()
-
-    def _headers(self) -> dict[str, str]:
-        return {"X-Service-Token": self._service_token}
-
-    def _map_reason_code(self, ml_code: str) -> CompatibilityReasonCode:
-        return _ML_REASON_MAP.get(ml_code, CompatibilityReasonCode.PROFILE_QUALITY)
-
-    def _map_decision_mode(self, ml_mode: str) -> DecisionMode:
-        if ml_mode == "model":
-            return DecisionMode.MODEL
-        return DecisionMode.FALLBACK
-
-    async def rank(
-        self,
-        requester: FeedCandidateContext,
-        candidates: list[FeedCandidateContext],
-        limit: int,
-    ) -> RankedCandidates:
-        trace_id = uuid4()
-        exclusion_ids = [str(c.user_id) for c in candidates]
-
-        payload = {
-            "trace_id": str(trace_id),
-            "request_user_id": str(requester.user_id),
-            "limit": limit,
-            "strategy": "balanced",
-            "context": {
-                "request_ts": date.today().isoformat() + "T00:00:00Z",
-                "client": "web",
-                "decision_policy": "daily_batch",
-            },
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(
-                    f"{self._base_url}/v1/recommendations",
-                    json=payload,
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:
-            logger.warning("ML service /v1/recommendations failed: %s, falling back to mock", exc)
-            return await self._fallback.rank(requester, candidates, limit)
-
-        ml_candidates = data.get("candidates", [])
-        decision_mode = self._map_decision_mode(data.get("decision_mode", "fallback"))
-
-        candidate_ids = {str(c.user_id) for c in candidates}
-
-        scored: list[RankedCandidate] = []
-        for ml_item in ml_candidates:
-            candidate_user_id_raw = str(ml_item["candidate_user_id"])
-
-            if candidate_user_id_raw not in candidate_ids:
-                continue
-
-            reason_codes = []
-            for signal in ml_item.get("reason_signals", []):
-                code = self._map_reason_code(signal.get("code", ""))
-                if code not in reason_codes:
-                    reason_codes.append(code)
-
-            if not reason_codes:
-                reason_codes.append(CompatibilityReasonCode.PROFILE_QUALITY)
-
-            try:
-                uid = UUID(candidate_user_id_raw)
-            except ValueError:
-                continue
-
-            scored.append(
-                RankedCandidate(
-                    candidate_user_id=uid,
-                    score=round(min(max(ml_item.get("score", 0.0), 0.0), 0.99), 2),
-                    reason_codes=reason_codes[:4],
-                )
-            )
-
-        scored.sort(key=lambda item: item.score, reverse=True)
-
-        if not scored:
-            logger.info("ML returned %d candidates but none matched backend user pool, falling back to mock", len(ml_candidates))
-            return await self._fallback.rank(requester, candidates, limit)
-
-        return RankedCandidates(
-            decision_mode=decision_mode,
-            candidates=scored[:limit],
-        )
-
-    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
-        trace_id = uuid4()
-        ml_payload = {
-            "trace_id": str(trace_id),
-            "requester_user_id": str(payload.requester.user_id),
-            "candidate_user_id": str(payload.candidate.user_id),
-            "channel": "feed",
-            "locale": "ru-RU",
-            "max_reasons": 3,
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(
-                    f"{self._base_url}/v1/explanations/compatibility",
-                    json=ml_payload,
-                    headers=self._headers(),
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:
-            logger.warning("ML service /v1/explanations/compatibility failed: %s, falling back to mock", exc)
-            return await self._fallback.explain(payload)
-
-        reasons: list[CompatibilityReason] = []
-        for r in data.get("reasons", []):
-            code = self._map_reason_code(r.get("code", ""))
-            reasons.append(
-                CompatibilityReason(
-                    code=code.value,
-                    title=r.get("template_key", code.value),
-                    text=r.get("template_key", ""),
-                    confidence=r.get("confidence", 0.5),
-                )
-            )
-
-        if not reasons:
-            reasons.append(
-                CompatibilityReason(
-                    code=CompatibilityReasonCode.PROFILE_QUALITY.value,
-                    title="Strong profile signal",
-                    text="The profile contains enough detail to support a more stable recommendation.",
-                    confidence=0.63,
-                )
-            )
-
-        return CompatibilityExplanationResponse(
-            serve_item_id=payload.serve_item_id,
-            candidate_user_id=payload.candidate.user_id,
-            reasons=reasons,
-            disclaimer="These explanations use aggregated profile and ML signals.",
-        )
-
-    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
-        return self._fallback.build_preview(scored)
-
-    def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
-        return self._fallback.empty_state(code)
-
-    def build_icebreakers(
-        self,
-        requester: FeedCandidateContext,
-        candidate: FeedCandidateContext,
-    ) -> IcebreakersResponse:
-        return self._fallback.build_icebreakers(requester, candidate)

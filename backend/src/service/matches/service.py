@@ -30,9 +30,9 @@ class MatchService(BaseDatingService):
                 status=match.status,
                 last_message_preview=last_message.text if last_message else None,
                 last_message_at=last_message.created_at if last_message else None,
-                unread_count=int(unread_count or 0),
+                unread_count=0,
             )
-            for match, peer, conversation, last_message, unread_count in rows
+            for match, peer, conversation, last_message in rows
         ]
         return MatchListResponse(items=items)
 

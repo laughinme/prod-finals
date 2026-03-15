@@ -20,7 +20,6 @@ class User(TimestampMixin, Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
-    service_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     
     # Credentials
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
@@ -46,7 +45,6 @@ class User(TimestampMixin, Base):
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    interests: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     quiz_started: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
@@ -160,10 +158,11 @@ class User(TimestampMixin, Base):
         checks = [
             bool(self.resolved_display_name),
             self.birth_date is not None,
+            self.city_id is not None,
             self.gender is not None,
             bool(self.looking_for_genders),
             self.age_range_min is not None and self.age_range_max is not None,
-            bool(self.interests),
+            self.goal is not None,
             self.bio is not None and bool(self.bio.strip()),
             self.has_approved_photo,
         ]

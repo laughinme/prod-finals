@@ -9,7 +9,6 @@ from ..audit import AuditLog, OutboxEvent
 from ..conversations import Conversation, Message
 from ..feed import InteractionEvent, RecommendationBatch, RecommendationItem
 from ..matches import Match, PairState
-from ..notifications import MessageNotification
 from ..onboarding import OnboardingQuizAnswer
 from ..safety import Block, Report
 from ..users import User
@@ -129,10 +128,7 @@ class MatchmakingInterface:
             select(Match).where(Match.user_low_id == low_id, Match.user_high_id == high_id)
         )
 
-    async def list_matches_for_user(
-        self,
-        user_id: UUID,
-    ) -> list[tuple[Match, User, Conversation | None, Message | None, int]]:
+    async def list_matches_for_user(self, user_id: UUID) -> list[tuple[Match, User, Conversation | None, Message | None]]:
         peer = aliased(User)
         last_message_at_subq = (
             select(
@@ -143,26 +139,8 @@ class MatchmakingInterface:
             .subquery()
         )
         last_message = aliased(Message)
-        unread_notifications_subq = (
-            select(
-                MessageNotification.conversation_id.label("conversation_id"),
-                func.count(MessageNotification.id).label("unread_count"),
-            )
-            .where(
-                MessageNotification.user_id == user_id,
-                MessageNotification.read_at.is_(None),
-            )
-            .group_by(MessageNotification.conversation_id)
-            .subquery()
-        )
         stmt = (
-            select(
-                Match,
-                peer,
-                Conversation,
-                last_message,
-                func.coalesce(unread_notifications_subq.c.unread_count, 0).label("unread_count"),
-            )
+            select(Match, peer, Conversation, last_message)
             .join(
                 peer,
                 or_(
@@ -182,11 +160,6 @@ class MatchmakingInterface:
                     last_message.conversation_id == Conversation.id,
                     last_message.created_at == last_message_at_subq.c.last_created_at,
                 ),
-                isouter=True,
-            )
-            .join(
-                unread_notifications_subq,
-                unread_notifications_subq.c.conversation_id == Conversation.id,
                 isouter=True,
             )
             .where(or_(Match.user_low_id == user_id, Match.user_high_id == user_id))

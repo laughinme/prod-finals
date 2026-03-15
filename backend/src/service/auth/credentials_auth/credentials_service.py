@@ -12,7 +12,6 @@ from domain.auth import UserLogin, UserRegister
 from domain.auth.enums import DEFAULT_ROLE
 from core.crypto import hash_password, verify_password, needs_rehash
 from service.notifications import NotificationService
-from service.mock_identity import MockIdentityService
 from .exceptions import AlreadyExists, WrongCredentials
 from ..tokens import TokenService
 
@@ -26,14 +25,12 @@ class CredentialsService:
         role_repo: RolesInterface,
         token_service: TokenService,
         notification_service: NotificationService,
-        mock_identity_service: MockIdentityService,
     ):
         self.uow = uow
         self.user_repo = user_repo
         self.role_repo = role_repo
         self.token_service = token_service
         self.notification_service = notification_service
-        self.mock_identity_service = mock_identity_service
         self.settings = get_settings()
         
     @staticmethod
@@ -71,12 +68,6 @@ class CredentialsService:
             await self.uow.session.flush()
         except IntegrityError:
             raise AlreadyExists()
-
-        await self.mock_identity_service.assign_profile(
-            user,
-            seed=payload.email,
-            overwrite=False,
-        )
         
         
         default_role = await self.role_repo.get_by_slug(DEFAULT_ROLE.value)
