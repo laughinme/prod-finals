@@ -122,7 +122,8 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       return;
     }
     await markSeenByNotificationId(currentNotification.notificationId);
-  }, [currentNotification, markSeenByNotificationId]);
+    await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+  }, [currentNotification, markSeenByNotificationId, queryClient]);
 
   const openCurrentMatch = useCallback(async () => {
     if (!currentNotification) {

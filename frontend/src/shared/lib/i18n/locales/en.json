@@ -96,6 +96,7 @@
     "maybe_later": "Maybe later",
     "realtime_match_hint": "You have a fresh match and can start the conversation right away.",
     "new_match_badge": "New match",
+    "new_match_toast": "You have a new match!",
     "empty_title": "No matches yet",
     "empty_description": "When a match happens, it will appear here. For now, you can go back to discovery."
   },
