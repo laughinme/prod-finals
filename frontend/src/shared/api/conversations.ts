@@ -15,6 +15,13 @@ export interface ConversationMessagesResponse {
   next_cursor: string | null;
 }
 
+export interface ConversationRealtimeTokenResponse {
+  enabled: boolean;
+  channel: string | null;
+  token: string | null;
+  expires_at: string | null;
+}
+
 export type ConversationStatus =
   | "active"
   | "closed_by_user"
@@ -92,6 +99,15 @@ export const conversationsApi = {
     const response = await axiosInstance.post<MessageResponse>(
       `/api/v1/conversations/${conversationId}/messages`,
       { text },
+    );
+    return response.data;
+  },
+
+  getRealtimeToken: async (
+    conversationId: string,
+  ): Promise<ConversationRealtimeTokenResponse> => {
+    const response = await axiosInstance.get<ConversationRealtimeTokenResponse>(
+      `/api/v1/conversations/${conversationId}/realtime-token`,
     );
     return response.data;
   },
