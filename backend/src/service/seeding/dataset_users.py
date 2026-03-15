@@ -5,6 +5,7 @@ import asyncio
 from core.crypto import hash_password
 from database.relational_db import RolesInterface, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
+from domain.dating.category_catalog import CategoryDefinition, pick_category_keys
 from service.mock_identity import MockIdentityRegistry
 
 from .base import SeedContext
@@ -20,8 +21,14 @@ SEED_AVATAR_BYTES = (
 class DatasetUsersSeedTask:
     name = "dataset_users"
 
-    def __init__(self, *, registry: MockIdentityRegistry) -> None:
+    def __init__(
+        self,
+        *,
+        registry: MockIdentityRegistry,
+        category_definitions: tuple[CategoryDefinition, ...],
+    ) -> None:
         self.registry = registry
+        self.category_definitions = category_definitions
 
     async def should_run(self, context: SeedContext) -> bool:
         return context.settings.MOCK_USER_SEED_ENABLED
@@ -68,7 +75,11 @@ class DatasetUsersSeedTask:
             user.age_range_max = None
             user.distance_km = None
             user.goal = None
-            user.interests = []
+            user.interests = pick_category_keys(
+                f"dataset-interests:{profile.service_user_id}",
+                min_items=3,
+                max_items=min(5, len(self.category_definitions) or 5),
+            )
             user.avatar_status = "approved"
             user.avatar_rejection_reason = None
 

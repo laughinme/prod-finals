@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from domain.dating.category_catalog import load_category_definitions
 from service.mock_identity import get_mock_identity_registry
 
 from .base import SeedContext, SeedTask
+from .categories import PreferenceCategoriesSeedTask
 from .dataset_users import DatasetUsersSeedTask
 
 
@@ -17,9 +19,14 @@ class SeederRegistry:
 
 
 def build_seeder_registry() -> SeederRegistry:
+    category_definitions = load_category_definitions()
     return SeederRegistry(
         tasks=[
-            DatasetUsersSeedTask(registry=get_mock_identity_registry()),
+            PreferenceCategoriesSeedTask(categories=category_definitions),
+            DatasetUsersSeedTask(
+                registry=get_mock_identity_registry(),
+                category_definitions=category_definitions,
+            ),
         ]
     )
 
