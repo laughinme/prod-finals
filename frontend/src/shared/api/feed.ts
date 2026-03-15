@@ -68,8 +68,14 @@ export type FeedCandidateDto = {
 
 export type FeedCompatibilityDto = {
   score: number;
+  score_percent: number;
   preview: string;
   reason_codes: string[];
+  category_breakdown: Array<{
+    category_key: string;
+    label: string;
+    score_percent: number;
+  }>;
   details_available: boolean;
 };
 

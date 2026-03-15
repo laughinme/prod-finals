@@ -66,6 +66,7 @@ class Goal(str, Enum):
 
 
 class CompatibilityReasonCode(str, Enum):
+    CATEGORY_FIT = "category_fit"
     CITY_FIT = "city_fit"
     AGE_FIT = "age_fit"
     GOAL_FIT = "goal_fit"

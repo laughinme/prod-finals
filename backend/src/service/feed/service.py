@@ -4,6 +4,7 @@ from datetime import date
 from database.relational_db import RecommendationBatch, RecommendationItem, User
 from domain.dating import (
     CompatibilityExplanationResponse,
+    CompatibilityPreview,
     DecisionMode,
     ExplanationRequest,
     FeedCandidate,
@@ -153,6 +154,7 @@ class FeedService(BaseDatingService):
                     compatibility_mode="basic_fallback",
                     preview=preview.preview,
                     reason_codes=preview.reason_codes,
+                    category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
                 )
             )
 
@@ -221,16 +223,12 @@ class FeedService(BaseDatingService):
                         bio=candidate.bio,
                         avatar_url=candidate.avatar_url,
                     ),
-                    compatibility=self.ml_facade.build_preview(
-                        type(
-                            "PreviewCandidate",
-                            (),
-                            {
-                                "candidate_user_id": item.target_user_id,
-                                "score": item.score,
-                                "reason_codes": item.reason_codes,
-                            },
-                        )()
+                    compatibility=CompatibilityPreview(
+                        score=item.score,
+                        score_percent=int(round(item.score * 100)),
+                        preview=item.preview,
+                        reason_codes=item.reason_codes,
+                        category_breakdown=item.category_breakdown,
                     ),
                     actions=FeedCardActions(
                         can_like=True,
