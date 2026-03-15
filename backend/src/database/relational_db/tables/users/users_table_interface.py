@@ -44,6 +44,19 @@ class UserInterface:
             .where(User.demo_user_key == demo_user_key)
         )
 
+    async def get_by_service_user_id(self, service_user_id: str) -> User | None:
+        return await self.session.scalar(
+            select(User)
+            .options(selectinload(User.roles), selectinload(User.city))
+            .where(User.service_user_id == service_user_id)
+        )
+
+    async def list_service_user_ids(self) -> list[str]:
+        rows = await self.session.scalars(
+            select(User.service_user_id).where(User.service_user_id.is_not(None))
+        )
+        return [value for value in rows.all() if value is not None]
+
     async def list_by_ids(self, ids: list[UUID]) -> list[User]:
         if not ids:
             return []
