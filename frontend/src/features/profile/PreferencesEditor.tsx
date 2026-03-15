@@ -12,6 +12,7 @@ import {
     postOnboardingAnswers,
 } from "@/shared/api/onboarding";
 import type { Question } from "@/entities/quiz";
+import { FEED_REFRESH_EVENT } from "@/features/matchmaking/model/useFeed";
 
 type MatchPreferencesState = {
     genders: string[];
@@ -34,6 +35,7 @@ export function PreferencesEditor() {
         mutationFn: postOnboardingAnswers,
         onSuccess: () => {
             toast.success(t("profile.preferences_saved"));
+            window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
         },
         onError: (error) => {
             Sentry.captureException(error);

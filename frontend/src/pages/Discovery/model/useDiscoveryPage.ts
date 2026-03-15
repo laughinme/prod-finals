@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
   MatchProfile,
   MatchProfileExplanationReason,
-  MatchProfileId,
 } from "@/entities/match-profile/model";
 import {
   useFeed,
@@ -45,22 +44,19 @@ function getExplanationText(
 
 export function useDiscoveryPage() {
   const navigate = useNavigate();
-  const { data: feed } = useFeed();
+  const { profiles, notifyVisible, removeProfile } = useFeed();
   const feedReactionMutation = useFeedReaction();
-  const [dismissedProfileIds, setDismissedProfileIds] = useState<MatchProfileId[]>(
-    [],
-  );
   const [showReport, setShowReport] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
   const currentProfileSeenAtRef = useRef<number | null>(null);
 
-  const profiles = feed?.profiles ?? [];
-  const visibleProfiles = useMemo(
-    () =>
-      profiles.filter((profile) => !dismissedProfileIds.includes(profile.id)),
-    [dismissedProfileIds, profiles],
-  );
-  const baseCurrentProfile = visibleProfiles[0] ?? null;
+  const baseCurrentProfile = profiles[0] ?? null;
+
+  // Notify feed when running low so it prefetches
+  useEffect(() => {
+    notifyVisible(profiles.length);
+  }, [profiles.length, notifyVisible]);
+
   const currentProfileServeItemId =
     baseCurrentProfile?.source === "feed" &&
     typeof baseCurrentProfile.id === "string"
@@ -105,11 +101,7 @@ export function useDiscoveryPage() {
       return;
     }
 
-    setDismissedProfileIds((prevIds) =>
-      prevIds.includes(currentProfile.id)
-        ? prevIds
-        : [...prevIds, currentProfile.id],
-    );
+    removeProfile(currentProfile.id);
   };
 
   const handleLike = async () => {

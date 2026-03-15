@@ -11,7 +11,7 @@ import {
 } from "@/entities/match/model";
 import { postCloseMatch } from "@/shared/api/matches";
 
-import { FEED_QUERY_KEY } from "@/features/matchmaking/model/useFeed";
+import { FEED_REFRESH_EVENT } from "@/features/matchmaking/model/useFeed";
 
 import { MATCHES_QUERY_KEY } from "./useMatches";
 
@@ -40,7 +40,7 @@ export function useCloseMatch(): UseMutationResult<
       await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
 
       if (result.removedFromFutureFeed) {
-        await queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
+        window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
       }
     },
   });
