@@ -22,6 +22,11 @@ export interface ConversationRealtimeTokenResponse {
   expires_at: string | null;
 }
 
+export interface ConversationReadResponse {
+  conversation_id: string;
+  read_at: string;
+}
+
 export type ConversationStatus =
   | "active"
   | "closed_by_user"
@@ -108,6 +113,13 @@ export const conversationsApi = {
   ): Promise<ConversationRealtimeTokenResponse> => {
     const response = await axiosInstance.get<ConversationRealtimeTokenResponse>(
       `/conversations/${conversationId}/realtime-token`,
+    );
+    return response.data;
+  },
+
+  markRead: async (conversationId: string): Promise<ConversationReadResponse> => {
+    const response = await axiosInstance.post<ConversationReadResponse>(
+      `/conversations/${conversationId}/read`,
     );
     return response.data;
   },
