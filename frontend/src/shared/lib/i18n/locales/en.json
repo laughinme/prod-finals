@@ -106,9 +106,11 @@
     "messages_title": "Messages",
     "close_match": "Close match",
     "close_match_error": "Failed to close match.",
+    "conversation_closed": "Conversation closed",
     "no_messages_yet": "No messages yet",
     "report_block": "Report / Block",
     "report_sent": "Report sent. User blocked.",
+    "send_message_error": "Failed to send message.",
     "write_message_placeholder": "Write a message..."
   }
 }

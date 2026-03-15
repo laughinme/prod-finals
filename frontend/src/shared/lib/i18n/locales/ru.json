@@ -106,9 +106,11 @@
     "messages_title": "Сообщения",
     "close_match": "Закрыть мэтч",
     "close_match_error": "Не удалось закрыть мэтч.",
+    "conversation_closed": "Диалог закрыт",
     "no_messages_yet": "Сообщений пока нет",
     "report_block": "Пожаловаться / Заблокировать",
     "report_sent": "Жалоба отправлена. Пользователь заблокирован.",
+    "send_message_error": "Не удалось отправить сообщение.",
     "write_message_placeholder": "Написать сообщение..."
   }
 }
