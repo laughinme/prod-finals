@@ -38,7 +38,7 @@ export function DiscoveryMobileProfileCard({
           <div className="absolute top-5 right-5 left-5 flex items-start justify-between gap-3 sm:top-6 sm:right-6 sm:left-6">
             {showMatchScore ? (
               <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-                <div className="flex items-center gap-2 rounded-full bg-[#2A2A2A]/80 px-4 py-2 text-sm font-bold text-white backdrop-blur-md transition-opacity hover:opacity-80">
+                <div className="flex items-center gap-2 rounded-full bg-[#2A2A2A]/80 px-4 py-2 text-sm font-bold text-white backdrop-blur-md ">
                   <Sparkles className="size-4 text-primary" />
                   {profile.matchScore}%
                 </div>

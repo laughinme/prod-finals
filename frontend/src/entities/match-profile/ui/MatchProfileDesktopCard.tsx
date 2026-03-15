@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Calendar, Info, MapPin, ShieldAlert } from "lucide-react";
+import { Calendar, MapPin, ShieldAlert } from "lucide-react";
 
 import type { MatchProfile } from "../model";
 import { Badge } from "@/shared/components/ui/badge";
@@ -24,7 +24,7 @@ export function MatchProfileDesktopCard({
       {/* Top Left Badge */}
       <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
         <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-          <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md transition-opacity hover:opacity-80">
+          <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md ">
             {profile.matchScore}%
           </div>
         </ScoreBreakdownPopover>
@@ -46,7 +46,7 @@ export function MatchProfileDesktopCard({
         {/* Mobile top left badge */}
         <div className="absolute top-4 left-4 z-20 md:hidden">
           <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-            <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md transition-opacity hover:opacity-80">
+            <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md ">
               {profile.matchScore}%
             </div>
           </ScoreBreakdownPopover>
@@ -108,10 +108,7 @@ export function MatchProfileDesktopCard({
         </div>
 
         <div className="mt-auto mb-0 rounded-3xl border border-primary/10 bg-primary/5 p-6">
-          <div className="flex items-start gap-4">
-            <div className="shrink-0 rounded-2xl bg-primary/10 p-3 text-primary">
-              <Info className="size-6" />
-            </div>
+          <div>
             <div>
               <h4 className="mb-2 text-lg font-semibold">{t("discovery.why_matched")}</h4>
               <p className="leading-relaxed text-muted-foreground">

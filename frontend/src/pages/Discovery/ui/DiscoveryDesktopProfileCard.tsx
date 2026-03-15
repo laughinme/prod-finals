@@ -24,7 +24,7 @@ export function DiscoveryDesktopProfileCard({
       {showMatchScore ? (
         <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
           <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-            <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md transition-opacity hover:opacity-80">
+            <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md ">
               {profile.matchScore}%
             </div>
           </ScoreBreakdownPopover>
@@ -47,7 +47,7 @@ export function DiscoveryDesktopProfileCard({
         {showMatchScore ? (
           <div className="absolute top-4 left-4 z-20 md:hidden">
             <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-              <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md transition-opacity hover:opacity-80">
+              <div className="rounded-lg border border-primary/20 bg-black/90 px-2.5 py-1 text-base font-black text-primary shadow-lg backdrop-blur-md ">
                 {profile.matchScore}%
               </div>
             </ScoreBreakdownPopover>
