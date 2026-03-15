@@ -56,12 +56,16 @@ export default function MatchPage() {
           </div>
 
           <div className="relative z-10 h-32 w-32 overflow-hidden rounded-full border-8 border-background shadow-2xl md:h-48 md:w-48">
-            <img
-              src={matchedProfile.image}
-              alt={matchedProfile.name}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
+            {matchedProfile.image ? (
+              <img
+                src={matchedProfile.image}
+                alt={matchedProfile.name}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="h-full w-full bg-secondary" />
+            )}
           </div>
         </motion.div>
 

@@ -22,15 +22,11 @@ export function useProfileSetup() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState(1);
   const [photoUploaded, setPhotoUploaded] = useState(
     draft.photoUploaded || Boolean(profile?.profilePicUrl),
   );
   const [name, setName] = useState(draft.name || profile?.username || "");
   const [age, setAge] = useState(draft.age);
-  const [selectedInterests, setSelectedInterests] = useState<string[]>(
-    draft.interests,
-  );
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
     profile?.profilePicUrl ?? null,
@@ -60,9 +56,8 @@ export function useProfileSetup() {
       photoUploaded,
       name,
       age,
-      interests: selectedInterests,
     });
-  }, [age, name, photoUploaded, selectedInterests, setDraft]);
+  }, [age, name, photoUploaded, setDraft]);
 
   useEffect(() => {
     return () => {
@@ -74,21 +69,7 @@ export function useProfileSetup() {
 
   const isStep1Valid =
     photoUploaded && name.trim().length > 1 && age.trim().length > 0;
-  const isStep2Valid = selectedInterests.length >= 3;
   const isSubmittingStep1 = isUpdatingProfile || isUploadingAvatar;
-
-  const toggleInterest = (interest: string) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests((prevInterests) =>
-        prevInterests.filter((item) => item !== interest),
-      );
-      return;
-    }
-
-    if (selectedInterests.length < 5) {
-      setSelectedInterests((prevInterests) => [...prevInterests, interest]);
-    }
-  };
 
   const handleAvatarSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,46 +105,35 @@ export function useProfileSetup() {
         setSelectedAvatarFile(null);
       }
 
-      setStep(2);
+      const nextDraft: MatchmakingDraft = {
+        photoUploaded: true,
+        name,
+        age,
+      };
+
+      completeOnboarding(nextDraft);
+      navigate("/discovery", { replace: true });
     } catch {
       setStep1Error(t("profile.save_error"));
     }
   };
 
-  const handleComplete = () => {
-    const nextDraft: MatchmakingDraft = {
-      photoUploaded,
-      name,
-      age,
-      interests: selectedInterests,
-    };
-
-    completeOnboarding(nextDraft);
-    navigate("/discovery", { replace: true });
-  };
-
   return {
     profile,
-    step,
     photoUploaded,
     name,
     age,
-    selectedInterests,
     avatarPreview,
     step1Error,
     fileInputRef,
     isStep1Valid,
-    isStep2Valid,
     isSubmittingStep1,
     avatarUploadStatusLabel: selectedAvatarFile
       ? t("profile.ready_to_upload")
       : t("profile.uploaded"),
     setName,
     setAge,
-    setStep,
-    toggleInterest,
     handleAvatarSelection,
     handleStep1Submit,
-    handleComplete,
   };
 }

@@ -23,8 +23,8 @@ function getExplanationTags(
   fallbackTags: string[],
 ): string[] {
   const nextTags = reasons
-    .map((reason) => reason.tag)
-    .filter((tag): tag is string => Boolean(tag))
+    .map((reason) => reason.title.trim())
+    .filter(Boolean)
     .slice(0, 3);
 
   return nextTags.length > 0 ? nextTags : fallbackTags;

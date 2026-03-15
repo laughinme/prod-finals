@@ -7,10 +7,8 @@ import {
 } from "react";
 
 import { useAuth } from "@/app/providers/auth/useAuth";
-import {
-  EMPTY_MATCHMAKING_DRAFT,
-  type MatchmakingDraft,
-} from "@/entities/match-profile/model";
+import type { MatchmakingDraft } from "@/entities/match-profile/model";
+import { EMPTY_MATCHMAKING_DRAFT } from "@/entities/match-profile/model";
 
 type MatchmakingFlowContextValue = {
   draft: MatchmakingDraft;
@@ -58,7 +56,6 @@ function readPersistedState(storageKey: string | null): PersistedMatchmakingStat
       draft: {
         ...EMPTY_MATCHMAKING_DRAFT,
         ...parsedValue.draft,
-        interests: parsedValue.draft?.interests ?? EMPTY_MATCHMAKING_DRAFT.interests,
       },
       isOnboardingComplete: parsedValue.isOnboardingComplete ?? false,
     };

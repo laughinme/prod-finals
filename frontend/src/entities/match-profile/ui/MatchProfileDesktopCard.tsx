@@ -26,12 +26,16 @@ export function MatchProfileDesktopCard({
   return (
     <Card className="overflow-hidden rounded-4xl border-border bg-card py-0 shadow-xl md:flex-row">
       <div className="relative h-[50vh] w-full md:h-[70vh] md:w-1/2">
-        <img
-          src={profile.image}
-          alt={profile.name}
-          className="absolute inset-0 h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
+        {profile.image ? (
+          <img
+            src={profile.image}
+            alt={profile.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-secondary" />
+        )}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent md:hidden" />
         <div className="absolute right-4 bottom-4 left-4 text-white md:hidden">
           <h2 className="text-3xl font-bold">{title}</h2>
