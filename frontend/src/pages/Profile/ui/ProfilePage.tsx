@@ -14,8 +14,7 @@ import { useProfile } from "@/features/profile/useProfile";
 import { ProfileAvatarUpload } from "@/features/profile/ProfileAvatarUpload";
 import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
 import { PreferencesEditor } from "@/features/profile/PreferencesEditor";
-import { DiscoveryDesktopProfileCard } from "@/pages/Discovery/ui/DiscoveryDesktopProfileCard";
-import { DiscoveryMobileProfileCard } from "@/pages/Discovery/ui/DiscoveryMobileProfileCard";
+import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import type { MatchProfile } from "@/entities/match-profile/model";
 
@@ -58,6 +57,24 @@ export default function ProfilePage() {
   const auth = useAuth();
   const { data: profile, isLoading, isError } = useProfile();
   const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
+
+  function getAge(birthDate: string | null | undefined): number | null {
+    if (!birthDate) return null;
+
+    const [year, month, day] = birthDate.slice(0, 10).split("-").map(Number);
+    if (!year || !month || !day) return null;
+
+    const now = new Date();
+    let age = now.getUTCFullYear() - year;
+    const currentMonth = now.getUTCMonth() + 1;
+    const currentDay = now.getUTCDate();
+
+    if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+      age -= 1;
+    }
+
+    return age >= 0 ? age : null;
+  }
 
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return "—";
@@ -270,52 +287,48 @@ export default function ProfilePage() {
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.5 }}
-                    className="mt-8 md:mt-12"
+                    className="relative left-1/2 mt-8 w-screen -translate-x-1/2 md:mt-12"
                   >
-                    <h2 className="mb-4 text-xl font-bold tracking-tight md:mb-6 md:text-2xl">
-                      {t("profile.my_questionnaire")}
-                    </h2>
-                    {(() => {
-                      const previewProfile = {
-                        id: profile.email,
-                        candidateUserId: null,
-                        name: profile.fullName,
-                        age: null,
-                        image: profile.profilePicUrl,
-                        bio: profile.bio,
-                        matchScore: 0,
-                        categoryBreakdown: [],
-                        tags: [],
-                        explanation: "",
-                        location: "",
-                        activity: "",
-                        reasonCodes: [],
-                        detailsAvailable: false,
-                        actions: null,
-                        source: "feed",
-                      } satisfies MatchProfile;
+                    <div className="flex w-full flex-col items-center md:translate-x-20">
+                      <h2 className="mb-4 text-center text-xl font-bold tracking-tight md:mb-6 md:text-2xl">
+                        {t("profile.my_questionnaire")}
+                      </h2>
+                      <div className="w-[calc(100vw-2rem)] max-w-5xl md:w-[calc(100vw-4rem)]">
+                        {(() => {
+                          const previewProfile = {
+                            id: profile.email,
+                            candidateUserId: null,
+                            name: profile.fullName,
+                            age: getAge(profile.birthDate),
+                            image: profile.profilePicUrl,
+                            bio: profile.bio,
+                            matchScore: 0,
+                            categoryBreakdown: [],
+                            tags: [],
+                            explanation: "",
+                            location: "",
+                            activity: "",
+                            reasonCodes: [],
+                            detailsAvailable: false,
+                            actions: null,
+                            source: "feed",
+                          } satisfies MatchProfile;
 
-                      return isMobile ? (
-                        <DiscoveryMobileProfileCard
-                          profile={previewProfile}
-                          onLike={() => {}}
-                          onPass={() => {}}
-                          onOpenReport={() => {}}
-                          showMatchScore={false}
-                          showActions={false}
-                          showReportButton={false}
-                        />
-                      ) : (
-                        <DiscoveryDesktopProfileCard
-                          profile={previewProfile}
-                          onLike={() => {}}
-                          onPass={() => {}}
-                          onOpenReport={() => {}}
-                          showMatchScore={false}
-                          showReportButton={false}
-                        />
-                      );
-                    })()}
+                          return (
+                            <MatchProfileCard
+                              profile={previewProfile}
+                              isMobile={isMobile}
+                              onLike={() => {}}
+                              onPass={() => {}}
+                              onOpenReport={() => {}}
+                              showMatchScore={false}
+                              showReportButton={false}
+                              showActions={false}
+                            />
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </motion.div>
                 </>
               )}

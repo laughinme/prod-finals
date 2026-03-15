@@ -8,6 +8,9 @@ export interface MatchProfileCardProps {
   onLike: () => void;
   onPass: () => void;
   onOpenReport: () => void;
+  showMatchScore?: boolean;
+  showReportButton?: boolean;
+  showActions?: boolean;
 }
 
 export function MatchProfileCard({
@@ -16,6 +19,9 @@ export function MatchProfileCard({
   onLike,
   onPass,
   onOpenReport,
+  showMatchScore = true,
+  showReportButton = true,
+  showActions = true,
 }: MatchProfileCardProps) {
   if (isMobile) {
     return (
@@ -24,6 +30,9 @@ export function MatchProfileCard({
         onLike={onLike}
         onPass={onPass}
         onOpenReport={onOpenReport}
+        showMatchScore={showMatchScore}
+        showReportButton={showReportButton}
+        showActions={showActions}
       />
     );
   }
@@ -32,6 +41,8 @@ export function MatchProfileCard({
     <MatchProfileDesktopCard
       profile={profile}
       onOpenReport={onOpenReport}
+      showMatchScore={showMatchScore}
+      showReportButton={showReportButton}
     />
   );
 }

@@ -119,17 +119,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                     </div>
                 </CardContent>
 
-                <CardFooter className="flex gap-3 justify-end px-0 pt-2 border-none">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="lg"
-                        disabled={!hasChanges || isPending}
-                        onClick={handleReset}
-                    >
-                        {t("common.cancel")}
-                    </Button>
-
+                <CardFooter className="flex gap-3 justify-start px-0 pt-2 border-none">
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                             type="submit"
@@ -140,6 +130,16 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                             {isPending ? t("common.saving") : t("common.save")}
                         </Button>
                     </motion.div>
+
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        disabled={!hasChanges || isPending}
+                        onClick={handleReset}
+                    >
+                        {t("common.cancel")}
+                    </Button>
                 </CardFooter>
             </form>
         </Card>

@@ -5,7 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 
 type QuizControlsProps = {
-  onBack: () => void;
+  onBack?: () => void;
   onNext: () => void;
   nextLabel: ReactNode;
   backLabel: ReactNode;
@@ -34,15 +34,17 @@ export function QuizControls({
         className,
       )}
     >
-      <Button
-        variant="outline"
-        size="lg"
-        className="h-14 flex-1 rounded-2xl"
-        onClick={onBack}
-        disabled={isBackDisabled || isBackLoading}
-      >
-        {isBackLoading ? <Loader2 className="animate-spin" /> : backLabel}
-      </Button>
+      {onBack && (
+        <Button
+          variant="outline"
+          size="lg"
+          className="h-14 flex-1 rounded-2xl"
+          onClick={onBack}
+          disabled={isBackDisabled || isBackLoading}
+        >
+          {isBackLoading ? <Loader2 className="animate-spin" /> : backLabel}
+        </Button>
+      )}
 
       <Button
         size="lg"

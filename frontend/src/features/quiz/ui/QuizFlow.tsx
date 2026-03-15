@@ -339,7 +339,7 @@ export function QuizFlow() {
           </AnimatePresence>
 
           <QuizControls
-            onBack={handleBack}
+            onBack={currentIndex > 0 ? handleBack : undefined}
             onNext={handleNext}
             backLabel={t("common.back")}
             nextLabel={
