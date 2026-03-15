@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import date
 from hashlib import sha256
@@ -68,7 +66,8 @@ class MockIdentityRegistry:
 
     def build_seed_accounts(self, limit: int) -> list[MockSeedAccount]:
         accounts: list[MockSeedAccount] = []
-        for index, profile in enumerate(self._profiles[:limit], start=1):
+        member_profiles = list(self._profiles[:limit])
+        for index, profile in enumerate(member_profiles, start=1):
             interests = [self.label_for_interest(slug) for slug in profile.interests[:3]]
             bio = f"Люблю {', '.join(interests)} и новые знакомства."
             accounts.append(
@@ -79,10 +78,26 @@ class MockIdentityRegistry:
                     display_name=f"Demo User {index:04d}",
                     bio=bio,
                     demo_user_key=f"mock_{index:04d}",
-                    roles=("member", "admin") if index == 1 else ("member",),
+                    roles=("member",),
                     profile=profile,
                 )
             )
+
+        admin_profile_index = min(limit, max(len(self._profiles) - 1, 0))
+        admin_profile = self._profiles[admin_profile_index]
+        admin_interests = [self.label_for_interest(slug) for slug in admin_profile.interests[:3]]
+        accounts.append(
+            MockSeedAccount(
+                index=len(accounts) + 1,
+                email="mock-admin@example.com",
+                username="mock_admin",
+                display_name="Mock Admin",
+                bio=f"Админский демо-аккаунт. Люблю {', '.join(admin_interests)}.",
+                demo_user_key="mock_admin",
+                roles=("member", "admin"),
+                profile=admin_profile,
+            )
+        )
         return accounts
 
     def pick_available_profile(
