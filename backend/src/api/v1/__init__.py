@@ -9,7 +9,9 @@ def get_v1_router() -> APIRouter:
     from .matches import get_matches_router
     from .users import get_users_router
     from .misc import get_misc_router
+    from .notifications import get_notifications_router
     from .onboarding import get_onboarding_router
+    from .realtime import get_realtime_router
     from .safety import get_safety_router
     from .admins import get_admins_router
     
@@ -21,6 +23,8 @@ def get_v1_router() -> APIRouter:
     router.include_router(get_feed_router())
     router.include_router(get_matches_router())
     router.include_router(get_conversations_router())
+    router.include_router(get_notifications_router())
+    router.include_router(get_realtime_router())
     router.include_router(get_safety_router())
     router.include_router(get_audit_router())
     router.include_router(get_misc_router())
