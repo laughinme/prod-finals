@@ -31,8 +31,6 @@ export function MatchProfileCard({
   return (
     <MatchProfileDesktopCard
       profile={profile}
-      onLike={onLike}
-      onPass={onPass}
       onOpenReport={onOpenReport}
     />
   );

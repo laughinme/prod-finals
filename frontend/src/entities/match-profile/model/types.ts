@@ -44,6 +44,7 @@ export type MatchProfile = {
   name: string;
   age: number | null;
   image: string | null;
+  bio: string | null;
   matchScore: number;
   tags: string[];
   explanation: string;

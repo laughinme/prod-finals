@@ -30,6 +30,7 @@ export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
   name: dto.candidate.display_name,
   age: dto.candidate.age ?? null,
   image: dto.candidate.avatar_url ?? null,
+  bio: dto.candidate.bio ?? null,
   matchScore: Math.round(dto.compatibility.score * 100),
   tags: [],
   explanation: dto.compatibility.preview,

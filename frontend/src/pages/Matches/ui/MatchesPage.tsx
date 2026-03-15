@@ -41,7 +41,7 @@ export default function MatchesPage() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
-      <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
+      <main className="mx-auto max-w-400 p-4 sm:p-6 lg:p-8">
         <div className="columns-2 gap-4 space-y-4 sm:gap-6 sm:space-y-6 md:columns-3 lg:columns-4 xl:columns-5">
           {data?.matches.map((match) => (
             <button
@@ -65,10 +65,10 @@ export default function MatchesPage() {
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+              {/* градиент */}
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
 
-              {/* Text Info */}
+              {/* текст */}
               <div className="absolute bottom-0 left-0 right-0 translate-y-1 p-4 text-white transition-transform duration-300 group-hover:translate-y-0 sm:p-5">
                 <div className="mb-1 flex items-baseline gap-2">
                   <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
