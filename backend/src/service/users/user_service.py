@@ -68,8 +68,8 @@ class UserService:
         return UserModel(
             id=user.id,
             email=user.email,
-            username=user.username or user.resolved_display_name,
-            display_name=user.display_name,
+            first_name=user.first_name,
+            last_name=user.last_name,
             avatar_key=user.avatar_key,
             avatar_url=user.avatar_url,
             avatar_status=self._build_legacy_avatar_status(user),
@@ -132,12 +132,13 @@ class UserService:
             if prefs.get("goal") is not None:
                 user.goal = self._normalize_goal(prefs["goal"])
 
-        if "display_name" in data:
-            user.display_name = data.pop("display_name").strip() or None
+        if "first_name" in data:
+            value = data.pop("first_name")
+            user.first_name = value.strip() or None if isinstance(value, str) else value
 
-        if "username" in data:
-            value = data.pop("username")
-            user.username = value.strip() or None if isinstance(value, str) else value
+        if "last_name" in data:
+            value = data.pop("last_name")
+            user.last_name = value.strip() or None if isinstance(value, str) else value
 
         if "gender" in data:
             gender = data.pop("gender")

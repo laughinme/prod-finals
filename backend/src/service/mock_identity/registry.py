@@ -56,8 +56,8 @@ _DEFAULT_INTERESTS: tuple[str, ...] = ("coffee", "music", "travel")
 class MockIdentityProfile:
     service_user_id: str
     email: str
-    username: str
-    display_name: str
+    first_name: str
+    last_name: str
     gender: str
     birth_date: date
     bio: str
@@ -106,7 +106,6 @@ class MockIdentityRegistry:
             seed_key=f"registration:{normalized_email}",
             service_user_id=f"local-{digest[:32]}",
             email=normalized_email,
-            username=f"user_{digest[:10]}",
             is_dataset_user=False,
         )
 
@@ -116,14 +115,13 @@ class MockIdentityRegistry:
             seed_key=f"dataset:{service_user_id}",
             service_user_id=service_user_id,
             email=f"{local_part}@example.com",
-            username=local_part,
             is_dataset_user=True,
         )
         return DatasetUserProfile(
             service_user_id=profile.service_user_id,
             email=profile.email,
-            username=profile.username,
-            display_name=profile.display_name,
+            first_name=profile.first_name,
+            last_name=profile.last_name,
             gender=profile.gender,
             birth_date=profile.birth_date,
             bio=profile.bio,
@@ -137,7 +135,6 @@ class MockIdentityRegistry:
         seed_key: str,
         service_user_id: str,
         email: str,
-        username: str,
         is_dataset_user: bool,
     ) -> MockIdentityProfile:
         digest = sha256(seed_key.encode("utf-8")).digest()
@@ -150,14 +147,13 @@ class MockIdentityRegistry:
         day = 1 + (digest[5] % 28)
         birth_year = max(date.today().year - age, 1980)
         birth_date = date(birth_year, month, day)
-        display_name = f"{first_name} {last_name}"
         bio = self._build_bio(first_name, digest)
 
         return MockIdentityProfile(
             service_user_id=service_user_id,
             email=email,
-            username=username,
-            display_name=display_name,
+            first_name=first_name,
+            last_name=last_name,
             gender=gender,
             birth_date=birth_date,
             bio=bio,

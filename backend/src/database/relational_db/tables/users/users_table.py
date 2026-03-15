@@ -29,8 +29,8 @@ class User(TimestampMixin, Base):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
     # Minimal profile for template
-    username: Mapped[str | None] = mapped_column(String, nullable=True)
-    display_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     avatar_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     avatar_rejection_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -61,12 +61,6 @@ class User(TimestampMixin, Base):
     __table_args__ = (
         # GIN trigram indexes for fast text search
         Index(
-            'users_username_trgm',
-            'username',
-            postgresql_using='gin',
-            postgresql_ops={'username': 'gin_trgm_ops'}
-        ),
-        Index(
             'users_email_trgm',
             'email',
             postgresql_using='gin',
@@ -88,7 +82,12 @@ class User(TimestampMixin, Base):
 
     @property
     def resolved_display_name(self) -> str | None:
-        return self.display_name or self.username
+        full_name = " ".join(
+            part.strip()
+            for part in (self.first_name, self.last_name)
+            if part and part.strip()
+        ).strip()
+        return full_name or None
 
     @property
     def avatar_url(self) -> str | None:

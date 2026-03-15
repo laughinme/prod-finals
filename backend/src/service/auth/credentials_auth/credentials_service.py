@@ -63,7 +63,6 @@ class CredentialsService:
         user = User(
             email=payload.email,
             password_hash=password_hash,
-            username=getattr(payload, "username", None),
         )
         self.mock_identity_service.apply_registration_defaults(user)
         

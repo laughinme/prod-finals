@@ -78,7 +78,13 @@ class UserInterface:
             stmt = stmt.where(User.banned == banned)
         if search:
             pattern = f"%{search}%"
-            stmt = stmt.where(or_(User.username.ilike(pattern), User.email.ilike(pattern)))
+            stmt = stmt.where(
+                or_(
+                    User.first_name.ilike(pattern),
+                    User.last_name.ilike(pattern),
+                    User.email.ilike(pattern),
+                )
+            )
 
         # Cursor pagination (created_at desc, id desc)
         if cursor_created_at is not None and cursor_id is not None:

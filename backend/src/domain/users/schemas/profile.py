@@ -18,8 +18,8 @@ class UserModel(TimestampModel):
 
     id: UUID = Field(...)
     email: EmailStr = Field(..., description="User e-mail")
-    username: str | None = Field(None, description="User's display name")
-    display_name: str | None = Field(None, description="Preferred display name")
+    first_name: str | None = Field(None, max_length=80)
+    last_name: str | None = Field(None, max_length=80)
     avatar_key: str | None = Field(None, description="Storage key of the avatar object")
     avatar_url: str | None = Field(None, description="Public URL of the avatar object")
     avatar_status: str | None = None
@@ -43,8 +43,8 @@ class UserModel(TimestampModel):
 
 
 class UserPatch(BaseModel):
-    username: str | None = Field(None, description="User's display name", max_length=64)
-    display_name: str | None = Field(None, max_length=64)
+    first_name: str | None = Field(None, max_length=80)
+    last_name: str | None = Field(None, max_length=80)
     birth_date: date | None = None
     bio: str | None = Field(None, max_length=500)
     city_id: str | None = Field(None, max_length=64)

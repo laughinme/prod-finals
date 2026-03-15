@@ -26,7 +26,6 @@ async def test_register_login_refresh_logout_flow(
     payload = {
         "email": f"user_{suffix}@example.com",
         "password": faker.password(length=12),
-        "username": f"user_{suffix}",
     }
 
     register = await client.post(
@@ -45,8 +44,8 @@ async def test_register_login_refresh_logout_flow(
     )
     assert profile.status_code == 200
     assert profile.json()["email"] == payload["email"]
-    assert profile.json()["username"] == payload["username"]
-    assert profile.json()["display_name"]
+    assert profile.json()["first_name"]
+    assert profile.json()["last_name"]
     assert profile.json()["gender"] in {"male", "female"}
     assert profile.json()["birth_date"] is not None
     assert profile.json()["avatar_status"] is None
@@ -97,7 +96,6 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     payload = {
         "email": f"profile_{suffix}@example.com",
         "password": faker.password(length=12),
-        "username": f"profile_{suffix}",
     }
 
     register = await client.post(
@@ -111,7 +109,8 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     patch = await client.patch(
         "/api/v1/users/me",
         json={
-            "display_name": "Profile User",
+            "first_name": "Profile",
+            "last_name": "User",
             "birth_date": "1998-05-12",
             "bio": "Bio",
             "city_id": "msk",
@@ -125,7 +124,8 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     )
     assert patch.status_code == 200
     body = patch.json()
-    assert body["display_name"] == "Profile User"
+    assert body["first_name"] == "Profile"
+    assert body["last_name"] == "User"
     assert body["city"]["id"] == "msk"
     assert body["goal"] == "dating"
     assert body["quiz_started"] is False

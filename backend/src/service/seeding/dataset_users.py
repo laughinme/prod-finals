@@ -63,8 +63,8 @@ class DatasetUsersSeedTask:
             user.service_user_id = profile.service_user_id
             user.email = profile.email
             user.password_hash = password_hash
-            user.username = profile.username
-            user.display_name = profile.display_name
+            user.first_name = profile.first_name
+            user.last_name = profile.last_name
             user.birth_date = profile.birth_date
             user.gender = profile.gender
             user.bio = profile.bio

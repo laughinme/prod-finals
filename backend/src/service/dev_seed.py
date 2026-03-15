@@ -173,12 +173,13 @@ async def ensure_dev_seed(
 
         user = await user_repo.get_by_email(payload["email"])
         if user is None:
-            user = User(email=payload["email"], password_hash=password_hash, username=payload["username"])
+            user = User(email=payload["email"], password_hash=password_hash)
             await user_repo.add(user)
             await uow.session.flush()
 
-        user.username = payload["username"]
-        user.display_name = payload["display_name"]
+        parts = [part for part in payload["display_name"].split() if part]
+        user.first_name = parts[0] if parts else payload["display_name"]
+        user.last_name = " ".join(parts[1:]) or None
         user.birth_date = date.fromisoformat(payload["birth_date"])
         user.bio = payload["bio"]
         user.city_id = city.id

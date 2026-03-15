@@ -48,7 +48,6 @@ async def _register_user(client: AsyncClient, faker: Faker, prefix: str) -> tupl
     payload = {
         "email": f"{prefix}_{suffix}@example.com",
         "password": password,
-        "username": f"{prefix}_{suffix}",
     }
     response = await client.post("/api/v1/auth/register", json=payload, headers=_mobile_headers())
     assert response.status_code == 201
@@ -91,7 +90,8 @@ async def _complete_profile(
     patch = await client.patch(
         "/api/v1/users/me",
         json={
-            "display_name": display_name,
+            "first_name": display_name.split()[0],
+            "last_name": " ".join(display_name.split()[1:]) or None,
             "birth_date": birth_date,
             "city_id": city_id,
             "gender": gender,

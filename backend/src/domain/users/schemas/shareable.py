@@ -7,12 +7,13 @@ class UserShare(BaseModel):
     User schema making possible to share other users public profile data.
     """
     id: UUID = Field(...)
-    
-    username: str | None = Field(None, description="User's display name")
+    first_name: str | None = Field(None, description="User first name")
+    last_name: str | None = Field(None, description="User last name")
     avatar_url: str | None = Field(None, description="Public URL of the avatar object")
 
 
 class UserBrief(BaseModel):
     id: UUID = Field(...)
-    username: str | None = Field(None, description="User's display name")
+    first_name: str | None = Field(None, description="User first name")
+    last_name: str | None = Field(None, description="User last name")
     avatar_url: str | None = Field(None, description="Public URL of the avatar object")
