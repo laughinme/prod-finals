@@ -153,8 +153,9 @@ class RecommendationContext(StrictModel):
 class RecommendationRequest(StrictModel):
     trace_id: UUID
     request_user_id: str | int
-    limit: int = Field(default=12, ge=1, le=50)
+    limit: int = Field(default=12, ge=1, le=2000)
     strategy: Strategy = Strategy.balanced
+    candidate_user_ids: list[str | int] | None = Field(default=None, max_length=5000)
     hard_filters: HardFilters | None = None
     exclusion: ExclusionSet | None = None
     context: RecommendationContext
@@ -182,7 +183,7 @@ class RecommendationResponse(StrictModel):
     features_version: str
     decision_mode: RecommendationDecisionMode
     warnings: list[str] = Field(default_factory=list, max_length=20)
-    candidates: list[RecommendationCandidate] = Field(default_factory=list, max_length=50)
+    candidates: list[RecommendationCandidate] = Field(default_factory=list, max_length=5000)
 
 
 class SwipeFeedbackRequest(StrictModel):
@@ -263,10 +264,3 @@ class TransactionSyncRequest(StrictModel):
     trace_id: UUID
     user_id: str | int
     transactions: list[RawTransaction] = Field(min_length=1, max_length=1000)
-    
-# Обновим UserProfileUpdateRequest, который у тебя уже есть:
-class UserProfileUpdateRequest(StrictModel):
-    trace_id: UUID
-    user_id: str | int
-    favorite_categories: list[str] = Field(min_length=1, max_length=15)
-    preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
