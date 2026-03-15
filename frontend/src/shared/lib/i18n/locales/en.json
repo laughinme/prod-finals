@@ -66,7 +66,12 @@
     "online_since": "Online since {{date}}",
     "banned": "Banned",
     "active": "Active",
-    "my_questionnaire": "My Questionnaire"
+    "my_questionnaire": "My Questionnaire",
+    "tab_profile": "Profile",
+    "tab_filters": "Filters",
+    "preferences_saved": "Preferences saved",
+    "preferences_error": "Failed to save preferences",
+    "no_preferences": "No preferences available"
   },
   "onboarding": {
     "title_part1": "Dating by",

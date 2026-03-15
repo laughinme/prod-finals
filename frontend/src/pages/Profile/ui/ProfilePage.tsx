@@ -1,14 +1,19 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { IconCalendar, IconMail, IconShieldCheck } from "@tabler/icons-react";
+import { IconCalendar, IconMail, IconShieldCheck, IconLogout } from "@tabler/icons-react";
 
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { cn } from "@/shared/lib/utils";
 
+import { useAuth } from "@/app/providers/auth/useAuth";
 import { useProfile } from "@/features/profile/useProfile";
 import { ProfileAvatarUpload } from "@/features/profile/ProfileAvatarUpload";
 import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
+import { PreferencesEditor } from "@/features/profile/PreferencesEditor";
 import { DiscoveryDesktopProfileCard } from "@/pages/Discovery/ui/DiscoveryDesktopProfileCard";
 import { DiscoveryMobileProfileCard } from "@/pages/Discovery/ui/DiscoveryMobileProfileCard";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -45,10 +50,14 @@ function ProfileSkeleton() {
   );
 }
 
+type ProfileTab = "profile" | "filters";
+
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
+  const auth = useAuth();
   const { data: profile, isLoading, isError } = useProfile();
+  const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
 
   function formatDate(iso: string | null | undefined): string {
     if (!iso) return "—";
@@ -75,7 +84,55 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {profile && (
+        {profile && activeTab === "filters" && (
+          <motion.div
+            className="mt-24 flex gap-6"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <div className="min-w-0 flex-1">
+              <PreferencesEditor />
+            </div>
+
+            <nav className="flex w-40 shrink-0 flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("profile")}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {t("profile.tab_profile")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("filters")}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                  "bg-primary/10 text-primary",
+                )}
+              >
+                {t("profile.tab_filters")}
+              </button>
+
+              <Separator className="my-2" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-muted-foreground hover:text-destructive"
+                onClick={() => auth?.logout()}
+              >
+                <IconLogout className="mr-2 size-4" />
+                {t("common.logout")}
+              </Button>
+            </nav>
+          </motion.div>
+        )}
+
+        {profile && activeTab === "profile" && (
           <motion.div
             className="flex flex-col gap-8 md:flex-row lg:gap-12"
             variants={container}
@@ -157,14 +214,51 @@ export default function ProfilePage() {
 
             <motion.div
               variants={item}
-              className="flex w-full flex-col pt-4 md:w-2/3 md:pt-8"
+              className="flex w-full gap-6 pt-4 md:w-2/3 md:pt-8"
             >
-              <ProfileEditForm profile={profile} />
+              <div className="min-w-0 flex-1">
+                <ProfileEditForm profile={profile} />
+              </div>
+
+              <nav className="mt-8 flex w-40 shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("profile")}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                    "bg-primary/10 text-primary",
+                  )}
+                >
+                  {t("profile.tab_profile")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("filters")}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+                    "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {t("profile.tab_filters")}
+                </button>
+
+                <Separator className="my-2" />
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-muted-foreground hover:text-destructive"
+                  onClick={() => auth?.logout()}
+                >
+                  <IconLogout className="mr-2 size-4" />
+                  {t("common.logout")}
+                </Button>
+              </nav>
             </motion.div>
           </motion.div>
         )}
 
-        {profile && (
+        {profile && activeTab === "profile" && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
