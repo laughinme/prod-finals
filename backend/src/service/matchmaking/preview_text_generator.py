@@ -188,13 +188,30 @@ class LlmCategoryPreviewGenerator:
         model_name = self._model.strip() or "gemini/gemini-2.5-flash-lite"
         payload["model"] = model_name
 
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout_sec) as client:
-                response = await client.post(endpoint, json=payload, headers=headers)
-        except Exception as exc:  # pragma: no cover - network/runtime safety
-            logger.warning("%s preview generation failed: %s", self._provider, exc)
-            self._generation_disabled = True
-            logger.warning("%s preview generation disabled after transport error", self._provider)
+        timeout = httpx.Timeout(self._timeout_sec, connect=min(3.0, self._timeout_sec))
+        response: httpx.Response | None = None
+        for attempt in (1, 2):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(endpoint, json=payload, headers=headers)
+                break
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                # Transport glitches are transient: do not disable provider globally.
+                logger.warning(
+                    "%s preview generation transport error on attempt %d/2 (%s): %r",
+                    self._provider,
+                    attempt,
+                    type(exc).__name__,
+                    exc,
+                )
+                if attempt == 2:
+                    return None
+                await asyncio.sleep(0.15)
+            except Exception as exc:  # pragma: no cover - network/runtime safety
+                logger.warning("%s preview generation failed (%s): %r", self._provider, type(exc).__name__, exc)
+                return None
+
+        if response is None:
             return None
 
         if response.status_code >= 400:
@@ -205,30 +222,30 @@ class LlmCategoryPreviewGenerator:
                 response.status_code,
                 body_preview,
             )
-            if 400 <= response.status_code < 500:
-                logger.warning("%s preview generation disabled due to client error", self._provider)
+            if response.status_code in {401, 403}:
+                logger.warning("%s preview generation disabled due to auth error", self._provider)
                 self._generation_disabled = True
             return None
 
-        raw = response.json()
+        try:
+            raw = response.json()
+        except ValueError:
+            logger.warning("%s preview generation returned non-JSON response", self._provider)
+            return None
         if not isinstance(raw, dict):
-            logger.warning("%s preview generation disabled: malformed response", self._provider)
-            self._generation_disabled = True
+            logger.warning("%s preview generation malformed response", self._provider)
             return None
         choices = raw.get("choices")
         if not isinstance(choices, list) or not choices:
-            logger.warning("%s preview generation disabled: empty choices", self._provider)
-            self._generation_disabled = True
+            logger.warning("%s preview generation empty choices", self._provider)
             return None
         first = choices[0]
         if not isinstance(first, dict):
-            logger.warning("%s preview generation disabled: malformed choice", self._provider)
-            self._generation_disabled = True
+            logger.warning("%s preview generation malformed choice", self._provider)
             return None
         message = first.get("message")
         if not isinstance(message, dict):
-            logger.warning("%s preview generation disabled: malformed message", self._provider)
-            self._generation_disabled = True
+            logger.warning("%s preview generation malformed message", self._provider)
             return None
         content = message.get("content")
         if isinstance(content, str):
@@ -242,8 +259,7 @@ class LlmCategoryPreviewGenerator:
                         parts.append(text)
             if parts:
                 return " ".join(parts)
-        logger.warning("%s preview generation disabled: empty content", self._provider)
-        self._generation_disabled = True
+        logger.warning("%s preview generation empty content", self._provider)
         return None
 
     def _ordered_models(self) -> list[str]:

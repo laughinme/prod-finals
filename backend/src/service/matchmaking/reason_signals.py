@@ -9,7 +9,7 @@ _REASON_LABELS: dict[str, str] = {
     CompatibilityReasonCode.AGE_FIT.value: "Подходящий возрастной диапазон",
     CompatibilityReasonCode.CITY_FIT.value: "Подходят город и дистанция",
     CompatibilityReasonCode.CATEGORY_FIT.value: "Похожие интересы и привычки",
-    CompatibilityReasonCode.PROFILE_QUALITY.value: "Качественно заполненный профиль",
+    CompatibilityReasonCode.PROFILE_QUALITY.value: "Совместимость профилей",
 }
 
 

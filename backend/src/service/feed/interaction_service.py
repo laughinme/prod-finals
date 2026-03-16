@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from core.errors import ForbiddenError
 from database.relational_db import Conversation, InteractionEvent, Match, PairState, RecommendationItem, User
@@ -214,7 +215,19 @@ class InteractionService(BaseDatingService):
                     "happened_at": now.isoformat(),
                 },
             )
-        await self.uow.commit()
+        try:
+            await self.uow.commit()
+        except IntegrityError:
+            # Parallel duplicate reaction requests can race on unique constraints.
+            await self.uow.rollback()
+            latest_item = await self.matchmaking_repo.get_recommendation_item_for_user(
+                serve_item_id=serve_item_id,
+                owner_user_id=user.id,
+            )
+            latest_pair_state = await self.matchmaking_repo.get_pair_state(user.id, item.target_user_id)
+            if latest_item is not None and latest_pair_state is not None:
+                return self._existing_reaction_response(latest_item, latest_pair_state)
+            raise
         if notification_payload is not None and notification_user_id is not None:
             await self.realtime_service.publish_match_created(
                 user_id=notification_user_id,
