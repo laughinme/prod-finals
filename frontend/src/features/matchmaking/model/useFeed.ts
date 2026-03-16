@@ -12,6 +12,16 @@ export type MatchmakingFeed = FeedResponseDto & {
 };
 
 const PREFETCH_THRESHOLD = 5;
+const IMAGE_PRELOAD_COUNT = 3;
+
+function preloadImages(profiles: MatchProfile[]) {
+  for (const p of profiles.slice(0, IMAGE_PRELOAD_COUNT)) {
+    if (p.image) {
+      const img = new Image();
+      img.src = p.image;
+    }
+  }
+}
 
 type FeedStore = {
   profiles: MatchProfile[];
@@ -66,6 +76,7 @@ async function fetchMore(limit: number) {
     }
 
     store.profiles = [...store.profiles, ...newProfiles];
+    preloadImages(store.profiles);
   } finally {
     store.isFetching = false;
     store.isLoading = false;
@@ -83,6 +94,7 @@ function refetchFeed(limit: number) {
 
 function removeProfile(id: MatchProfileId) {
   store.profiles = store.profiles.filter((p) => p.id !== id);
+  preloadImages(store.profiles);
   emitChange();
 }
 

@@ -105,61 +105,59 @@ export function useDiscoveryPage() {
   };
 
   const handleLike = async () => {
-    if (feedReactionMutation.isPending || !currentProfile) {
-      return;
-    }
+    if (!currentProfile) return;
+
+    const likedProfile = currentProfile;
+    const dwellTimeMs = getCurrentDwellTimeMs();
 
     setExitX(1000);
+    dismissCurrentProfile();
 
-    try {
-      const reaction =
-        currentProfile.source === "feed" && typeof currentProfile.id === "string"
-          ? await feedReactionMutation.mutateAsync({
-              serveItemId: currentProfile.id,
-              action: "like",
-              openedExplanation: Boolean(currentProfileExplanation),
-              openedProfile: false,
-              dwellTimeMs: getCurrentDwellTimeMs(),
-            })
-          : null;
+    if (likedProfile.source === "feed" && typeof likedProfile.id === "string") {
+      try {
+        const reaction = await feedReactionMutation.mutateAsync({
+          serveItemId: likedProfile.id,
+          action: "like",
+          openedExplanation: Boolean(currentProfileExplanation),
+          openedProfile: false,
+          dwellTimeMs,
+        });
 
-      dismissCurrentProfile();
-
-      if (reaction?.result === "matched" && reaction.match) {
-        const state: MatchNavigationState = {
-          matchedProfile: currentProfile,
-          matchId: reaction.match.matchId,
-          conversationId: reaction.match.conversationId,
-        };
-
-        window.setTimeout(() => navigate("/match", { state }), 300);
+        if (reaction?.result === "matched" && reaction.match) {
+          const state: MatchNavigationState = {
+            matchedProfile: likedProfile,
+            matchId: reaction.match.matchId,
+            conversationId: reaction.match.conversationId,
+          };
+          navigate("/match", { state });
+        }
+      } catch {
+        // reaction failed silently — card already dismissed
       }
-    } catch {
-      setExitX(0);
     }
   };
 
   const handlePass = async () => {
-    if (feedReactionMutation.isPending || !currentProfile) {
-      return;
-    }
+    if (!currentProfile) return;
+
+    const passedProfile = currentProfile;
+    const dwellTimeMs = getCurrentDwellTimeMs();
 
     setExitX(-1000);
+    dismissCurrentProfile();
 
-    try {
-      if (currentProfile.source === "feed" && typeof currentProfile.id === "string") {
+    if (passedProfile.source === "feed" && typeof passedProfile.id === "string") {
+      try {
         await feedReactionMutation.mutateAsync({
-          serveItemId: currentProfile.id,
+          serveItemId: passedProfile.id,
           action: "pass",
           openedExplanation: Boolean(currentProfileExplanation),
           openedProfile: false,
-          dwellTimeMs: getCurrentDwellTimeMs(),
+          dwellTimeMs,
         });
+      } catch {
+        // reaction failed silently — card already dismissed
       }
-
-      dismissCurrentProfile();
-    } catch {
-      setExitX(0);
     }
   };
 
