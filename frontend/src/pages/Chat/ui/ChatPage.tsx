@@ -151,13 +151,15 @@ export default function ChatPage() {
                 : "hover:bg-secondary/40",
             )}
           >
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full md:h-12 md:w-12">
-              <img
-                src={match.avatarUrl}
-                alt={match.displayName}
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+            <div className="relative h-11 w-11 shrink-0 md:h-12 md:w-12">
+              <div className="h-full w-full overflow-hidden rounded-full">
+                <img
+                  src={match.avatarUrl}
+                  alt={match.displayName}
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
               <div className="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
             </div>
 
@@ -362,11 +364,7 @@ export default function ChatPage() {
           <Button
             size="icon"
             className="h-11 w-11 shrink-0 rounded-xl md:h-14 md:w-14"
-            disabled={
-              conversationIsClosed ||
-              isSendingMessage ||
-              !input.trim()
-            }
+            disabled={conversationIsClosed || isSendingMessage || !input.trim()}
             onClick={handleSend}
           >
             <Send className="size-4.5 md:size-5" />
