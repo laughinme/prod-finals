@@ -698,6 +698,26 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
     assert report.status_code == 200
     assert report.json()["also_block_applied"] is True
 
+    blocked_before = await client.get("/api/v1/blocks", headers=auth_header(access_a))
+    assert blocked_before.status_code == 200
+    blocked_target_ids = {item["target_user_id"] for item in blocked_before.json()["items"]}
+    assert profile_b["id"] in blocked_target_ids
+    assert profile_c["id"] in blocked_target_ids
+
+    unblock = await client.delete(
+        f"/api/v1/blocks/{profile_b['id']}",
+        headers=auth_header(access_a),
+    )
+    assert unblock.status_code == 200
+    assert unblock.json()["status"] == "unblocked"
+    assert unblock.json()["removed_from_blocklist"] is True
+
+    blocked_after = await client.get("/api/v1/blocks", headers=auth_header(access_a))
+    assert blocked_after.status_code == 200
+    blocked_after_ids = {item["target_user_id"] for item in blocked_after.json()["items"]}
+    assert profile_b["id"] not in blocked_after_ids
+    assert profile_c["id"] in blocked_after_ids
+
     feed_after_safety = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_after_safety.status_code == 200
     target_ids = {card["candidate"]["user_id"] for card in feed_after_safety.json()["cards"]}

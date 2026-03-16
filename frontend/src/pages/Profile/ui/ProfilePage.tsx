@@ -13,6 +13,7 @@ import {
 import { ProfileBanner } from "./components/ProfileBanner";
 import { FiltersTab } from "./components/FiltersTab";
 import { ProfileTabContent } from "./components/ProfileTabContent";
+import { BlockedUsersTab } from "./components/BlockedUsersTab";
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -58,6 +59,10 @@ export default function ProfilePage() {
                   isMobile={isMobile}
                   mobileTabBar={mobileTabBar}
                 />
+              )}
+
+              {activeTab === "blocked" && (
+                <BlockedUsersTab mobileTabBar={mobileTabBar} />
               )}
             </div>
 

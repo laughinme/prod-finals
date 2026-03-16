@@ -267,6 +267,18 @@ class MatchmakingInterface:
             )
         )
 
+    async def list_blocks_for_actor(self, *, actor_user_id: UUID) -> list[Block]:
+        rows = await self.session.scalars(
+            select(Block)
+            .where(Block.actor_user_id == actor_user_id)
+            .order_by(Block.created_at.desc())
+        )
+        return list(rows.all())
+
+    async def delete_block(self, block: Block) -> None:
+        await self.session.delete(block)
+        await self.session.flush()
+
     async def get_existing_report(
         self,
         *,

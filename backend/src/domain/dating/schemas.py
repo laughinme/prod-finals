@@ -326,6 +326,25 @@ class BlockResponse(BaseModel):
     match_closed: bool | None = None
 
 
+class BlockedUserItem(BaseModel):
+    block_id: UUID
+    target_user_id: UUID
+    display_name: str
+    avatar_url: str | None = None
+    blocked_at: datetime
+    reason_code: str
+    source_context: str
+
+
+class BlockListResponse(BaseModel):
+    items: list[BlockedUserItem] = Field(default_factory=list)
+
+
+class UnblockResponse(BaseModel):
+    status: str = "unblocked"
+    removed_from_blocklist: bool = True
+
+
 class ReportRequest(BaseModel):
     target_user_id: UUID
     source_context: SafetySourceContext

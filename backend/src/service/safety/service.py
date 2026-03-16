@@ -1,12 +1,18 @@
+from datetime import timedelta
+from uuid import UUID
+
 from database.relational_db import Block, Conversation, Match, PairState, Report, User
 from domain.dating import (
     AuditEntityType,
+    BlockListResponse,
     BlockRequest,
     BlockResponse,
+    BlockedUserItem,
     ConversationStatus,
     MatchStatus,
     ReportRequest,
     ReportResponse,
+    UnblockResponse,
 )
 from domain.notifications import ConversationClosedEventPayload
 
@@ -14,6 +20,65 @@ from service.matchmaking import AlreadyBlockedError, BaseDatingService, InvalidS
 
 
 class SafetyService(BaseDatingService):
+    async def list_blocks(self, *, actor: User) -> BlockListResponse:
+        blocks = await self.matchmaking_repo.list_blocks_for_actor(actor_user_id=actor.id)
+        if not blocks:
+            return BlockListResponse(items=[])
+
+        targets = await self.user_repo.list_by_ids([block.target_user_id for block in blocks])
+        targets_by_id = {target.id: target for target in targets}
+        items = [
+            BlockedUserItem(
+                block_id=block.id,
+                target_user_id=block.target_user_id,
+                display_name=(
+                    targets_by_id[block.target_user_id].resolved_display_name
+                    if block.target_user_id in targets_by_id
+                    else "Unknown user"
+                )
+                or "Unknown user",
+                avatar_url=targets_by_id[block.target_user_id].avatar_url
+                if block.target_user_id in targets_by_id
+                else None,
+                blocked_at=block.created_at,
+                reason_code=block.reason_code,
+                source_context=block.source_context,
+            )
+            for block in blocks
+        ]
+        return BlockListResponse(items=items)
+
+    async def unblock(self, *, actor: User, target_user_id: UUID) -> UnblockResponse:
+        block = await self.matchmaking_repo.get_block(
+            actor_user_id=actor.id,
+            target_user_id=target_user_id,
+        )
+        if block is None:
+            return UnblockResponse(status="unblocked", removed_from_blocklist=False)
+
+        await self.matchmaking_repo.delete_block(block)
+        pair_state = await self.matchmaking_repo.get_pair_state(actor.id, target_user_id)
+        if (
+            pair_state is not None
+            and pair_state.status == "blocked"
+            and pair_state.blocked_by_user_id == actor.id
+        ):
+            now = self.now()
+            pair_state.status = "closed"
+            pair_state.blocked_by_user_id = None
+            if pair_state.cooldown_until is None or pair_state.cooldown_until < now:
+                pair_state.cooldown_until = now + timedelta(days=self.cooldown_days)
+
+        await self.add_audit_event(
+            event_type="user_unblocked",
+            entity_type=AuditEntityType.BLOCK,
+            entity_id=str(block.id),
+            actor_user_id=actor.id,
+            payload={"target_user_id": str(target_user_id)},
+        )
+        await self.uow.commit()
+        return UnblockResponse(status="unblocked", removed_from_blocklist=True)
+
     async def block(self, *, actor: User, payload: BlockRequest) -> BlockResponse:
         target = await self.user_repo.get_by_id(payload.target_user_id)
         if target is None or target.id == actor.id:

@@ -30,6 +30,25 @@ export type BlockUserResult = {
   matchClosed: boolean | null;
 };
 
+export type BlockedUser = {
+  blockId: string;
+  targetUserId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  blockedAt: string;
+  reasonCode: string;
+  sourceContext: string;
+};
+
+export type BlockedUsersResult = {
+  items: BlockedUser[];
+};
+
+export type UnblockUserResult = {
+  status: "unblocked";
+  removedFromBlocklist: boolean;
+};
+
 export type ReportUserPayload = {
   targetUserId: string;
   sourceContext: SafetySourceContext;

@@ -1,9 +1,12 @@
 import apiProtected from "./axiosInstance";
 import {
+  toBlockedUsersResult,
   toBlockRequestDto,
   toBlockUserResult,
   toReportRequestDto,
   toReportUserResult,
+  toUnblockUserResult,
+  type BlockedUsersResult,
   type BlockReasonCode,
   type BlockUserPayload,
   type BlockUserResult,
@@ -11,6 +14,7 @@ import {
   type ReportUserPayload,
   type ReportUserResult,
   type SafetySourceContext,
+  type UnblockUserResult,
 } from "@/entities/safety";
 
 export type SafetySourceContextDto = SafetySourceContext;
@@ -28,6 +32,25 @@ export type BlockResponseDto = {
   removed_from_future_feed: boolean;
   conversation_closed: boolean | null;
   match_closed: boolean | null;
+};
+
+export type BlockedUserItemDto = {
+  block_id: string;
+  target_user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  blocked_at: string;
+  reason_code: string;
+  source_context: string;
+};
+
+export type BlockListResponseDto = {
+  items: BlockedUserItemDto[];
+};
+
+export type UnblockResponseDto = {
+  status: "unblocked";
+  removed_from_blocklist: boolean;
 };
 
 export type ReportRequestDto = {
@@ -54,6 +77,20 @@ export const postBlock = async (
   );
 
   return toBlockUserResult(response.data);
+};
+
+export const getBlockedUsers = async (): Promise<BlockedUsersResult> => {
+  const response = await apiProtected.get<BlockListResponseDto>("/blocks");
+  return toBlockedUsersResult(response.data);
+};
+
+export const deleteBlock = async (
+  targetUserId: string,
+): Promise<UnblockUserResult> => {
+  const response = await apiProtected.delete<UnblockResponseDto>(
+    `/blocks/${targetUserId}`,
+  );
+  return toUnblockUserResult(response.data);
 };
 
 export const postReport = async (

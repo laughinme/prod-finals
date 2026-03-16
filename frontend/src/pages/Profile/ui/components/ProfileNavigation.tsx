@@ -5,7 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/lib/utils";
 
-export type ProfileTab = "profile" | "filters";
+export type ProfileTab = "profile" | "filters" | "blocked";
 
 interface ProfileNavigationProps {
   activeTab: ProfileTab;
@@ -49,6 +49,18 @@ export function ProfileNavigation({
         >
           {t("profile.tab_filters")}
         </button>
+        <button
+          type="button"
+          onClick={() => onTabChange("blocked")}
+          className={cn(
+            "rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+            activeTab === "blocked"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {t("profile.tab_blocked")}
+        </button>
 
         <Separator className="my-2" />
 
@@ -90,6 +102,18 @@ export function ProfileNavigation({
         )}
       >
         {t("profile.tab_filters")}
+      </button>
+      <button
+        type="button"
+        onClick={() => onTabChange("blocked")}
+        className={cn(
+          "border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+          activeTab === "blocked"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground",
+        )}
+      >
+        {t("profile.tab_blocked")}
       </button>
 
       <Button

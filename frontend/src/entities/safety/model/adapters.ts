@@ -1,15 +1,19 @@
 import type {
+  BlockListResponseDto,
   BlockRequestDto,
   BlockResponseDto,
   ReportRequestDto,
   ReportResponseDto,
+  UnblockResponseDto,
 } from "@/shared/api/safety";
 
 import type {
+  BlockedUsersResult,
   BlockUserPayload,
   BlockUserResult,
   ReportUserPayload,
   ReportUserResult,
+  UnblockUserResult,
 } from "./types";
 
 export const toBlockRequestDto = (
@@ -27,6 +31,27 @@ export const toBlockUserResult = (
   removedFromFutureFeed: dto.removed_from_future_feed,
   conversationClosed: dto.conversation_closed ?? null,
   matchClosed: dto.match_closed ?? null,
+});
+
+export const toBlockedUsersResult = (
+  dto: BlockListResponseDto,
+): BlockedUsersResult => ({
+  items: dto.items.map((item) => ({
+    blockId: item.block_id,
+    targetUserId: item.target_user_id,
+    displayName: item.display_name,
+    avatarUrl: item.avatar_url ?? null,
+    blockedAt: item.blocked_at,
+    reasonCode: item.reason_code,
+    sourceContext: item.source_context,
+  })),
+});
+
+export const toUnblockUserResult = (
+  dto: UnblockResponseDto,
+): UnblockUserResult => ({
+  status: dto.status,
+  removedFromBlocklist: dto.removed_from_blocklist,
 });
 
 export const toReportRequestDto = (

@@ -110,6 +110,14 @@
     "my_questionnaire": "My Questionnaire",
     "tab_profile": "Profile",
     "tab_filters": "Filters",
+    "tab_blocked": "Blocked users",
+    "blocked_title": "Blocked users",
+    "blocked_subtitle": "Block management",
+    "blocked_description": "You can unblock users you previously blocked in chat or feed.",
+    "blocked_empty": "Your block list is empty.",
+    "blocked_load_error": "Failed to load blocked users.",
+    "blocked_on": "Blocked on: {{date}}",
+    "unblock_action": "Unblock",
     "preferences_saved": "Preferences saved",
     "preferences_error": "Failed to save preferences",
     "no_preferences": "No preferences available",
@@ -238,6 +246,8 @@
   "safety": {
     "block_success": "User blocked",
     "block_error": "Failed to block user",
+    "unblock_success": "User unblocked",
+    "unblock_error": "Failed to unblock user",
     "report_sent_success": "Report sent",
     "report_error": "Failed to send report"
   },
