@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 
 from domain.dating import AgeRange, FeedCandidateContext, SearchPreferences
-from service.matchmaking.ml_facade import MockMlFacade
+from service.matchmaking.ml_facade import HttpMlFacade, MockMlFacade
 
 
 @pytest.mark.unit
@@ -65,3 +65,45 @@ async def test_mock_ml_facade_prefers_better_matching_candidate():
     assert ranked.decision_mode.value == "fallback"
     assert ranked.candidates[0].candidate_user_id == strong.user_id
     assert ranked.candidates[0].score > ranked.candidates[1].score
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_http_ml_facade_connection_status_accepts_boolean_health_checks(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "ok",
+                "checks": {
+                    "ranker_loaded": True,
+                    "explainer_loaded": True,
+                    "feedback_ingest": True,
+                },
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+
+    facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
+
+    status = await facade.connection_status()
+
+    assert status.reachable is True
+    assert status.healthy is True
+    assert status.fallback_active is False
+    assert status.detail is None

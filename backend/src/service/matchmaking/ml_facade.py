@@ -44,6 +44,14 @@ def _deterministic_qdrant_uuid(raw: str) -> str:
     return str(uuid5(NAMESPACE_DNS, raw))
 
 
+def _is_healthy_ml_check(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"ok", "true", "healthy", "ready"}
+    return bool(value)
+
+
 class MlFacade:
     async def rank(
         self,
@@ -735,7 +743,7 @@ class HttpMlFacade(MlFacade):
         detail = None
         checks = data.get("checks")
         if isinstance(checks, dict):
-            failed = [name for name, value in checks.items() if value != "ok"]
+            failed = [name for name, value in checks.items() if not _is_healthy_ml_check(value)]
             if failed:
                 detail = f"Degraded ML checks: {', '.join(failed)}"
 
