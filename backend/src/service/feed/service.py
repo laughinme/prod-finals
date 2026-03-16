@@ -5,8 +5,11 @@ from uuid import UUID
 from database.relational_db import RecommendationBatch, RecommendationItem, User
 from domain.dating import (
     AuditEntityType,
+    CompatibilityCategoryScore,
     CompatibilityExplanationResponse,
     CompatibilityPreview,
+    CompatibilityReasonCode,
+    CompatibilityReasonSignal,
     DemoFeedShortcutItem,
     DemoFeedShortcutListResponse,
     DecisionMode,
@@ -18,6 +21,7 @@ from domain.dating import (
     FeedEmptyStateCode,
     FeedResponse,
     FeedState,
+    RankedCandidate,
 )
 
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
@@ -27,6 +31,30 @@ from service.matchmaking.random_mix import apply_random_mix, get_random_mix_stat
 
 
 logger = logging.getLogger(__name__)
+
+_FALLBACK_PREVIEW_PREFIXES = (
+    "Сильное совпадение по интересам:",
+    "Хорошее совпадение по интересам:",
+    "Ваш общий интерес —",
+)
+
+_FALLBACK_PREVIEW_EXACT = {
+    "У вас заметно совпадают интересы и привычки.",
+    "У вас совместимы город и привычный ритм встреч.",
+    "Ваши ожидаемые возрастные диапазоны совпадают.",
+    "Вы ищете похожий формат отношений.",
+    "Ваши взаимные предпочтения хорошо совпадают.",
+    "Найдены признаки совместимости по интересам и поведению.",
+}
+
+
+def _is_template_preview(text: str) -> bool:
+    normalized = (text or "").strip()
+    if not normalized:
+        return True
+    if normalized in _FALLBACK_PREVIEW_EXACT:
+        return True
+    return normalized.startswith(_FALLBACK_PREVIEW_PREFIXES)
 
 
 class FeedService(BaseDatingService):
@@ -182,6 +210,8 @@ class FeedService(BaseDatingService):
                 empty_state=self.ml_facade.empty_state(FeedEmptyStateCode.NO_MORE_CANDIDATES_TODAY),
                 cards=[],
             )
+
+        await self._refresh_template_previews(items=pending_items[:limit])
 
         cards = await self._build_cards(
             user=user,
@@ -570,3 +600,50 @@ class FeedService(BaseDatingService):
                 )
             )
         return cards
+
+    async def _refresh_template_previews(self, *, items: list[RecommendationItem]) -> None:
+        for item in items:
+            if not _is_template_preview(item.preview):
+                continue
+
+            try:
+                reason_codes: list[CompatibilityReasonCode] = []
+                for raw_code in item.reason_codes or []:
+                    try:
+                        reason_codes.append(CompatibilityReasonCode(str(raw_code)))
+                    except ValueError:
+                        continue
+
+                reason_signals: list[CompatibilityReasonSignal] = []
+                for raw_signal in item.reason_signals or []:
+                    try:
+                        reason_signals.append(CompatibilityReasonSignal.model_validate(raw_signal))
+                    except Exception:
+                        continue
+
+                category_scores: list[CompatibilityCategoryScore] = []
+                for raw_score in item.category_breakdown or []:
+                    try:
+                        category_scores.append(CompatibilityCategoryScore.model_validate(raw_score))
+                    except Exception:
+                        continue
+
+                scored = RankedCandidate(
+                    candidate_user_id=item.target_user_id,
+                    score=max(0.0, min(float(item.score), 1.0)),
+                    reason_codes=reason_codes,
+                    reason_signals=reason_signals,
+                    category_keys=[entry.category_key for entry in category_scores],
+                    category_scores=category_scores,
+                )
+                rebuilt_preview = await self.ml_facade.build_preview(scored)
+                normalized_preview = (rebuilt_preview.preview or "").strip()
+                if not normalized_preview or normalized_preview == item.preview:
+                    continue
+
+                item.preview = normalized_preview
+                item.reason_codes = [str(code) for code in rebuilt_preview.reason_codes]
+                item.reason_signals = [entry.model_dump() for entry in rebuilt_preview.reason_signals]
+                item.category_breakdown = [entry.model_dump() for entry in rebuilt_preview.category_breakdown]
+            except Exception as exc:
+                logger.warning("Preview refresh failed for recommendation_item=%s: %s", item.id, exc)
