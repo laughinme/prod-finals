@@ -80,7 +80,7 @@ export default function DiscoveryPage() {
               return (
                 <div
                   key={`stack-${profile.id}`}
-                  className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-4 md:px-8"
+                  className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-2 md:px-8"
                   style={{
                     zIndex: 10 - depth,
                   }}
