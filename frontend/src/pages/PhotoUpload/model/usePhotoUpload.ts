@@ -11,12 +11,14 @@ import { useTranslation } from "react-i18next";
 
 import { useQueryClient } from "@tanstack/react-query";
 
+import { getOnboardingState } from "@/shared/api/onboarding";
 import { uploadProfilePicture } from "@/shared/api/profile";
 import type { User } from "@/entities/user/model";
 
 export type PhotoUploadState = "idle" | "preview" | "uploading" | "done";
 
 const PROFILE_KEY = ["profile", "me"] as const;
+const ONBOARDING_STATE_KEY = ["onboarding", "state"] as const;
 const DONE_ANIMATION_MS = 1500;
 
 export function usePhotoUpload() {
@@ -122,6 +124,13 @@ export function usePhotoUpload() {
       // so the route guard picks up the change and navigates away.
       await new Promise((r) => setTimeout(r, DONE_ANIMATION_MS));
       queryClient.setQueryData<User>(PROFILE_KEY, updatedProfile);
+      await queryClient.invalidateQueries({ queryKey: ONBOARDING_STATE_KEY });
+      const nextOnboardingState = await queryClient.fetchQuery({
+        queryKey: ONBOARDING_STATE_KEY,
+        queryFn: getOnboardingState,
+        staleTime: 0,
+      });
+      queryClient.setQueryData(ONBOARDING_STATE_KEY, nextOnboardingState);
     } catch (error) {
       Sentry.captureException(error);
       clearInterval(progressInterval);
