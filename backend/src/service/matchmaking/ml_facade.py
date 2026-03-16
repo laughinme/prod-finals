@@ -22,6 +22,7 @@ from domain.dating import (
     RankedCandidate,
     RankedCandidates,
 )
+from domain.misc import MlConnectionStatusModel
 from domain.dating.category_catalog import category_label_map, pick_category_keys
 from .reason_signals import build_preview_reason_signals
 
@@ -86,6 +87,9 @@ class MlFacade:
         favorite_categories: list[str],
         import_transactions: bool,
     ) -> None:
+        raise NotImplementedError
+
+    async def connection_status(self) -> MlConnectionStatusModel:
         raise NotImplementedError
 
 
@@ -273,6 +277,17 @@ class MockMlFacade(MlFacade):
         import_transactions: bool,
     ) -> None:
         return None
+
+    async def connection_status(self) -> MlConnectionStatusModel:
+        return MlConnectionStatusModel(
+            configured=False,
+            provider="mock",
+            reachable=False,
+            healthy=False,
+            fallback_active=True,
+            ml_status=None,
+            detail="ML_SERVICE_URL is not configured; backend is using MockMlFacade.",
+        )
 
     def _has_mutual_gender_fit(
         self,
@@ -693,6 +708,47 @@ class HttpMlFacade(MlFacade):
                 resp.raise_for_status()
         except Exception as exc:
             logger.warning("ML service /v1/profile/preferences failed: %s", exc)
+
+    async def connection_status(self) -> MlConnectionStatusModel:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"{self._base_url}/v1/health",
+                    headers=self._headers(),
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:
+            return MlConnectionStatusModel(
+                configured=True,
+                provider="http",
+                base_url=self._base_url,
+                reachable=False,
+                healthy=False,
+                fallback_active=True,
+                ml_status=None,
+                detail=str(exc),
+            )
+
+        ml_status = str(data.get("status") or "").strip() or None
+        healthy = ml_status not in {"", "down"}
+        detail = None
+        checks = data.get("checks")
+        if isinstance(checks, dict):
+            failed = [name for name, value in checks.items() if value != "ok"]
+            if failed:
+                detail = f"Degraded ML checks: {', '.join(failed)}"
+
+        return MlConnectionStatusModel(
+            configured=True,
+            provider="http",
+            base_url=self._base_url,
+            reachable=True,
+            healthy=healthy,
+            fallback_active=not healthy,
+            ml_status=ml_status,
+            detail=detail,
+        )
 
     def _category_scores_from_components(self, ml_item: dict) -> list[CompatibilityCategoryScore]:
         components = ml_item.get("score_components") or {}

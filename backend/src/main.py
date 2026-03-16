@@ -5,6 +5,7 @@ import logging
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
+import httpx
 from sqlalchemy import text
 
 from api import get_api_routers
@@ -110,6 +111,22 @@ def create_app(
             logger.warning("Storage health check failed: %s", exc)
             dependencies["storage"] = "error"
 
+        if settings.ML_SERVICE_URL:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(
+                        f"{settings.ML_SERVICE_URL.rstrip('/')}/v1/health",
+                        headers={"X-Service-Token": settings.ML_SERVICE_TOKEN},
+                    )
+                    response.raise_for_status()
+                    ml_payload = response.json()
+                dependencies["ml"] = (
+                    "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                )
+            except Exception as exc:
+                logger.warning("ML health check failed: %s", exc)
+                dependencies["ml"] = "error"
+
         return {
             "status": "ok" if all(value == "ok" for value in dependencies.values()) else "degraded",
             "timestamp": datetime.now(UTC).isoformat(),
@@ -146,6 +163,22 @@ def create_app(
             except Exception as exc:
                 logger.warning("Storage readiness check failed: %s", exc)
                 checks["storage"] = "error"
+
+            if settings.ML_SERVICE_URL:
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        response = await client.get(
+                            f"{settings.ML_SERVICE_URL.rstrip('/')}/v1/health",
+                            headers={"X-Service-Token": settings.ML_SERVICE_TOKEN},
+                        )
+                        response.raise_for_status()
+                        ml_payload = response.json()
+                    checks["ml"] = (
+                        "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                    )
+                except Exception as exc:
+                    logger.warning("ML readiness check failed: %s", exc)
+                    checks["ml"] = "error"
 
             if all(value == "ok" for value in checks.values()):
                 return {"status": "ready", "checks": checks}

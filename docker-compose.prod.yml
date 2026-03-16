@@ -4,8 +4,6 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-qdrant
     volumes:
       - qdrant_data:/qdrant/storage
-    ports:
-      - "6333:6333"
     restart: unless-stopped
 
   ml-service:
@@ -52,11 +50,8 @@ services:
       - ml_artifacts:/app/ml/artifacts
       - ml_data:/app/ml/data
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - import os, urllib.request; req=urllib.request.Request("http://127.0.0.1:8080/v1/health", headers={"X-Service-Token": os.environ.get("ML_SERVICE_TOKEN", "change-me-ml-token")}); urllib.request.urlopen(req, timeout=5)
+      test: >-
+        python -c 'import os, urllib.request; req = urllib.request.Request("http://127.0.0.1:8080/v1/health", headers={"X-Service-Token": os.environ.get("ML_SERVICE_TOKEN", "change-me-ml-token")}); urllib.request.urlopen(req, timeout=5)'
       interval: 10s
       timeout: 5s
       retries: 12
@@ -86,11 +81,8 @@ services:
       centrifugo:
         condition: service_started
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/api/health")
+      test: >-
+        python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/api/health", timeout=5)'
       interval: 10s
       timeout: 5s
       retries: 12
