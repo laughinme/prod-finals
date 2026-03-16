@@ -5,6 +5,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
+from ..analytics import AnalyticsDailyFunnel
 from ..audit import AuditLog, OutboxEvent
 from ..conversations import Conversation, Message
 from ..feed import InteractionEvent, RecommendationBatch, RecommendationItem
@@ -218,6 +219,20 @@ class MatchmakingInterface:
         rows = await self.session.scalars(stmt)
         return list(rows.all())
 
+    async def list_messages_chronological(
+        self,
+        *,
+        conversation_id: UUID,
+        limit: int,
+    ) -> list[Message]:
+        rows = await self.session.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+            .limit(limit)
+        )
+        return list(rows.all())
+
     async def get_existing_message(
         self,
         *,
@@ -334,6 +349,60 @@ class MatchmakingInterface:
             .where(User.banned.is_(False))
             .order_by(User.created_at.asc())
         )
+        return list(rows.all())
+
+    async def get_recommendation_batch(self, batch_id: UUID) -> RecommendationBatch | None:
+        return await self.session.get(RecommendationBatch, batch_id)
+
+    async def increment_daily_funnel_counter(
+        self,
+        *,
+        day: date,
+        user_source: str,
+        decision_mode: str,
+        counter_name: str,
+        amount: int = 1,
+        now: datetime | None = None,
+    ) -> AnalyticsDailyFunnel:
+        now = now or datetime.now(UTC)
+        row = await self.session.scalar(
+            select(AnalyticsDailyFunnel)
+            .where(
+                AnalyticsDailyFunnel.day == day,
+                AnalyticsDailyFunnel.user_source == user_source,
+                AnalyticsDailyFunnel.decision_mode == decision_mode,
+            )
+            .with_for_update()
+        )
+        if row is None:
+            row = AnalyticsDailyFunnel(
+                day=day,
+                user_source=user_source,
+                decision_mode=decision_mode,
+                updated_at=now,
+            )
+            self.session.add(row)
+            await self.session.flush()
+        current_value = int(getattr(row, counter_name, 0) or 0)
+        setattr(row, counter_name, current_value + amount)
+        row.updated_at = now
+        await self.session.flush()
+        return row
+
+    async def list_funnel_rows(
+        self,
+        *,
+        since_day: date | None = None,
+    ) -> list[AnalyticsDailyFunnel]:
+        stmt = select(AnalyticsDailyFunnel)
+        if since_day is not None:
+            stmt = stmt.where(AnalyticsDailyFunnel.day >= since_day)
+        stmt = stmt.order_by(
+            AnalyticsDailyFunnel.day.asc(),
+            AnalyticsDailyFunnel.user_source.asc(),
+            AnalyticsDailyFunnel.decision_mode.asc(),
+        )
+        rows = await self.session.scalars(stmt)
         return list(rows.all())
 
     async def claim_pending_outbox_events(

@@ -41,5 +41,6 @@ class Match(TimestampMixin, Base):
     user_high_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     conversation_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    source_decision_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     close_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

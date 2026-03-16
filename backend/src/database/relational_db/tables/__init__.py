@@ -1,5 +1,6 @@
 from .table_base import Base
 from .audit import *
+from .analytics import *
 from .categories import *
 from .cities import *
 from .conversations import *
