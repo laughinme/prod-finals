@@ -197,17 +197,21 @@ export function ProfilePreviewStep() {
           className={`mx-auto w-full ${isMobile ? "max-w-[420px]" : "max-w-5xl"} overflow-hidden rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-2xl shadow-primary/5 backdrop-blur-sm md:p-7`}
         >
           <div className="space-y-3 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">
-              <Sparkles className="size-4" />
-              {t("profile.preview_badge")}
-            </div>
+            {!isMobile && (
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">
+                <Sparkles className="size-4" />
+                {t("profile.preview_badge")}
+              </div>
+            )}
             <div className="space-y-2">
               <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">
                 {t("profile.profile_ready_title")}
               </h1>
-              <p className="mx-auto max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
-                {t("profile.preview_description")}
-              </p>
+              {!isMobile && (
+                <p className="mx-auto max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+                  {t("profile.preview_description")}
+                </p>
+              )}
             </div>
           </div>
         </motion.section>
