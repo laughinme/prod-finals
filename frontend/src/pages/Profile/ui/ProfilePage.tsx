@@ -307,7 +307,6 @@ export default function ProfilePage() {
                             tags: [],
                             explanation: "",
                             location: "",
-                            activity: "",
                             reasonCodes: [],
                             detailsAvailable: false,
                             actions: null,

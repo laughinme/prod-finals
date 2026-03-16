@@ -86,8 +86,12 @@ export function usePreferencesEditor(profile: User) {
         const nextAnswers: Record<string, string[]> = {};
         nextAnswers.match_preferences = [
             ...profile.lookingForGenders.map((gender) => `gender:${gender}`),
-            `age_min:${profile.ageRange?.min ?? 18}`,
-            `age_max:${profile.ageRange?.max ?? 99}`,
+            ...(profile.ageRange
+                ? [
+                    `age_min:${profile.ageRange.min}`,
+                    `age_max:${profile.ageRange.max}`,
+                ]
+                : []),
         ];
         nextAnswers.interests = [...profile.interests];
 
@@ -133,13 +137,24 @@ export function usePreferencesEditor(profile: User) {
 
         const payload =
             question.stepKey === "match_preferences" && currentMatchPreferences
-                ? {
+                ? (() => {
+                    const defaultAgeMin = question.rangeMin ?? 18;
+                    const defaultAgeMax = question.rangeMax ?? 99;
+                    const shouldClearAgeRange =
+                        currentMatchPreferences.genders.length === 0 &&
+                        currentMatchPreferences.ageMin === defaultAgeMin &&
+                        currentMatchPreferences.ageMax === defaultAgeMax;
+
+                    return {
                     lookingForGenders: currentMatchPreferences.genders,
-                    ageRange: {
-                        min: currentMatchPreferences.ageMin,
-                        max: currentMatchPreferences.ageMax,
-                    },
-                }
+                    ageRange: shouldClearAgeRange
+                        ? null
+                        : {
+                            min: currentMatchPreferences.ageMin,
+                            max: currentMatchPreferences.ageMax,
+                        },
+                    };
+                })()
                 : question.stepKey === "interests"
                     ? {
                         interests: currentAnswer,
@@ -166,7 +181,7 @@ export function usePreferencesEditor(profile: User) {
         handleSave,
         isLoading,
         isPending,
-        isSaveDisabled: isPending || currentAnswer.length === 0,
+        isSaveDisabled: isPending,
         question,
         setCurrentIndex,
         steps,

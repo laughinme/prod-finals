@@ -56,7 +56,6 @@ export type MatchProfile = {
   tags: string[];
   explanation: string;
   location: string;
-  activity: string;
   reasonCodes: string[];
   detailsAvailable: boolean;
   actions: MatchProfileActions | null;

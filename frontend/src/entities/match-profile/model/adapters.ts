@@ -40,9 +40,8 @@ export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
   tags: [],
   explanation: dto.compatibility.preview,
   location: dto.candidate.city ?? "",
-  activity: dto.candidate.profile_completion_badge ?? "",
   reasonCodes: dto.compatibility.reason_codes,
-  detailsAvailable: dto.compatibility.details_available,
+  detailsAvailable: dto.compatibility.details_available ?? true,
   actions: toMatchProfileActions(dto.actions),
   source: "feed",
 });

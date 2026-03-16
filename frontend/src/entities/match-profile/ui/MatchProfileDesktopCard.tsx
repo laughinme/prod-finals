@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Calendar, MapPin, ShieldAlert } from "lucide-react";
+import { MapPin, ShieldAlert } from "lucide-react";
 
 import type { MatchProfile } from "../model";
 import { Badge } from "@/shared/components/ui/badge";
@@ -21,7 +21,7 @@ export function MatchProfileDesktopCard({
 }: MatchProfileDesktopCardProps) {
   const { t } = useTranslation();
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
-  const hasMeta = Boolean(profile.location || profile.activity);
+  const hasMeta = Boolean(profile.location);
 
   return (
     <Card className="relative flex flex-col overflow-hidden rounded-4xl border-2 border-black bg-card p-0 shadow-2xl shadow-primary/5 select-none md:flex-row">
@@ -74,12 +74,6 @@ export function MatchProfileDesktopCard({
                   <span className="flex items-center gap-1.5">
                     <MapPin className="size-5" />
                     {profile.location}
-                  </span>
-                ) : null}
-                {profile.activity ? (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="size-5" />
-                    {profile.activity}
                   </span>
                 ) : null}
               </div>

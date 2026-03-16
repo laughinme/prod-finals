@@ -19,7 +19,7 @@ export function DiscoveryDesktopProfileCard({
 }: DiscoveryDesktopProfileCardProps) {
   const { t } = useTranslation();
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
-  const hasMeta = Boolean(profile.location || profile.activity);
+  const hasMeta = Boolean(profile.location);
 
   return (
     <Card className="relative flex flex-col overflow-hidden rounded-4xl border-2 border-black bg-card p-0 shadow-2xl shadow-primary/5 md:flex-row">

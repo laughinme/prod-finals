@@ -63,7 +63,6 @@ export type FeedCandidateDto = {
   city: string | null;
   bio: string | null;
   avatar_url: string | null;
-  profile_completion_badge: string | null;
 };
 
 export type FeedCompatibilityDto = {
@@ -76,7 +75,7 @@ export type FeedCompatibilityDto = {
     label: string;
     score_percent: number;
   }>;
-  details_available: boolean;
+  details_available?: boolean;
 };
 
 export type FeedCardActionsDto = {
