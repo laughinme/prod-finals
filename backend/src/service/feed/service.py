@@ -1,5 +1,6 @@
 import logging
 from datetime import date
+from uuid import UUID
 
 from database.relational_db import RecommendationBatch, RecommendationItem, User
 from domain.dating import (
@@ -50,6 +51,7 @@ class FeedService(BaseDatingService):
         candidate = await self.user_repo.get_by_demo_user_key(demo_user_key)
         if candidate is None or candidate.id == user.id:
             raise FeedItemNotFoundError()
+        liked_you_target_ids = await self._list_liked_you_target_ids(user_id=user.id)
 
         batch = await self.matchmaking_repo.get_active_batch_for_date(
             user_id=user.id,
@@ -71,7 +73,11 @@ class FeedService(BaseDatingService):
             target_user_id=candidate.id,
         )
         if existing_item is not None:
-            cards = await self._build_cards(user=user, items=[existing_item])
+            cards = await self._build_cards(
+                user=user,
+                items=[existing_item],
+                liked_you_target_ids=set(liked_you_target_ids),
+            )
             if cards:
                 return cards[0]
             raise FeedItemNotFoundError()
@@ -109,7 +115,11 @@ class FeedService(BaseDatingService):
         batch.daily_limit = max(batch.daily_limit, len(existing_items) + 1)
         await self.uow.commit()
 
-        cards = await self._build_cards(user=user, items=[item])
+        cards = await self._build_cards(
+            user=user,
+            items=[item],
+            liked_you_target_ids=set(liked_you_target_ids),
+        )
         if not cards:
             raise FeedItemNotFoundError()
         return cards[0]
@@ -130,6 +140,12 @@ class FeedService(BaseDatingService):
             )
             if batch is None:
                 batch = await self._create_batch(user)
+            liked_you_target_ids = await self._list_liked_you_target_ids(user_id=user.id)
+            await self._sync_liked_you_candidates_into_batch(
+                user=user,
+                batch=batch,
+                liked_you_target_ids=liked_you_target_ids,
+            )
             items = await self.matchmaking_repo.list_batch_items(batch.id)
         except Exception as exc:  # pragma: no cover - degraded fallback
             logger.exception("Feed generation degraded for user=%s: %s", user.id, exc)
@@ -141,6 +157,10 @@ class FeedService(BaseDatingService):
             )
 
         pending_items = [item for item in items if item.processed_at is None]
+        pending_items = self._prioritize_liked_you_items(
+            items=pending_items,
+            liked_you_target_ids=liked_you_target_ids,
+        )
         if not items:
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
@@ -163,7 +183,11 @@ class FeedService(BaseDatingService):
                 cards=[],
             )
 
-        cards = await self._build_cards(user=user, items=pending_items[:limit])
+        cards = await self._build_cards(
+            user=user,
+            items=pending_items[:limit],
+            liked_you_target_ids=set(liked_you_target_ids),
+        )
         if not cards:
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
@@ -302,6 +326,101 @@ class FeedService(BaseDatingService):
         await self.uow.commit()
         return batch
 
+    async def _list_liked_you_target_ids(self, *, user_id: UUID) -> list[UUID]:
+        return await self.notification_repo.list_active_like_liker_user_ids(user_id=user_id, limit=100)
+
+    async def _sync_liked_you_candidates_into_batch(
+        self,
+        *,
+        user: User,
+        batch: RecommendationBatch,
+        liked_you_target_ids: list[UUID],
+    ) -> None:
+        if not liked_you_target_ids:
+            return
+
+        existing_items = await self.matchmaking_repo.list_batch_items(batch.id)
+        existing_target_ids = {item.target_user_id for item in existing_items}
+        excluded_target_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+        missing_target_ids = [
+            target_id
+            for target_id in liked_you_target_ids
+            if target_id not in existing_target_ids and target_id not in excluded_target_ids and target_id != user.id
+        ]
+        if not missing_target_ids:
+            return
+
+        users_by_id = {
+            candidate.id: candidate
+            for candidate in await self.user_repo.list_by_ids(missing_target_ids)
+        }
+        candidates = [
+            users_by_id[target_id]
+            for target_id in missing_target_ids
+            if target_id in users_by_id and users_by_id[target_id].can_be_shown_in_feed
+        ]
+        if not candidates:
+            return
+
+        requester_context = await self._build_feed_context(user)
+        candidate_contexts = [await self._build_feed_context(candidate) for candidate in candidates]
+        ranked = await self.ml_facade.rank(
+            requester=requester_context,
+            candidates=candidate_contexts,
+            limit=len(candidate_contexts),
+        )
+        ranked_by_candidate_id = {
+            candidate_score.candidate_user_id: candidate_score
+            for candidate_score in ranked.candidates
+        }
+
+        next_rank = max((item.rank for item in existing_items), default=0)
+        for target_id in missing_target_ids:
+            candidate_score = ranked_by_candidate_id.get(target_id)
+            if candidate_score is None:
+                continue
+            preview = await self.ml_facade.build_preview(candidate_score)
+            next_rank += 1
+            await self.matchmaking_repo.add(
+                RecommendationItem(
+                    batch_id=batch.id,
+                    target_user_id=target_id,
+                    rank=next_rank,
+                    score=candidate_score.score,
+                    compatibility_mode=(
+                        "ml_model"
+                        if batch.decision_mode == DecisionMode.MODEL.value
+                        else "basic_fallback"
+                    ),
+                    preview=preview.preview,
+                    reason_codes=preview.reason_codes,
+                    reason_signals=[entry.model_dump() for entry in preview.reason_signals],
+                    category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
+                )
+            )
+
+        batch.daily_limit = max(batch.daily_limit, next_rank)
+
+    def _prioritize_liked_you_items(
+        self,
+        *,
+        items: list[RecommendationItem],
+        liked_you_target_ids: list[UUID],
+    ) -> list[RecommendationItem]:
+        if not items or not liked_you_target_ids:
+            return items
+        liked_rank_by_target_id = {
+            target_id: index for index, target_id in enumerate(liked_you_target_ids)
+        }
+        return sorted(
+            items,
+            key=lambda item: (
+                0 if item.target_user_id in liked_rank_by_target_id else 1,
+                liked_rank_by_target_id.get(item.target_user_id, item.rank),
+                item.rank,
+            ),
+        )
+
     async def _ensure_requester_ml_profile(
         self,
         *,
@@ -398,12 +517,19 @@ class FeedService(BaseDatingService):
 
         return True
 
-    async def _build_cards(self, *, user: User, items: list[RecommendationItem]) -> list[FeedCard]:
+    async def _build_cards(
+        self,
+        *,
+        user: User,
+        items: list[RecommendationItem],
+        liked_you_target_ids: set[UUID] | None = None,
+    ) -> list[FeedCard]:
         users_by_id = {
             item.id: item
             for item in await self.user_repo.list_by_ids([item.target_user_id for item in items])
         }
         today = date.today()
+        liked_you_target_ids = liked_you_target_ids or set()
         cards: list[FeedCard] = []
         for item in items:
             candidate = users_by_id.get(item.target_user_id)
@@ -440,6 +566,7 @@ class FeedService(BaseDatingService):
                         can_block=True,
                         can_report=True,
                     ),
+                    liked_you=item.target_user_id in liked_you_target_ids,
                 )
             )
         return cards

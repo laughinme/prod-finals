@@ -242,8 +242,17 @@ export function MatchProfileDesktopCard({
         <div className="relative flex w-full shrink-0 flex-col p-8 md:h-[70vh] md:w-[55%] md:overflow-hidden md:px-12 md:pt-6 md:pb-12">
           <div className="mb-6 hidden items-start justify-between gap-6 md:flex">
             <div className="min-w-0 pt-[clamp(0.75rem,3.5vh,3.75rem)]">
-              {profile.tags.length > 0 ? (
+              {profile.tags.length > 0 || profile.likedYou ? (
                 <div className="mb-4 flex flex-wrap gap-2">
+                  {profile.likedYou ? (
+                    <Badge
+                      variant="secondary"
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700"
+                    >
+                      <Heart className="mr-1.5 size-3.5 fill-current" />
+                      {t("discovery.liked_you_badge")}
+                    </Badge>
+                  ) : null}
                   {profile.tags.map((tag) => (
                     <Badge
                       key={tag}

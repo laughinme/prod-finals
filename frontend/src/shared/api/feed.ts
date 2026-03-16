@@ -91,6 +91,7 @@ export type FeedCardDto = {
   candidate: FeedCandidateDto;
   compatibility: FeedCompatibilityDto;
   actions: FeedCardActionsDto;
+  liked_you: boolean;
 };
 
 export type DemoFeedShortcutItemDto = {

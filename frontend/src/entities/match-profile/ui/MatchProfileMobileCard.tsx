@@ -152,6 +152,15 @@ export function MatchProfileMobileCard({
                 </div>
               ) : null}
 
+              {profile.likedYou ? (
+                <div className="flex">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-rose-300/35 bg-rose-500/20 px-3 py-1.5 text-[12px] font-semibold text-rose-100 backdrop-blur-md">
+                    <Heart size={12} className="fill-current" />
+                    {t("discovery.liked_you_badge")}
+                  </span>
+                </div>
+              ) : null}
+
               <h2 className="text-[34px] font-bold leading-[0.96] tracking-[-0.04em] text-white drop-shadow-md">
                 {title}
               </h2>

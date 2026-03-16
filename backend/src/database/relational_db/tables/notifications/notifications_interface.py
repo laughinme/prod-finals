@@ -268,6 +268,20 @@ class NotificationInterface:
         result = await self.session.execute(stmt)
         return list(result.all())
 
+    async def list_active_like_liker_user_ids(
+        self,
+        *,
+        user_id: UUID,
+        limit: int = 100,
+    ) -> list[UUID]:
+        rows = await self.session.scalars(
+            select(LikeNotification.liker_user_id)
+            .where(LikeNotification.user_id == user_id)
+            .order_by(LikeNotification.created_at.desc())
+            .limit(limit)
+        )
+        return list(rows.all())
+
     async def count_unseen_like_notifications(self, *, user_id: UUID) -> int:
         count = await self.session.scalar(
             select(func.count(LikeNotification.id)).where(

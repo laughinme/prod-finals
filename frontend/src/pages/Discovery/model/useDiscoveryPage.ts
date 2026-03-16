@@ -199,6 +199,7 @@ function toLikeNotificationProfile(dto: LikeNotificationCardDto): MatchProfile {
       canBlock: dto.actions.can_block,
       canReport: dto.actions.can_report,
     },
+    likedYou: true,
     source: "like_notification",
   };
 }

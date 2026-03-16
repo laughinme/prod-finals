@@ -164,6 +164,7 @@ class FeedCard(BaseModel):
     candidate: FeedCandidate
     compatibility: CompatibilityPreview
     actions: FeedCardActions
+    liked_you: bool = False
 
 
 class DemoFeedShortcutItem(BaseModel):
