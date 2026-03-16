@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const COOKIE_NAME = "t-match-show-swipe-hint";
 
 function hasCookie(name: string): boolean {
-  return document.cookie.split("; ").some((c) => c.startsWith(name + "="));
+  return document.cookie.split("; ").some((cookie) => cookie.startsWith(name + "="));
 }
 
 function deleteCookie(name: string) {
@@ -15,21 +15,21 @@ function deleteCookie(name: string) {
 
 export function SwipeHint() {
   const { t } = useTranslation();
-
   const [visible, setVisible] = useState(() => hasCookie(COOKIE_NAME));
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      return;
+    }
 
     deleteCookie(COOKIE_NAME);
-
     const timer = setTimeout(() => setVisible(false), 4000);
     return () => clearTimeout(timer);
   }, [visible]);
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -38,12 +38,7 @@ export function SwipeHint() {
           className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/65 backdrop-blur-[3px]"
           onClick={() => setVisible(false)}
         >
-          {/*
-            Arrows sit OUTSIDE the card edges so the gap between them
-            equals the card width. Container = card width + 2 × arrow zone.
-          */}
           <div className="relative flex w-full max-w-145 items-center px-2 sm:px-4">
-            {/* Left arrow — swipe left = pass */}
             <motion.div
               animate={{ x: [-8, 4, -8] }}
               transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
@@ -57,7 +52,6 @@ export function SwipeHint() {
               </div>
             </motion.div>
 
-            {/* Center text — fills the card-width gap */}
             <div className="flex flex-1 flex-col items-center gap-1.5 px-2 text-center sm:gap-2 sm:px-3">
               <p className="text-base font-extrabold text-white drop-shadow-lg sm:text-xl">
                 {t("discovery.swipe_hint_title")}
@@ -70,7 +64,6 @@ export function SwipeHint() {
               </p>
             </div>
 
-            {/* Right arrow — swipe right = like */}
             <motion.div
               animate={{ x: [8, -4, 8] }}
               transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
@@ -85,12 +78,9 @@ export function SwipeHint() {
             </motion.div>
           </div>
 
-          {/* Tap to dismiss */}
-          <p className="mt-10 text-sm text-white/50">
-            {t("discovery.swipe_hint_tap_dismiss")}
-          </p>
+          <p className="mt-10 text-sm text-white/50">{t("discovery.swipe_hint_tap_dismiss")}</p>
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 }
