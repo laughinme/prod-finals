@@ -210,7 +210,7 @@ export function QuizFlow() {
   const handleNext = async () => {
     if (!question) return;
 
-    let finalAnswers = currentAnswer;
+    const finalAnswers = currentAnswer;
 
     try {
       const nextState = await answerMutation.mutateAsync({
