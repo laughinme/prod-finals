@@ -42,9 +42,6 @@ export function ProfileInfo({ profile, mobileTabBar }: ProfileInfoProps) {
         <h1 className="truncate text-xl font-extrabold tracking-tight sm:text-2xl md:text-3xl">
           {profile.fullName}
         </h1>
-        <p className="truncate text-sm font-medium text-muted-foreground md:text-base">
-          {profile.email}
-        </p>
       </div>
 
       {mobileTabBar && <div className="w-full md:hidden">{mobileTabBar}</div>}
