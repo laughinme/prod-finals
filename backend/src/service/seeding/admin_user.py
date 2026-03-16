@@ -13,7 +13,7 @@ class AdminUserSeedTask:
         self.registry = registry
 
     async def should_run(self, context: SeedContext) -> bool:
-        return context.settings.MOCK_USER_SEED_ENABLED
+        return True
 
     async def run(self, context: SeedContext) -> None:
         user_repo = UserInterface(context.uow.session)

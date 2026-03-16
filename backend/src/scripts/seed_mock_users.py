@@ -14,7 +14,8 @@ async def _main() -> None:
     storage = get_media_storage_service()
     session_factory = get_session_factory(settings)
 
-    await asyncio.to_thread(storage.ensure_buckets)
+    if settings.MOCK_USER_SEED_ENABLED:
+        await asyncio.to_thread(storage.ensure_buckets)
 
     async with session_factory() as session:
         async with UoW(session) as uow:

@@ -11,18 +11,29 @@ class AvatarAsset:
 
 
 def _docs_dir() -> Path:
-    return Path(__file__).resolve().parents[3] / "docs"
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "docs"
+        if candidate.exists():
+            return candidate
+    return Path(__file__).resolve().parents[2] / "docs"
 
 
 def _assets_dir() -> Path:
     return Path(__file__).resolve().parent / "assets"
 
 
+def _resolve_asset_path(*filenames: str) -> Path:
+    for base_dir in (_assets_dir(), _docs_dir()):
+        for filename in filenames:
+            candidate = base_dir / filename
+            if candidate.exists():
+                return candidate
+    return _assets_dir() / filenames[0]
+
+
 @lru_cache
 def load_default_avatar_asset() -> AvatarAsset:
-    path = _assets_dir() / "chichis.png"
-    if not path.exists():
-        path = _docs_dir() / "chichis.png"
+    path = _resolve_asset_path("chichis.png")
     return AvatarAsset(
         filename="default-avatar.png",
         content_type="image/png",
@@ -32,9 +43,7 @@ def load_default_avatar_asset() -> AvatarAsset:
 
 @lru_cache
 def load_dataset_avatar_asset() -> AvatarAsset:
-    path = _assets_dir() / "sponge_bob.jpg"
-    if not path.exists():
-        path = _docs_dir() / "sponge_bob.jpg"
+    path = _resolve_asset_path("sponge_bob.jpg", "sponge bob.jpg")
     return AvatarAsset(
         filename="dataset-avatar.jpg",
         content_type="image/jpeg",

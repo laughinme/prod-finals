@@ -51,7 +51,19 @@
     "tos_agreement_auth": "By clicking continue, you agree to our",
     "tos": "Terms of Service",
     "privacy_policy": "Privacy Policy",
-    "and": "and"
+    "and": "and",
+    "demo_accounts_eyebrow": "Demo",
+    "demo_accounts_title": "Fast jury access",
+    "demo_accounts_description": "The first two dataset accounts are pinned to the top of each other's feeds, so two devices can quickly show like, match, and chat.",
+    "tid_mock_badge": "Mock T-ID",
+    "login_with_tid_mock": "Login with T-ID",
+    "tid_mock_description": "Mock sign-in that immediately opens the first demo dataset account.",
+    "demo_account_dataset_a_title": "Dataset demo A",
+    "demo_account_dataset_a_description": "The first demo account from the dataset. It will see demo B first in the feed.",
+    "demo_account_dataset_b_title": "Dataset demo B",
+    "demo_account_dataset_b_description": "The second demo account from the dataset. It will see demo A first in the feed.",
+    "demo_account_admin_title": "Admin",
+    "demo_account_admin_description": "Fast access to the admin dashboard."
   },
   "profile": {
     "personal_info": "Personal Information",

@@ -23,6 +23,11 @@ from service.matchmaking.reason_signals import build_preview_reason_signals
 
 logger = logging.getLogger(__name__)
 
+_DEMO_FEED_PAIR_BY_EMAIL: dict[str, str] = {
+    "mock-user-0001@example.com": "mock-user-0002@example.com",
+    "mock-user-0002@example.com": "mock-user-0001@example.com",
+}
+
 
 class FeedService(BaseDatingService):
     async def get_feed(self, user: User, limit: int) -> FeedResponse:
@@ -169,6 +174,11 @@ class FeedService(BaseDatingService):
             candidates=[await self._build_feed_context(candidate) for candidate in all_candidates],
             limit=len(all_candidates),
         )
+        ranked_candidates = self._prioritize_demo_counterpart(
+            requester_email=user.email,
+            ranked_candidates=ranked.candidates,
+            candidates=all_candidates,
+        )
 
         batch = await self.matchmaking_repo.add(
             RecommendationBatch(
@@ -176,11 +186,11 @@ class FeedService(BaseDatingService):
                 batch_date=self.local_today(),
                 expires_at=self.local_end_of_day(),
                 decision_mode=ranked.decision_mode.value,
-                daily_limit=len(ranked.candidates),
+                daily_limit=len(ranked_candidates),
             )
         )
 
-        for index, candidate_score in enumerate(ranked.candidates, start=1):
+        for index, candidate_score in enumerate(ranked_candidates, start=1):
             preview = await self.ml_facade.build_preview(candidate_score)
             await self.matchmaking_repo.add(
                 RecommendationItem(
@@ -229,6 +239,32 @@ class FeedService(BaseDatingService):
             )
         except Exception as exc:  # pragma: no cover - best effort sync before ranking
             logger.warning("Requester ML profile sync failed for user=%s: %s", user.id, exc)
+
+    def _prioritize_demo_counterpart(
+        self,
+        *,
+        requester_email: str | None,
+        ranked_candidates,
+        candidates: list[User],
+    ):
+        normalized_email = (requester_email or "").strip().lower()
+        counterpart_email = _DEMO_FEED_PAIR_BY_EMAIL.get(normalized_email)
+        if not counterpart_email:
+            return ranked_candidates
+
+        candidate_id_by_email = {
+            (candidate.email or "").strip().lower(): candidate.id for candidate in candidates
+        }
+        counterpart_id = candidate_id_by_email.get(counterpart_email)
+        if counterpart_id is None:
+            return ranked_candidates
+
+        prioritized = list(ranked_candidates)
+        for index, candidate_score in enumerate(prioritized):
+            if candidate_score.candidate_user_id == counterpart_id:
+                prioritized.insert(0, prioritized.pop(index))
+                return prioritized
+        return prioritized
 
     def _candidate_passes_filters(
         self,
