@@ -84,27 +84,19 @@ def apply_random_mix(
 
     total = len(ranked_candidates)
     protected_top = 1
-    max_injectable = total - protected_top
-    inject_count = max(1, round(total * (mix_percent / 100)))
+    pool_indices = list(range(protected_top, total))
+    max_injectable = len(pool_indices)
+    inject_count = max(1, round(max_injectable * (mix_percent / 100)))
     inject_count = min(inject_count, max_injectable)
     if inject_count <= 0:
         return ranked_candidates
 
-    start_index = protected_top
-    replace_indices = list(range(start_index, start_index + inject_count))
-    pool_indices = list(range(start_index, total))
-    if len(pool_indices) <= inject_count:
-        pool_indices = list(range(protected_top, total))
-
     rng = Random()
-    selected_indices = rng.sample(pool_indices, k=len(replace_indices))
+    selected_indices = rng.sample(pool_indices, k=inject_count)
     selected_index_set = set(selected_indices)
-    replace_index_set = set(replace_indices)
 
     selected_candidates = [ranked_candidates[index] for index in selected_indices]
     remaining = [
-        candidate
-        for index, candidate in enumerate(ranked_candidates)
-        if index not in selected_index_set and index not in replace_index_set
+        ranked_candidates[index] for index in pool_indices if index not in selected_index_set
     ]
     return ranked_candidates[:protected_top] + selected_candidates + remaining
