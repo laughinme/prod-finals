@@ -42,6 +42,7 @@ export function useUploadAvatar() {
         mutationFn: (file: File) => uploadProfilePicture(file),
         onSuccess: (updated) => {
             qc.setQueryData(PROFILE_KEY, updated);
+            void qc.invalidateQueries({ queryKey: ["onboarding", "state"] });
             toast.success(t("profile.photo_update_success"));
         },
         onError: (error) => {
@@ -59,6 +60,7 @@ export function useSetDefaultAvatar() {
         mutationFn: () => setDefaultProfilePicture(),
         onSuccess: (updated) => {
             qc.setQueryData(PROFILE_KEY, updated);
+            void qc.invalidateQueries({ queryKey: ["onboarding", "state"] });
             toast.success(t("profile.photo_update_success"));
         },
         onError: (error) => {

@@ -62,6 +62,9 @@ class OnboardingService(BaseDatingService):
         if step is None:
             raise BadRequestError("Unknown quiz step")
 
+        if payload.step_key == PROFILE_PREVIEW_STEP_KEY and not user.has_approved_photo:
+            raise BadRequestError("Add a photo before completing onboarding")
+
         normalized_answers = self._validate_answers(step, payload.answers)
         import_transactions = await self._resolve_import_transactions_value(
             user=user,
@@ -119,6 +122,7 @@ class OnboardingService(BaseDatingService):
         user.quiz_started = True
         user.onboarding_skipped = True
         user.quiz_current_step_key = None
+        user.is_onboarded = user.can_open_feed
         await self.matchmaking_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
         await self.add_audit_event(
             event_type="onboarding_skipped",

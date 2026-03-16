@@ -237,8 +237,8 @@ export function QuizFlow() {
 
   const handleSkipAll = async () => {
     try {
-      await skipMutation.mutateAsync();
-      navigate("/discovery", { replace: true });
+      const nextState = await skipMutation.mutateAsync();
+      navigate(nextState.shouldShow ? "/quiz" : "/discovery", { replace: true });
     } catch (error) {
       Sentry.captureException(error);
       console.error("Failed to skip onboarding", error);

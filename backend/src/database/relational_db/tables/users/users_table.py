@@ -122,7 +122,7 @@ class User(TimestampMixin, Base):
             return AvatarModerationStatus.PENDING.value
         if self.avatar_status == AvatarModerationStatus.APPROVED.value:
             return AvatarModerationStatus.APPROVED.value
-        return AvatarModerationStatus.MISSING.value
+        return AvatarModerationStatus.APPROVED.value
 
     @property
     def missing_required_fields(self) -> list[str]:
@@ -159,14 +159,13 @@ class User(TimestampMixin, Base):
             return ProfileStatus.REQUIRED_FIELDS_MISSING.value
         if self.avatar_moderation_status == AvatarModerationStatus.PENDING.value:
             return ProfileStatus.AVATAR_PENDING.value
+        if not self.has_approved_photo:
+            return ProfileStatus.AVATAR_REQUIRED.value
         return ProfileStatus.READY.value
 
     @property
     def can_open_feed(self) -> bool:
-        return self.profile_status in {
-            ProfileStatus.READY.value,
-            ProfileStatus.AVATAR_PENDING.value,
-        }
+        return self.profile_status == ProfileStatus.READY.value
 
     @property
     def profile_completion_percent(self) -> int:
@@ -192,13 +191,15 @@ class User(TimestampMixin, Base):
         if self.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return "photo_pending"
         if not self.has_approved_photo:
-            return "photo_recommended"
+            return "photo_required"
         return "ready_for_feed"
 
     @property
     def required_profile_step_key(self) -> str | None:
         if self.missing_required_fields:
             return "profile_basics"
+        if not self.has_approved_photo:
+            return "profile_preview"
         return None
 
     def has_roles(self, *slugs: str) -> bool:
