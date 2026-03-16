@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from domain.dating import AgeRange, FeedCandidateContext, SearchPreferences
+from domain.dating import AgeRange, ExplanationRequest, FeedCandidateContext, SearchPreferences
 from domain.dating.category_catalog import load_category_definitions
 from service.matchmaking.ml_facade import HttpMlFacade, MockMlFacade
 
@@ -252,3 +252,67 @@ async def test_http_ml_facade_diversifies_top_category_order(monkeypatch):
     assert ranked.decision_mode.value == "model"
     assert ordered_ids[0] == str(candidate_a.user_id)
     assert ordered_ids[1] == str(candidate_c.user_id)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_http_ml_facade_explain_maps_template_keys_to_human_text(monkeypatch):
+    requester = FeedCandidateContext(
+        user_id=uuid4(),
+        ml_user_id="requester-ml",
+        display_name="Requester",
+    )
+    candidate = FeedCandidateContext(
+        user_id=uuid4(),
+        ml_user_id="candidate-ml",
+        display_name="Candidate",
+    )
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "reasons": [
+                    {
+                        "code": "lifestyle_similarity",
+                        "template_key": "compat.lifestyle_similarity.high",
+                        "confidence": 0.91,
+                    },
+                    {
+                        "code": "activity_overlap",
+                        "template_key": "compat.activity_overlap.high",
+                        "confidence": 0.84,
+                    },
+                ],
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+
+    facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
+    response = await facade.explain(
+        ExplanationRequest(
+            requester=requester,
+            candidate=candidate,
+            serve_item_id=uuid4(),
+        )
+    )
+
+    assert response.reasons
+    assert all(not reason.title.startswith("compat.") for reason in response.reasons)
+    assert all(not reason.text.startswith("compat.") for reason in response.reasons)
+    assert response.reasons[0].title == "Похожий образ жизни"

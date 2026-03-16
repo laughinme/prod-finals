@@ -577,6 +577,51 @@ class HttpMlFacade(MlFacade):
             return DecisionMode.MODEL
         return DecisionMode.FALLBACK
 
+    def _render_explanation_reason(
+        self,
+        *,
+        ml_code: str,
+        template_key: str,
+    ) -> tuple[str, str]:
+        parsed_code = ml_code.strip().lower() or None
+        parsed_strength = "medium"
+        parts = template_key.strip().split(".")
+        if len(parts) == 3 and parts[0] == "compat":
+            parsed_code = parts[1]
+            parsed_strength = parts[2]
+
+        code = parsed_code or "lifestyle_similarity"
+        strength = parsed_strength if parsed_strength in {"high", "medium", "low"} else "medium"
+
+        title_map = {
+            "lifestyle_similarity": "Похожий образ жизни",
+            "activity_overlap": "Общие интересы",
+            "communication_style_fit": "Совместимый стиль общения",
+            "meetup_rhythm_fit": "Похожий ритм встреч",
+            "locality_fit": "Удобная география",
+        }
+        text_map = {
+            ("lifestyle_similarity", "high"): "Ваши привычки и стиль жизни хорошо совпадают.",
+            ("lifestyle_similarity", "medium"): "Ваш образ жизни в целом хорошо сочетается.",
+            ("lifestyle_similarity", "low"): "Есть точки соприкосновения по образу жизни.",
+            ("activity_overlap", "high"): "У вас много общих интересов и сценариев досуга.",
+            ("activity_overlap", "medium"): "Есть заметное пересечение по интересам.",
+            ("activity_overlap", "low"): "Найдены отдельные общие интересы.",
+            ("communication_style_fit", "high"): "Вам должно быть комфортно общаться друг с другом.",
+            ("communication_style_fit", "medium"): "Ваш стиль общения в целом совместим.",
+            ("communication_style_fit", "low"): "Есть базовая совместимость по стилю общения.",
+            ("meetup_rhythm_fit", "high"): "Ваш привычный ритм встреч хорошо совпадает.",
+            ("meetup_rhythm_fit", "medium"): "Ваш ритм встреч в целом сочетается.",
+            ("meetup_rhythm_fit", "low"): "Есть базовая совместимость по ритму встреч.",
+            ("locality_fit", "high"): "Вам будет удобно встречаться с учётом локации.",
+            ("locality_fit", "medium"): "Локация и дистанция в целом подходят.",
+            ("locality_fit", "low"): "Есть допустимая совместимость по локации.",
+        }
+
+        title = title_map.get(code, "Совместимость профилей")
+        text = text_map.get((code, strength), "Найдены признаки совместимости по анкете и поведению.")
+        return title, text
+
     async def rank(
         self,
         requester: FeedCandidateContext,
@@ -706,12 +751,18 @@ class HttpMlFacade(MlFacade):
 
         reasons: list[CompatibilityReason] = []
         for r in data.get("reasons", []):
-            code = self._map_reason_code(r.get("code", ""))
+            raw_code = str(r.get("code", ""))
+            template_key = str(r.get("template_key", ""))
+            code = self._map_reason_code(raw_code)
+            title, text = self._render_explanation_reason(
+                ml_code=raw_code,
+                template_key=template_key,
+            )
             reasons.append(
                 CompatibilityReason(
                     code=code.value,
-                    title=r.get("template_key", code.value),
-                    text=r.get("template_key", ""),
+                    title=title,
+                    text=text,
                     confidence=r.get("confidence", 0.5),
                 )
             )

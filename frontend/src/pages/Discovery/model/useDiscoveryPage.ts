@@ -18,12 +18,117 @@ type MatchNavigationState = {
   conversationId: string | null;
 };
 
+type ReasonStrength = "high" | "medium" | "low";
+
+const COMPAT_TITLE_MAP: Record<string, string> = {
+  lifestyle_similarity: "Похожий образ жизни",
+  activity_overlap: "Общие интересы",
+  communication_style_fit: "Комфортный стиль общения",
+  meetup_rhythm_fit: "Похожий ритм встреч",
+  locality_fit: "Удобная география",
+  novelty_boost: "Новый релевантный кандидат",
+};
+
+const COMPAT_TEXT_MAP: Record<string, Record<ReasonStrength, string>> = {
+  lifestyle_similarity: {
+    high: "Ваши привычки и стиль жизни хорошо совпадают.",
+    medium: "Ваш образ жизни в целом хорошо сочетается.",
+    low: "Есть точки соприкосновения по образу жизни.",
+  },
+  activity_overlap: {
+    high: "У вас много общих интересов и сценариев досуга.",
+    medium: "Есть заметное пересечение по интересам.",
+    low: "Найдены отдельные общие интересы.",
+  },
+  communication_style_fit: {
+    high: "Вам должно быть комфортно общаться друг с другом.",
+    medium: "Ваш стиль общения в целом совместим.",
+    low: "Есть базовая совместимость по стилю общения.",
+  },
+  meetup_rhythm_fit: {
+    high: "Ваш привычный ритм встреч хорошо совпадает.",
+    medium: "Ваш ритм встреч в целом сочетается.",
+    low: "Есть базовая совместимость по ритму встреч.",
+  },
+  locality_fit: {
+    high: "Вам будет удобно встречаться с учетом локации.",
+    medium: "Локация и дистанция в целом подходят.",
+    low: "Есть допустимая совместимость по локации.",
+  },
+};
+
+const RAW_COMPAT_TOKEN_PATTERN = /^(?:compat\.)?[a-z_]+(?:\.(?:high|medium|low))?$/i;
+
+function parseCompatToken(raw: string): { code: string; strength: ReasonStrength } | null {
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized || !RAW_COMPAT_TOKEN_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  const parts = normalized.split(".");
+  if (parts[0] === "compat" && parts.length === 3) {
+    const [, code, strength] = parts;
+    if (strength === "high" || strength === "medium" || strength === "low") {
+      return { code, strength };
+    }
+    return { code, strength: "medium" };
+  }
+
+  if (parts.length === 2) {
+    const [code, strength] = parts;
+    if (strength === "high" || strength === "medium" || strength === "low") {
+      return { code, strength };
+    }
+  }
+
+  if (parts.length === 1) {
+    return { code: parts[0], strength: "medium" };
+  }
+
+  return null;
+}
+
+function normalizeReasonTitle(reason: MatchProfileExplanationReason): string {
+  const rawTitle = reason.title.trim();
+  const parsed =
+    parseCompatToken(rawTitle) ??
+    parseCompatToken(reason.code);
+
+  if (!parsed) {
+    return rawTitle;
+  }
+
+  return COMPAT_TITLE_MAP[parsed.code] ?? "Совместимость профилей";
+}
+
+function normalizeReasonText(reason: MatchProfileExplanationReason): string {
+  const rawText = reason.text.trim();
+  const parsed =
+    parseCompatToken(rawText) ??
+    parseCompatToken(reason.code) ??
+    parseCompatToken(reason.title);
+
+  if (!parsed) {
+    return rawText;
+  }
+
+  return (
+    COMPAT_TEXT_MAP[parsed.code]?.[parsed.strength] ??
+    "Найдены признаки совместимости по анкете и поведению."
+  );
+}
+
 function getExplanationTags(
   reasons: MatchProfileExplanationReason[],
   fallbackTags: string[],
 ): string[] {
-  const nextTags = reasons
-    .map((reason) => reason.title.trim())
+  const nextTags = Array.from(
+    new Set(
+      reasons
+        .map((reason) => normalizeReasonTitle(reason))
+        .filter(Boolean),
+    ),
+  )
     .filter(Boolean)
     .slice(0, 3);
 
@@ -35,7 +140,7 @@ function getExplanationText(
   fallbackText: string,
 ): string {
   const nextText = reasons
-    .map((reason) => reason.text.trim())
+    .map((reason) => normalizeReasonText(reason))
     .filter(Boolean)
     .slice(0, 2)
     .join(" ");
