@@ -92,32 +92,23 @@ function parseCompatToken(raw: string): { code: string; strength: ReasonStrength
 
 function normalizeReasonTitle(reason: MatchProfileExplanationReason): string {
   const rawTitle = reason.title.trim();
-  const parsed =
-    parseCompatToken(rawTitle) ??
-    parseCompatToken(reason.code);
-
-  if (!parsed) {
+  const parsedFromTitle = parseCompatToken(rawTitle);
+  if (!parsedFromTitle) {
     return rawTitle;
   }
 
-  return COMPAT_TITLE_MAP[parsed.code] ?? "Совместимость профилей";
+  return COMPAT_TITLE_MAP[parsedFromTitle.code] ?? "Совместимость профилей";
 }
 
 function normalizeReasonText(reason: MatchProfileExplanationReason): string {
   const rawText = reason.text.trim();
-  const parsed =
-    parseCompatToken(rawText) ??
-    parseCompatToken(reason.code) ??
-    parseCompatToken(reason.title);
-
-  if (!parsed) {
+  const parsedFromText = parseCompatToken(rawText);
+  if (!parsedFromText) {
     return rawText;
   }
 
-  return (
-    COMPAT_TEXT_MAP[parsed.code]?.[parsed.strength] ??
-    "Найдены признаки совместимости по анкете и поведению."
-  );
+  return COMPAT_TEXT_MAP[parsedFromText.code]?.[parsedFromText.strength]
+    ?? "Найдены признаки совместимости по анкете и поведению.";
 }
 
 function getExplanationTags(
