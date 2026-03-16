@@ -5,12 +5,34 @@ import {
   MapPin,
   ShieldAlert,
   Sparkles,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { MatchProfile } from "../model";
-import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
+
+function getPrimaryLocation(location: string): string {
+  return location.split(",")[0]?.trim() ?? "";
+}
+
+function getInterestLabels(profile: MatchProfile): string[] {
+  const labels = [
+    ...profile.tags,
+    ...profile.categoryBreakdown.map((item) => item.label?.trim() ?? ""),
+  ];
+
+  return Array.from(
+    new Set(
+      labels.filter(
+        (label) =>
+          Boolean(label) &&
+          label !== "<none>" &&
+          label.toLowerCase() !== "unknown",
+      ),
+    ),
+  ).slice(0, 3);
+}
 
 interface MatchProfileMobileCardProps {
   profile: MatchProfile;
@@ -34,20 +56,30 @@ export function MatchProfileMobileCard({
 }: MatchProfileMobileCardProps) {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
+  const [showCompatibilityDetails, setShowCompatibilityDetails] = useState(false);
 
   const title =
     profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
-  const hasDetails = Boolean(
-    profile.bio ||
-      profile.location ||
-      profile.tags.length > 0 ||
-      profile.explanation,
-  );
+  const primaryLocation = getPrimaryLocation(profile.location);
+  const interestLabels = getInterestLabels(profile);
+  const hasDetails = Boolean(primaryLocation || profile.explanation);
   const cardFrameStyle: CSSProperties = {
     width: "min(100%, 400px, calc((100dvh - 5rem) * 0.5333333333))",
     maxHeight: "calc(100dvh - 5rem)",
     aspectRatio: "400 / 750",
   };
+  const interestsSummary = interestLabels.length
+    ? t("discovery.compatibility_interests_summary", {
+        interests: interestLabels.slice(0, 2).join(", "),
+      })
+    : t("discovery.compatibility_interests_fallback");
+  const locationSummary = primaryLocation
+    ? t("discovery.compatibility_location_summary", {
+        location: primaryLocation,
+      })
+    : t("discovery.compatibility_location_fallback");
+  const lifestyleSummary =
+    profile.explanation || t("discovery.compatibility_lifestyle_fallback");
 
   return (
     <div className="mx-auto flex w-full justify-center select-none">
@@ -87,6 +119,7 @@ export function MatchProfileMobileCard({
         {showReportButton ? (
           <div className="absolute top-5 right-5 z-20">
             <button
+              type="button"
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
               onClick={onOpenReport}
@@ -98,43 +131,6 @@ export function MatchProfileMobileCard({
             </button>
           </div>
         ) : null}
-
-        <AnimatePresence>
-          {showDetails && hasDetails ? (
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16, scale: 0.97 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="absolute inset-x-5 bottom-24 z-20 overflow-hidden rounded-[26px] border border-white/10 bg-black/70 p-4 backdrop-blur-xl"
-            >
-              <div className="space-y-3 text-white/85">
-                {profile.location ? (
-                  <div className="flex items-center gap-2 text-sm text-white/75">
-                    <MapPin className="size-4 shrink-0" />
-                    <span>{profile.location}</span>
-                  </div>
-                ) : null}
-
-                {profile.bio ? (
-                  <p className="text-sm leading-6 text-white/80">{profile.bio}</p>
-                ) : null}
-
-                {profile.explanation ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                      <Sparkles className="size-3" />
-                      {t("discovery.why_matched")}
-                    </p>
-                    <p className="text-xs leading-5 text-white/75">
-                      {profile.explanation}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
 
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pt-24 pb-6">
           <div className="flex flex-col gap-6">
@@ -160,29 +156,73 @@ export function MatchProfileMobileCard({
                   {profile.bio}
                 </p>
               ) : null}
+
+              <AnimatePresence initial={false}>
+                {showDetails && hasDetails ? (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 0 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-3 rounded-[28px] border border-white/10 bg-[#171717]/92 p-5 shadow-[0_18px_40px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+                      {profile.explanation ? (
+                        <div className="space-y-3">
+                          <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+                            <Sparkles className="size-3.5" />
+                            {t("discovery.why_matched")}
+                          </p>
+                          <p className="text-[15px] leading-8 text-white/80">
+                            {profile.explanation}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {!profile.explanation && primaryLocation ? (
+                        <div className="flex items-center gap-2 text-sm text-white/75">
+                          <MapPin className="size-4 shrink-0" />
+                          <span>{primaryLocation}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
 
             <div className="flex items-end justify-between gap-4">
               {showMatchScore ? (
-                <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-md">
-                    <Heart
-                      size={14}
-                      className="fill-[#FF453A] text-[#FF453A]"
-                    />
-                    <span className="text-[15px] font-semibold text-white">
-                      {profile.matchScore}%
-                    </span>
-                  </div>
-                </ScoreBreakdownPopover>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => setShowCompatibilityDetails(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-md transition-colors hover:bg-black/55"
+                >
+                  <Heart
+                    size={14}
+                    className="fill-[#FF453A] text-[#FF453A]"
+                  />
+                  <span className="text-[15px] font-semibold text-white">
+                    {profile.matchScore}%
+                  </span>
+                </button>
               ) : (
                 <div />
               )}
 
               <button
+                type="button"
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => setShowDetails((value) => !value)}
+                onClick={() => {
+                  if (!hasDetails) {
+                    return;
+                  }
+                  setShowDetails((value) => !value);
+                }}
+                disabled={!hasDetails}
                 className={`flex size-14 items-center justify-center rounded-full border text-white backdrop-blur-md transition-colors ${
                   showDetails
                     ? "border-white/20 bg-black/70"
@@ -196,6 +236,125 @@ export function MatchProfileMobileCard({
             </div>
           </div>
         </div>
+
+        <AnimatePresence>
+          {showCompatibilityDetails && showMatchScore ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="absolute inset-0 z-30 bg-black/72 backdrop-blur-xl"
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => setShowCompatibilityDetails(false)}
+            >
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="absolute inset-x-0 bottom-0 flex max-h-[86%] flex-col overflow-hidden rounded-t-[36px] bg-white shadow-[0_-18px_50px_rgba(0,0,0,0.2)]"
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="shrink-0 px-6 pt-3 pb-2">
+                  <div className="mx-auto h-1.5 w-14 rounded-full bg-[#D9DCE3]" />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => setShowCompatibilityDetails(false)}
+                    className="absolute top-5 right-5 flex size-11 items-center justify-center rounded-full bg-[#F3F4F7] text-[#9AA1AE] transition-colors hover:text-[#677083]"
+                    aria-label={t("common.close")}
+                    title={t("common.close")}
+                  >
+                    <X size={19} strokeWidth={2.2} />
+                  </button>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
+                  <div className="space-y-5 pt-1">
+                    <div className="text-center">
+                      <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-[#FFF1F1] shadow-inner">
+                        <Heart className="size-10 fill-[#FF2D3D] text-[#FF2D3D]" />
+                      </div>
+                      <h3 className="text-[22px] font-bold text-black">
+                        {t("discovery.compatibility_match_title")}
+                      </h3>
+                      <div className="mt-2 text-[58px] leading-none font-black tracking-[-0.06em] text-[#428BF9]">
+                        {profile.matchScore}%
+                      </div>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      <h4 className="text-center text-[11px] font-bold uppercase tracking-[0.28em] text-[#98A2B3]">
+                        {t("discovery.compatibility_criteria_title")}
+                      </h4>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4 rounded-[24px] border border-[#CFE0FF] bg-[#EAF2FF] p-4">
+                          <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
+                            <Sparkles className="size-7 text-[#4F86F7]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-bold text-black">
+                              {t("discovery.compatibility_interests_title")}
+                            </p>
+                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                              {interestsSummary}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 rounded-[24px] border border-[#C9F2D8] bg-[#ECFBF2] p-4">
+                          <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
+                            <MapPin className="size-7 text-[#12A150]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-bold text-black">
+                              {t("discovery.compatibility_location_title")}
+                            </p>
+                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                              {locationSummary}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 rounded-[24px] border border-[#E8D7FF] bg-[#F5EEFF] p-4">
+                          <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
+                            <Info className="size-7 text-[#8E2CFF]" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-bold text-black">
+                              {t("discovery.compatibility_lifestyle_title")}
+                            </p>
+                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                              {lifestyleSummary}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sticky bottom-0 -mx-6 bg-gradient-to-t from-white via-white to-white/90 px-6 pt-4 pb-1">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={() => setShowCompatibilityDetails(false)}
+                        className="w-full rounded-[28px] bg-black px-6 py-4 text-[18px] font-bold text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition-colors hover:bg-neutral-900"
+                      >
+                        {t("discovery.compatibility_done")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   );

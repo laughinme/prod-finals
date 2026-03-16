@@ -27,7 +27,8 @@
     "skip_all": "Skip all",
     "compatibility_by_categories": "Compatibility by categories",
     "save_and_start": "Save and start",
-    "details": "Details"
+    "details": "Details",
+    "close": "Close"
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",
@@ -109,6 +110,17 @@
     "pass_profile": "Pass profile",
     "like_profile": "Like profile",
     "why_matched": "Why did you match?",
+    "compatibility_match_title": "Overall match",
+    "compatibility_criteria_title": "Compatibility criteria",
+    "compatibility_interests_title": "Interests",
+    "compatibility_interests_summary": "Shared interests: {{interests}}",
+    "compatibility_interests_fallback": "There is a noticeable overlap in interests and leisure habits.",
+    "compatibility_location_title": "Location",
+    "compatibility_location_summary": "It will be convenient to meet in {{location}}",
+    "compatibility_location_fallback": "Location and distance are a good fit.",
+    "compatibility_lifestyle_title": "Lifestyle",
+    "compatibility_lifestyle_fallback": "Your rhythm of life and habits fit well together.",
+    "compatibility_done": "Great",
     "report_profile_aria": "Report profile",
     "pass_profile_aria": "Pass profile",
     "like_profile_aria": "Like profile"

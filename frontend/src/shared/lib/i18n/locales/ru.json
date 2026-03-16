@@ -27,7 +27,8 @@
     "skip_all": "Пропустить все",
     "compatibility_by_categories": "Совместимость по категориям",
     "save_and_start": "Сохранить и начать",
-    "details": "Подробнее"
+    "details": "Подробнее",
+    "close": "Закрыть"
   },
   "auth": {
     "invalid_credentials": "Неверный email или пароль",
@@ -109,6 +110,17 @@
     "pass_profile": "Пропустить профиль",
     "like_profile": "Лайкнуть профиль",
     "why_matched": "Почему вы подходите?",
+    "compatibility_match_title": "Общий мэтч",
+    "compatibility_criteria_title": "Критерии совместимости",
+    "compatibility_interests_title": "Интересы",
+    "compatibility_interests_summary": "Близкие интересы: {{interests}}",
+    "compatibility_interests_fallback": "Есть заметное совпадение по интересам и досугу.",
+    "compatibility_location_title": "Локация",
+    "compatibility_location_summary": "Удобно встречаться в {{location}}",
+    "compatibility_location_fallback": "Локация и дистанция хорошо подходят.",
+    "compatibility_lifestyle_title": "Образ жизни",
+    "compatibility_lifestyle_fallback": "Ваш ритм жизни и привычки хорошо сочетаются.",
+    "compatibility_done": "Отлично",
     "report_profile_aria": "Пожаловаться на профиль",
     "pass_profile_aria": "Пропустить профиль",
     "like_profile_aria": "Лайкнуть профиль"
