@@ -22,6 +22,7 @@ from domain.dating import (
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
 from service.demo_accounts import DEMO_DATASET_ACCOUNTS, DEMO_FEED_PAIR_BY_EMAIL
 from service.matchmaking.reason_signals import build_preview_reason_signals
+from service.matchmaking.random_mix import apply_random_mix, get_random_mix_state
 
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,11 @@ class FeedService(BaseDatingService):
             requester_email=user.email,
             ranked_candidates=ranked.candidates,
             candidates=all_candidates,
+        )
+        random_mix_percent = get_random_mix_state().random_mix_percent
+        ranked_candidates = apply_random_mix(
+            ranked_candidates,
+            mix_percent=random_mix_percent,
         )
 
         batch = await self.matchmaking_repo.add(

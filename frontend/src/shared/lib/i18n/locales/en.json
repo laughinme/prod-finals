@@ -274,6 +274,15 @@
     "insight_dataset_text": "Dataset users provide a richer start, while cold-start users show how effective the base onboarding path is.",
     "insight_funnel_title": "Conversation quality",
     "insight_funnel_text": "The key case metric is not just matches, but the transition to first message, reply, and low safety friction.",
+    "random_mix_title": "Experiment: random mix",
+    "random_mix_description": "Share of random candidate injection in ranking for model quality stress testing.",
+    "random_mix_current": "Random candidate share",
+    "random_mix_hint_low": "0% - model only",
+    "random_mix_hint_high": "80% - heavy random mix",
+    "random_mix_updated_at": "Updated: {{date}}",
+    "random_mix_not_set": "Setting has not been applied yet",
+    "random_mix_save": "Save",
+    "random_mix_saving": "Saving...",
     "partial_data_title": "Some data is unavailable",
     "partial_data_description": "A few widgets did not receive API data. The rest of the dashboard is still up to date."
   }

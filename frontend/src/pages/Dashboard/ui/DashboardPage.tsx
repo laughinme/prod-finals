@@ -21,7 +21,9 @@ import {
   YAxis,
 } from "recharts";
 import { useAdminDashboard } from "@/features/admin/useAdminDashboard";
+import { useAdminRandomMixSettings } from "@/features/admin/useAdminRandomMixSettings";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import {
   Card,
   CardContent,
@@ -69,6 +71,7 @@ export default function DashboardPage() {
     isLoading,
     isError,
   } = useAdminDashboard();
+  const randomMix = useAdminRandomMixSettings();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -452,6 +455,102 @@ export default function DashboardPage() {
                   description={t("admin.by_decision_mode_description")}
                   items={funnelSummary?.by_decision_mode ?? []}
                 />
+              </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-2">
+              <SegmentMatrixCard
+                title={t("admin.segment_matrix")}
+                description={t("admin.segment_matrix_description")}
+                items={funnelSummary?.by_segment ?? []}
+              />
+              <div className="grid gap-4">
+                <Card className="rounded-[28px]">
+                  <CardHeader>
+                    <CardTitle>{t("admin.notes_title")}</CardTitle>
+                    <CardDescription>
+                      {t("admin.notes_description")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 text-sm text-muted-foreground">
+                    <InsightRow
+                      icon={Bot}
+                      title={t("admin.insight_model_title")}
+                      text={t("admin.insight_model_text")}
+                    />
+                    <InsightRow
+                      icon={Activity}
+                      title={t("admin.insight_dataset_title")}
+                      text={t("admin.insight_dataset_text")}
+                    />
+                    <InsightRow
+                      icon={ChartColumn}
+                      title={t("admin.insight_funnel_title")}
+                      text={t("admin.insight_funnel_text")}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[28px]">
+                  <CardHeader>
+                    <CardTitle>{t("admin.random_mix_title")}</CardTitle>
+                    <CardDescription>
+                      {t("admin.random_mix_description")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {t("admin.random_mix_current")}
+                      </span>
+                      <span className="font-semibold">
+                        {randomMix.draftPercent}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={80}
+                      step={5}
+                      value={randomMix.draftPercent}
+                      onChange={(event) =>
+                        randomMix.setDraftPercent(Number(event.target.value))
+                      }
+                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-amber-500"
+                    />
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>{t("admin.random_mix_hint_low")}</span>
+                      <span>{t("admin.random_mix_hint_high")}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground">
+                        {randomMix.updatedAt
+                          ? t("admin.random_mix_updated_at", {
+                              date: new Intl.DateTimeFormat("ru-RU", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }).format(new Date(randomMix.updatedAt)),
+                            })
+                          : t("admin.random_mix_not_set")}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => void randomMix.save()}
+                        disabled={
+                          randomMix.isLoading ||
+                          randomMix.isSaving ||
+                          !randomMix.isDirty
+                        }
+                      >
+                        {randomMix.isSaving
+                          ? t("admin.random_mix_saving")
+                          : t("admin.random_mix_save")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </section>
 

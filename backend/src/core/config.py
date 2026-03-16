@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     APP_TIMEZONE: str = "Europe/Moscow"
     PAIR_COOLDOWN_DAYS: int = 30
     FEED_TEST_MATCH_ENABLED: bool = False
+    ADMIN_RANDOM_MIX_PERCENT: int = 0
     DEV_SEED_ENABLED: bool = False
     MOCK_USER_SEED_ENABLED: bool = False
     MOCK_USER_SEED_LIMIT: int = 0
@@ -106,6 +107,18 @@ class Settings(BaseSettings):
             return None
 
         return value
+
+    @field_validator("ADMIN_RANDOM_MIX_PERCENT", mode="before")
+    @classmethod
+    def _normalize_admin_random_mix_percent(cls, value: int | str | None) -> int:
+        if value is None:
+            return 0
+        normalized = int(value)
+        if normalized < 0:
+            return 0
+        if normalized > 80:
+            return 80
+        return normalized
 
     @field_validator("CSRF_HMAC_KEY", mode="before")
     @classmethod

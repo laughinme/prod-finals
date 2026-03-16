@@ -59,6 +59,11 @@ export type FunnelDailyRowDto = {
   conversions: FunnelConversionRatesDto;
 };
 
+export type RandomMixConfigDto = {
+  random_mix_percent: number;
+  updated_at: string;
+};
+
 export const getAdminUserSummary = async (): Promise<UserStatsSummaryDto> => {
   const response = await apiProtected.get<UserStatsSummaryDto>("/admins/stats/summary");
   return response.data;
@@ -79,6 +84,18 @@ export const getAdminFunnelSummary = async (): Promise<FunnelSummaryDto> => {
 export const getAdminFunnelDaily = async (days: number): Promise<FunnelDailyRowDto[]> => {
   const response = await apiProtected.get<FunnelDailyRowDto[]>("/admins/stats/funnel/daily", {
     params: { days },
+  });
+  return response.data;
+};
+
+export const getAdminRandomMixConfig = async (): Promise<RandomMixConfigDto> => {
+  const response = await apiProtected.get<RandomMixConfigDto>("/admins/experiments/random-mix");
+  return response.data;
+};
+
+export const updateAdminRandomMixConfig = async (randomMixPercent: number): Promise<RandomMixConfigDto> => {
+  const response = await apiProtected.put<RandomMixConfigDto>("/admins/experiments/random-mix", {
+    random_mix_percent: randomMixPercent,
   });
   return response.data;
 };

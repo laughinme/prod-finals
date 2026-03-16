@@ -36,7 +36,7 @@ def run_ingestion():
         print(f"2. Обучение CatBoost... Размер train: {len(train_df)} строк, predict: {len(predict_df)} строк")
         
         model = CatBoostClassifier(
-            iterations=50,                                                                     
+            iterations=120,                                                                     
             verbose=3,                                                                                    
             text_features=['merchant_nm'],
             cat_features=['merchant_type_code'],

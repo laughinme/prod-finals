@@ -274,6 +274,15 @@
     "insight_dataset_text": "Dataset-пользователи обычно дают более насыщенный старт, а cold-start помогает понять, как хорошо работает базовый onboarding.",
     "insight_funnel_title": "Качество общения",
     "insight_funnel_text": "Главная точка контроля для кейса — не просто мэтчи, а переход в первое сообщение, ответ и отсутствие safety-негатива.",
+    "random_mix_title": "Эксперимент: random mix",
+    "random_mix_description": "Доля случайной подмешки в ранжировании для проверки устойчивости качества модели.",
+    "random_mix_current": "Доля случайных кандидатов",
+    "random_mix_hint_low": "0% — только модель",
+    "random_mix_hint_high": "80% — сильная подмешка",
+    "random_mix_updated_at": "Обновлено: {{date}}",
+    "random_mix_not_set": "Настройка еще не применялась",
+    "random_mix_save": "Сохранить",
+    "random_mix_saving": "Сохранение...",
     "partial_data_title": "Часть данных недоступна",
     "partial_data_description": "Некоторые виджеты не получили ответ от API. Остальная статистика остается актуальной."
   }
