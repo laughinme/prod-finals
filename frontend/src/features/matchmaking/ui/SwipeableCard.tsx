@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Heart, X } from "lucide-react";
 import type { MatchProfile } from "@/entities/match-profile/model";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { useNetworkStatus } from "@/shared/lib/network/useNetworkStatus";
@@ -291,24 +290,6 @@ export function SwipeableCard({
           onPrepareTestMatch={onPrepareTestMatch}
           isPreparingTestMatch={isPreparingTestMatch}
         />
-      </div>
-    </div>
-  );
-}
-
-export function SwipeHint() {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex items-center justify-center px-4 md:bottom-6">
-      <div className="inline-flex items-center gap-3 rounded-full border border-white/70 bg-white/88 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl">
-        <span className="inline-flex items-center gap-1.5 text-rose-500">
-          <X className="size-3.5" />
-          Pass
-        </span>
-        <span className="h-3 w-px bg-slate-200" />
-        <span className="inline-flex items-center gap-1.5 text-emerald-500">
-          <Heart className="size-3.5" />
-          Like
-        </span>
       </div>
     </div>
   );
