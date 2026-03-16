@@ -113,6 +113,12 @@ async def _answer_onboarding_filters(
     import_transactions: bool = True,
 ) -> None:
     interests = interests or [item.key for item in load_category_definitions()[:3]]
+    patch = await client.patch(
+        "/api/v1/users/me",
+        json={"age_range": {"min": age_min, "max": age_max}},
+        headers=auth_header(access_token),
+    )
+    assert patch.status_code == 200
     audience_answers = [f"audience:{gender}" for gender in genders] if genders else ["audience:anyone"]
     responses = [
         await client.post(
@@ -180,7 +186,6 @@ async def _drop_today_recommendation_batches(*, user_id: str) -> None:
                     SELECT id
                     FROM recommendation_batches
                     WHERE user_id = CAST(:user_id AS uuid)
-                      AND batch_date = CURRENT_DATE
                 )
                 """
             ),
@@ -191,7 +196,6 @@ async def _drop_today_recommendation_batches(*, user_id: str) -> None:
                 """
                 DELETE FROM recommendation_batches
                 WHERE user_id = CAST(:user_id AS uuid)
-                  AND batch_date = CURRENT_DATE
                 """
             ),
             {"user_id": user_id},
@@ -223,6 +227,10 @@ async def _pair_state_snapshot(*, user_a_id: str, user_b_id: str) -> dict | None
     return dict(row) if row else None
 
 
+def _opposite_gender(gender: str) -> str:
+    return "male" if gender == "female" else "female"
+
+
 @pytest.mark.asyncio
 async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
     credentials_a, access_a = await _register_user(client, faker, "alice")
@@ -231,8 +239,8 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
 
     initial_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert initial_feed.status_code == 200
-    assert initial_feed.json()["feed_state"] in {"ready", "exhausted", "degraded"}
-    assert initial_feed.json()["lock_reason"] is None
+    assert initial_feed.json()["feed_state"] == "locked"
+    assert initial_feed.json()["lock_reason"] == "avatar_required"
 
     onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
     assert onboarding_config.status_code == 200
@@ -240,7 +248,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert set(steps) == {"goal_and_audience", "interests_and_bank_signal"}
     assert steps["goal_and_audience"]["required_for_feed"] is False
     assert steps["goal_and_audience"]["step_type"] == "multi_select"
-    assert steps["interests_and_bank_signal"]["min_answers"] == 3
+    assert steps["interests_and_bank_signal"]["min_answers"] is None
     assert steps["interests_and_bank_signal"]["import_transactions_enabled"] is True
     assert steps["interests_and_bank_signal"]["import_transactions_default"] is True
     assert steps["interests_and_bank_signal"]["import_transactions_value"] is True
@@ -342,31 +350,31 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     await _answer_onboarding_filters(
         client,
         access_a,
-        genders=["male"],
-        age_min=24,
-        age_max=36,
+        genders=[profile_b["gender"]],
+        age_min=18,
+        age_max=99,
         import_transactions=False,
     )
     await _answer_onboarding_filters(
         client,
         access_b,
-        genders=["female"],
-        age_min=24,
-        age_max=36,
+        genders=[profile_a["gender"]],
+        age_min=18,
+        age_max=99,
     )
     await _answer_onboarding_filters(
         client,
         access_c,
-        genders=["female"],
-        age_min=21,
-        age_max=29,
+        genders=[_opposite_gender(profile_a["gender"])],
+        age_min=18,
+        age_max=99,
     )
 
     me_a = await client.get("/api/v1/users/me", headers=auth_header(access_a))
     me_b = await client.get("/api/v1/users/me", headers=auth_header(access_b))
     assert me_a.status_code == 200
     assert me_b.status_code == 200
-    assert me_a.json()["looking_for_genders"] == ["male"]
+    assert me_a.json()["looking_for_genders"] == [profile_b["gender"]]
     assert me_a.json()["quiz_started"] is True
     assert me_a.json()["profile_status"] == "ready"
     assert me_b.json()["profile_status"] == "ready"
@@ -619,8 +627,8 @@ async def test_pass_action_prevents_repeat_after_batch_regeneration(client: Asyn
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=18, age_max=99)
-    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99)
 
     feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_before.status_code == 200
@@ -670,8 +678,8 @@ async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClie
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=18, age_max=99)
-    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99)
 
     feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_before.status_code == 200

@@ -68,15 +68,19 @@ async def auth_user(
 
 
 async def load_cached_roles(user: User) -> list[str]:
-    cache_repo = CacheRepo(get_redis())
-
-    roles = await cache_repo.get(roles_cache_key(user.id, user.auth_version))
-    
-    if roles is not None:
-        return json.loads(roles)
-    
     roles_slugs = user.role_slugs
-    await cache_repo.set(roles_cache_key(user.id, user.auth_version), json.dumps(roles_slugs), ttl=ROLES_CACHE_TTL_SECONDS)
+    try:
+        cache_repo = CacheRepo(get_redis())
+        roles = await cache_repo.get(roles_cache_key(user.id, user.auth_version))
+        if roles is not None:
+            return json.loads(roles)
+        await cache_repo.set(
+            roles_cache_key(user.id, user.auth_version),
+            json.dumps(roles_slugs),
+            ttl=ROLES_CACHE_TTL_SECONDS,
+        )
+    except Exception:
+        return roles_slugs
 
     return roles_slugs
 

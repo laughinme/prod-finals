@@ -124,13 +124,19 @@ class ConversationService(BaseDatingService):
             raise ConversationUnavailableError()
         existing_messages = await self.matchmaking_repo.list_messages_chronological(
             conversation_id=conversation.id,
-            limit=2,
+            limit=100,
         )
         is_first_message = len(existing_messages) == 0
-        is_first_reply = len(existing_messages) == 1 and existing_messages[0].sender_user_id != user.id
+        has_prior_message_from_user = any(message.sender_user_id == user.id for message in existing_messages)
+        first_peer_message = next(
+            (message for message in existing_messages if message.sender_user_id != user.id),
+            None,
+        )
+        is_first_reply = not has_prior_message_from_user and first_peer_message is not None
         reply_within_24h = (
             is_first_reply
-            and (self.now() - existing_messages[0].created_at) <= timedelta(hours=24)
+            and first_peer_message is not None
+            and (self.now() - first_peer_message.created_at) <= timedelta(hours=24)
         )
 
         message = await self.matchmaking_repo.add(

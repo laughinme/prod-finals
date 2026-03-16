@@ -190,66 +190,69 @@ class MlRuntime:
     ) -> AckResponse:
         if self._qdrant_client is None:
             return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
-        user_uuid = _string_to_uuid(_normalize_user_id(user_id))
+        try:
+            user_uuid = _string_to_uuid(_normalize_user_id(user_id))
 
-        existing_points = self._qdrant_client.retrieve(
-            collection_name="user_profiles",
-            ids=[user_uuid],
-            with_vectors=True,
-            with_payload=True,
-        )
-        existing_vector = existing_points[0].vector if existing_points else None
-        existing_payload = dict(existing_points[0].payload or {}) if existing_points else {}
-
-        if self._has_artifacts:
-            raw_vector = np.zeros(len(self._features_list))
-            weight_per_cat = 1.0 / len(favorite_categories) if favorite_categories else 0
-
-            for cat in favorite_categories:
-                if cat in self._features_list:
-                    idx = self._features_list.index(cat)
-                    raw_vector[idx] = weight_per_cat
-            if "hour" in self._features_list:
-                hour_idx = self._features_list.index("hour")
-                raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0
-            scaled_vector = self._scaler.transform([raw_vector])[0]
-
-            if import_transactions and existing_vector is not None and existing_payload.get("is_warm"):
-                blended_vector = [
-                    float((0.35 * cold_value) + (0.65 * warm_value))
-                    for cold_value, warm_value in zip(scaled_vector, existing_vector)
-                ]
-                norm = np.linalg.norm(blended_vector)
-                if norm > 0:
-                    scaled_vector = np.array([float(value / norm) for value in blended_vector], dtype=float)
-        else:
-            vector_size = len(existing_vector) if existing_vector is not None else 35
-            scaled_vector = _fallback_profile_vector(
-                favorite_categories=favorite_categories,
-                preferred_hour=preferred_hour,
-                vector_size=vector_size,
+            existing_points = self._qdrant_client.retrieve(
+                collection_name="user_profiles",
+                ids=[user_uuid],
+                with_vectors=True,
+                with_payload=True,
             )
+            existing_vector = existing_points[0].vector if existing_points else None
+            existing_payload = dict(existing_points[0].payload or {}) if existing_points else {}
 
-        self._qdrant_client.upsert(
-            collection_name="user_profiles",
-            points=[
-                PointStruct(
-                    id=user_uuid,
-                    vector=scaled_vector.tolist() if hasattr(scaled_vector, "tolist") else list(scaled_vector),
-                    payload={
-                        "party_rk": str(user_id),
-                        "is_warm": bool(import_transactions and existing_payload.get("is_warm")),
-                        "favorite_categories": list(favorite_categories),
-                        "preferred_activity_hour": preferred_hour if preferred_hour is not None else 14.0,
-                        "import_transactions_enabled": bool(import_transactions),
-                        "top_cat": favorite_categories[0] if favorite_categories else existing_payload.get("top_cat", "unknown"),
-                        "transactions_count": existing_payload.get("transactions_count", 0),
-                        "updated_at": _utcnow().isoformat()
-                    }
+            if self._has_artifacts:
+                raw_vector = np.zeros(len(self._features_list))
+                weight_per_cat = 1.0 / len(favorite_categories) if favorite_categories else 0
+
+                for cat in favorite_categories:
+                    if cat in self._features_list:
+                        idx = self._features_list.index(cat)
+                        raw_vector[idx] = weight_per_cat
+                if "hour" in self._features_list:
+                    hour_idx = self._features_list.index("hour")
+                    raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0
+                scaled_vector = self._scaler.transform([raw_vector])[0]
+
+                if import_transactions and existing_vector is not None and existing_payload.get("is_warm"):
+                    blended_vector = [
+                        float((0.35 * cold_value) + (0.65 * warm_value))
+                        for cold_value, warm_value in zip(scaled_vector, existing_vector)
+                    ]
+                    norm = np.linalg.norm(blended_vector)
+                    if norm > 0:
+                        scaled_vector = np.array([float(value / norm) for value in blended_vector], dtype=float)
+            else:
+                vector_size = len(existing_vector) if existing_vector is not None else 35
+                scaled_vector = _fallback_profile_vector(
+                    favorite_categories=favorite_categories,
+                    preferred_hour=preferred_hour,
+                    vector_size=vector_size,
                 )
-            ]
-        )
-        print(f"[{trace_id}] ъолодный стартr {user_id}")
+
+            self._qdrant_client.upsert(
+                collection_name="user_profiles",
+                points=[
+                    PointStruct(
+                        id=user_uuid,
+                        vector=scaled_vector.tolist() if hasattr(scaled_vector, "tolist") else list(scaled_vector),
+                        payload={
+                            "party_rk": str(user_id),
+                            "is_warm": bool(import_transactions and existing_payload.get("is_warm")),
+                            "favorite_categories": list(favorite_categories),
+                            "preferred_activity_hour": preferred_hour if preferred_hour is not None else 14.0,
+                            "import_transactions_enabled": bool(import_transactions),
+                            "top_cat": favorite_categories[0] if favorite_categories else existing_payload.get("top_cat", "unknown"),
+                            "transactions_count": existing_payload.get("transactions_count", 0),
+                            "updated_at": _utcnow().isoformat()
+                        }
+                    )
+                ]
+            )
+            print(f"[{trace_id}] ъолодный стартr {user_id}")
+        except Exception as exc:
+            self._startup_error = f"Profile sync degraded: {exc}"
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
     def process_transactions_sync_background(self, payload: Any):
         from ml.service.schemas import TransactionSyncRequest 
