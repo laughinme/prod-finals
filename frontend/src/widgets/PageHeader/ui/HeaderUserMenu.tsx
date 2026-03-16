@@ -90,10 +90,10 @@ export function HeaderUserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive"
+          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive hover:text-destructive"
           onClick={() => auth?.logout()}
         >
-          <IconLogout className="mr-2 h-4 w-4" />
+          <IconLogout className="mr-2 h-4 w-4 text-destructive" />
           <span>{t("common.logout")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

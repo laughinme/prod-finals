@@ -55,10 +55,10 @@ export function ProfileNavigation({
         <Button
           variant="ghost"
           size="sm"
-          className="justify-start text-muted-foreground hover:text-destructive"
+          className="justify-start text-destructive hover:text-destructive"
           onClick={onLogout}
         >
-          <IconLogout className="mr-2 size-4" />
+          <IconLogout className="mr-2 size-4" color="currentColor" />
           {t("common.logout")}
         </Button>
       </nav>
