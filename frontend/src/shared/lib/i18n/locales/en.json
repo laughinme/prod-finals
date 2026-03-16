@@ -171,6 +171,10 @@
     "photo_gate_title": "Add a photo before sending a like",
     "photo_gate_description": "Profiles with photos get far more responses. Without a photo you can browse the feed, but you cannot like and your profile stays hidden from others.",
     "photo_gate_skip": "Not now",
+    "demo_panel_badge": "Demo",
+    "demo_panel_title": "Quick happy path",
+    "demo_panel_you": "This is your current account",
+    "demo_panel_open_card": "Open this card for the jury flow",
     "report_profile_aria": "Report profile",
     "pass_profile_aria": "Pass profile",
     "like_profile_aria": "Like profile"

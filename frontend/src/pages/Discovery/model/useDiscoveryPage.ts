@@ -10,11 +10,17 @@ import type {
   MatchProfile,
   MatchProfileExplanationReason,
 } from "@/entities/match-profile/model";
+import { toMatchProfile } from "@/entities/match-profile/model";
 import {
   getLikeNotificationCard,
   postLikeNotificationReaction,
   type LikeNotificationCardDto,
 } from "@/shared/api/likeNotifications";
+import {
+  getDemoFeedCard,
+  getDemoFeedShortcuts,
+  type DemoFeedShortcutItemDto,
+} from "@/shared/api/feed";
 import {
   useFeed,
   useFeedExplanation,
@@ -33,6 +39,14 @@ type MatchNavigationState = {
 type DiscoveryLocationState = {
   likeNotificationId?: string | null;
 } | null;
+
+export type DiscoveryDemoShortcut = {
+  demoUserKey: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  isCurrentUser: boolean;
+};
 
 type ReasonStrength = "high" | "medium" | "low";
 
@@ -189,6 +203,16 @@ function toLikeNotificationProfile(dto: LikeNotificationCardDto): MatchProfile {
   };
 }
 
+function toDiscoveryDemoShortcut(dto: DemoFeedShortcutItemDto): DiscoveryDemoShortcut {
+  return {
+    demoUserKey: dto.demo_user_key,
+    displayName: dto.display_name,
+    avatarUrl: dto.avatar_url,
+    bio: dto.bio,
+    isCurrentUser: dto.is_current_user,
+  };
+}
+
 export function useDiscoveryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -215,6 +239,7 @@ export function useDiscoveryPage() {
   const [activeLikeNotificationId, setActiveLikeNotificationId] = useState<string | null>(
     routeState?.likeNotificationId ?? null,
   );
+  const [activeDemoShortcutKey, setActiveDemoShortcutKey] = useState<string | null>(null);
   const currentProfileSeenAtRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -235,6 +260,24 @@ export function useDiscoveryPage() {
     retry: false,
   });
 
+  const demoShortcutsQuery = useQuery({
+    queryKey: ["feed", "demo-shortcuts"],
+    queryFn: getDemoFeedShortcuts,
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const demoShortcutCardQuery = useQuery({
+    queryKey: ["feed", "demo-shortcuts", activeDemoShortcutKey, "card"],
+    queryFn: async () => {
+      if (!activeDemoShortcutKey) {
+        throw new Error("Missing demo shortcut key");
+      }
+      return getDemoFeedCard(activeDemoShortcutKey);
+    },
+    enabled: Boolean(activeDemoShortcutKey),
+    retry: false,
+  });
+
   useEffect(() => {
     if (!likeNotificationCardQuery.isError) {
       return;
@@ -243,17 +286,27 @@ export function useDiscoveryPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [likeNotificationCardQuery.isError, location.pathname, navigate]);
 
+  useEffect(() => {
+    if (!demoShortcutCardQuery.isError) {
+      return;
+    }
+    setActiveDemoShortcutKey(null);
+  }, [demoShortcutCardQuery.isError]);
+
   const specialLikeProfile = likeNotificationCardQuery.data
     ? toLikeNotificationProfile(likeNotificationCardQuery.data)
     : null;
-  const baseCurrentProfile = specialLikeProfile ?? profiles[0] ?? null;
+  const demoShortcutProfile = demoShortcutCardQuery.data
+    ? { ...toMatchProfile(demoShortcutCardQuery.data), source: "demo_shortcut" as const }
+    : null;
+  const baseCurrentProfile = demoShortcutProfile ?? specialLikeProfile ?? profiles[0] ?? null;
 
   useEffect(() => {
     notifyVisible(profiles.length);
   }, [profiles.length, notifyVisible]);
 
   const currentProfileServeItemId =
-    baseCurrentProfile?.source === "feed" &&
+    (baseCurrentProfile?.source === "feed" || baseCurrentProfile?.source === "demo_shortcut") &&
     typeof baseCurrentProfile.id === "string"
       ? baseCurrentProfile.id
       : null;
@@ -300,6 +353,11 @@ export function useDiscoveryPage() {
     if (currentProfile.source === "like_notification") {
       setActiveLikeNotificationId(null);
       navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
+
+    if (currentProfile.source === "demo_shortcut") {
+      setActiveDemoShortcutKey(null);
       return;
     }
 
@@ -413,7 +471,10 @@ export function useDiscoveryPage() {
       }
     }
 
-    if (likedProfile.source === "feed" && typeof likedProfile.id === "string") {
+    if (
+      (likedProfile.source === "feed" || likedProfile.source === "demo_shortcut") &&
+      typeof likedProfile.id === "string"
+    ) {
       try {
         const reaction = await feedReactionMutation.mutateAsync({
           serveItemId: likedProfile.id,
@@ -515,7 +576,7 @@ export function useDiscoveryPage() {
     }
 
     if (
-      passedProfile.source === "feed" &&
+      (passedProfile.source === "feed" || passedProfile.source === "demo_shortcut") &&
       typeof passedProfile.id === "string"
     ) {
       try {
@@ -534,7 +595,10 @@ export function useDiscoveryPage() {
 
   const handlePrepareTestMatch = async () => {
     if (!currentProfile) return;
-    if (currentProfile.source !== "feed" || typeof currentProfile.id !== "string") {
+    if (
+      (currentProfile.source !== "feed" && currentProfile.source !== "demo_shortcut")
+      || typeof currentProfile.id !== "string"
+    ) {
       return;
     }
 
@@ -549,10 +613,12 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
-    nextProfiles: specialLikeProfile
-      ? profiles.slice(0, 2)
-      : profiles.slice(1, 3),
-    isFeedLoading: isFeedLoading || likeNotificationCardQuery.isLoading,
+    nextProfiles: (specialLikeProfile || demoShortcutProfile) ? profiles.slice(0, 2) : profiles.slice(1, 3),
+    isFeedLoading: isFeedLoading || likeNotificationCardQuery.isLoading || demoShortcutCardQuery.isLoading,
+    demoShortcuts: (demoShortcutsQuery.data?.items || []).map(toDiscoveryDemoShortcut),
+    activeDemoShortcutKey,
+    openDemoShortcut: (demoUserKey: string) => setActiveDemoShortcutKey(demoUserKey),
+    closeDemoShortcut: () => setActiveDemoShortcutKey(null),
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,
     isPhotoGatePending:

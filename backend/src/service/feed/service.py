@@ -6,6 +6,8 @@ from domain.dating import (
     AuditEntityType,
     CompatibilityExplanationResponse,
     CompatibilityPreview,
+    DemoFeedShortcutItem,
+    DemoFeedShortcutListResponse,
     DecisionMode,
     ExplanationRequest,
     FeedCandidate,
@@ -17,6 +19,7 @@ from domain.dating import (
     FeedState,
 )
 
+from service.demo_accounts import DEMO_DATASET_ACCOUNTS
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
 from service.matchmaking.reason_signals import build_preview_reason_signals
 
@@ -30,6 +33,91 @@ _DEMO_FEED_PAIR_BY_EMAIL: dict[str, str] = {
 
 
 class FeedService(BaseDatingService):
+    async def list_demo_shortcuts(self, user: User) -> DemoFeedShortcutListResponse:
+        items: list[DemoFeedShortcutItem] = []
+        for account in DEMO_DATASET_ACCOUNTS:
+            target = await self.user_repo.get_by_demo_user_key(account.demo_user_key)
+            if target is None:
+                continue
+            items.append(
+                DemoFeedShortcutItem(
+                    demo_user_key=account.demo_user_key,
+                    display_name=target.resolved_display_name or account.email,
+                    avatar_url=target.avatar_url,
+                    bio=target.bio,
+                    is_current_user=target.id == user.id,
+                )
+            )
+        return DemoFeedShortcutListResponse(items=items)
+
+    async def get_demo_card(self, *, user: User, demo_user_key: str) -> FeedCard:
+        candidate = await self.user_repo.get_by_demo_user_key(demo_user_key)
+        if candidate is None or candidate.id == user.id:
+            raise FeedItemNotFoundError()
+
+        batch = await self.matchmaking_repo.get_active_batch_for_date(
+            user_id=user.id,
+            batch_date=self.local_today(),
+        )
+        if batch is None:
+            batch = await self.matchmaking_repo.add(
+                RecommendationBatch(
+                    user_id=user.id,
+                    batch_date=self.local_today(),
+                    expires_at=self.local_end_of_day(),
+                    decision_mode=DecisionMode.MODEL.value,
+                    daily_limit=0,
+                )
+            )
+
+        existing_item = await self.matchmaking_repo.get_batch_item_by_target(
+            batch_id=batch.id,
+            target_user_id=candidate.id,
+        )
+        if existing_item is not None:
+            cards = await self._build_cards(user=user, items=[existing_item])
+            if cards:
+                return cards[0]
+            raise FeedItemNotFoundError()
+
+        requester_context = await self._build_feed_context(user)
+        candidate_context = await self._build_feed_context(candidate)
+        ranked = await self.ml_facade.rank(
+            requester=requester_context,
+            candidates=[candidate_context],
+            limit=1,
+        )
+        candidate_score = ranked.candidates[0] if ranked.candidates else None
+        if candidate_score is None:
+            raise FeedItemNotFoundError()
+
+        existing_items = await self.matchmaking_repo.list_batch_items(batch.id)
+        preview = await self.ml_facade.build_preview(candidate_score)
+        item = await self.matchmaking_repo.add(
+            RecommendationItem(
+                batch_id=batch.id,
+                target_user_id=candidate.id,
+                rank=(max((entry.rank for entry in existing_items), default=0) + 1),
+                score=candidate_score.score,
+                compatibility_mode=(
+                    "ml_model"
+                    if ranked.decision_mode == DecisionMode.MODEL
+                    else "basic_fallback"
+                ),
+                preview=preview.preview,
+                reason_codes=preview.reason_codes,
+                reason_signals=[entry.model_dump() for entry in preview.reason_signals],
+                category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
+            )
+        )
+        batch.daily_limit = max(batch.daily_limit, len(existing_items) + 1)
+        await self.uow.commit()
+
+        cards = await self._build_cards(user=user, items=[item])
+        if not cards:
+            raise FeedItemNotFoundError()
+        return cards[0]
+
     async def get_feed(self, user: User, limit: int) -> FeedResponse:
         if not user.can_open_feed:
             return FeedResponse(

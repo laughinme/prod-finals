@@ -166,6 +166,18 @@ class FeedCard(BaseModel):
     actions: FeedCardActions
 
 
+class DemoFeedShortcutItem(BaseModel):
+    demo_user_key: str
+    display_name: str
+    avatar_url: str | None = None
+    bio: str | None = None
+    is_current_user: bool = False
+
+
+class DemoFeedShortcutListResponse(BaseModel):
+    items: list[DemoFeedShortcutItem] = Field(default_factory=list)
+
+
 class FeedEmptyState(BaseModel):
     code: FeedEmptyStateCode
     title: str

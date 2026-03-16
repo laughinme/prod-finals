@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { Camera, Coffee, ShieldAlert, Wand2 } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Coffee, ShieldAlert, Users, Wand2 } from "lucide-react";
 
 import { SwipeableCard } from "@/features/matchmaking";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
@@ -16,6 +16,7 @@ export default function DiscoveryPage() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDemoPanelExpanded, setIsDemoPanelExpanded] = useState(false);
 
   // Lock vertical scrolling on mobile for this page
   useEffect(() => {
@@ -30,6 +31,10 @@ export default function DiscoveryPage() {
     currentProfile,
     nextProfiles,
     isFeedLoading,
+    demoShortcuts,
+    activeDemoShortcutKey,
+    openDemoShortcut,
+    closeDemoShortcut,
     exitX,
     showReport,
     showPhotoGate,
@@ -50,6 +55,105 @@ export default function DiscoveryPage() {
 
   return (
     <main className="relative flex h-[calc(100dvh-4rem)] items-center justify-center overflow-hidden bg-secondary/20 p-0 md:h-[calc(100dvh-5rem)] md:p-8">
+      {demoShortcuts.length > 0 ? (
+        <motion.aside
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className={["absolute z-40", isMobile ? "left-3 right-3 top-3" : "left-5 top-5"].join(" ")}
+        >
+          <div className="overflow-hidden rounded-[24px] border border-white/70 bg-white/85 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setIsDemoPanelExpanded((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-2xl bg-sky-500/12 text-sky-600">
+                  <Users className="size-4.5" />
+                </span>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-500">
+                    {t("discovery.demo_panel_badge")}
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {t("discovery.demo_panel_title")}
+                  </p>
+                </div>
+              </div>
+              {isDemoPanelExpanded ? (
+                <ChevronLeft className="size-4 text-slate-400" />
+              ) : (
+                <ChevronRight className="size-4 text-slate-400" />
+              )}
+            </button>
+
+            <AnimatePresence initial={false}>
+              {isDemoPanelExpanded ? (
+                <motion.div
+                  key="expanded"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="border-t border-slate-100"
+                >
+                  <div className="max-h-[52vh] space-y-2 overflow-y-auto px-3 py-3">
+                    {demoShortcuts.map((shortcut) => {
+                      const isActive = activeDemoShortcutKey === shortcut.demoUserKey;
+                      return (
+                        <button
+                          key={shortcut.demoUserKey}
+                          type="button"
+                          disabled={shortcut.isCurrentUser}
+                          onClick={() => {
+                            if (isActive) {
+                              closeDemoShortcut();
+                            } else {
+                              openDemoShortcut(shortcut.demoUserKey);
+                            }
+                          }}
+                          className={[
+                            "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition",
+                            shortcut.isCurrentUser
+                              ? "cursor-not-allowed bg-slate-50 text-slate-400"
+                              : isActive
+                                ? "bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.22)]"
+                                : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                          ].join(" ")}
+                        >
+                          {shortcut.avatarUrl ? (
+                            <img
+                              src={shortcut.avatarUrl}
+                              alt={shortcut.displayName}
+                              className="size-11 rounded-2xl object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-11 items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold">
+                              {shortcut.displayName.slice(0, 1)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {shortcut.displayName}
+                            </p>
+                            <p className={["truncate text-xs", isActive ? "text-slate-300" : "text-slate-500"].join(" ")}>
+                              {shortcut.isCurrentUser
+                                ? t("discovery.demo_panel_you")
+                                : shortcut.bio || t("discovery.demo_panel_open_card")}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </motion.aside>
+      ) : null}
+
       <AnimatePresence initial={false}>
         {isFeedLoading ? (
           <motion.div

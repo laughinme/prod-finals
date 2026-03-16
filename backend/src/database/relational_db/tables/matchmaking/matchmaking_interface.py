@@ -62,6 +62,19 @@ class MatchmakingInterface:
         )
         return list(rows.all())
 
+    async def get_batch_item_by_target(
+        self,
+        *,
+        batch_id: UUID,
+        target_user_id: UUID,
+    ) -> RecommendationItem | None:
+        return await self.session.scalar(
+            select(RecommendationItem).where(
+                RecommendationItem.batch_id == batch_id,
+                RecommendationItem.target_user_id == target_user_id,
+            )
+        )
+
     async def get_recommendation_item_for_user(
         self,
         *,

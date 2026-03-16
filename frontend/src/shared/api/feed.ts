@@ -93,6 +93,18 @@ export type FeedCardDto = {
   actions: FeedCardActionsDto;
 };
 
+export type DemoFeedShortcutItemDto = {
+  demo_user_key: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  is_current_user: boolean;
+};
+
+export type DemoFeedShortcutListResponseDto = {
+  items: DemoFeedShortcutItemDto[];
+};
+
 export type CompatibilityReasonDto = {
   code: string;
   title: string;
@@ -162,6 +174,20 @@ export const getFeed = async (limit = 20): Promise<FeedResponseDto> => {
     params: { limit },
   });
 
+  return response.data;
+};
+
+export const getDemoFeedShortcuts = async (): Promise<DemoFeedShortcutListResponseDto> => {
+  const response = await apiProtected.get<DemoFeedShortcutListResponseDto>(
+    "/feed/demo-shortcuts",
+  );
+  return response.data;
+};
+
+export const getDemoFeedCard = async (demoUserKey: string): Promise<FeedCardDto> => {
+  const response = await apiProtected.get<FeedCardDto>(
+    `/feed/demo-shortcuts/${demoUserKey}/card`,
+  );
   return response.data;
 };
 

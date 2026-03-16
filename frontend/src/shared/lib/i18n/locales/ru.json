@@ -171,6 +171,10 @@
     "photo_gate_title": "Добавьте фото, чтобы поставить лайк",
     "photo_gate_description": "Профили с фото получают намного больше взаимности. Без фото вы можете смотреть ленту, но не можете лайкать и не показываетесь другим.",
     "photo_gate_skip": "Не сейчас",
+    "demo_panel_badge": "Demo",
+    "demo_panel_title": "Быстрый happy path",
+    "demo_panel_you": "Это ваш текущий аккаунт",
+    "demo_panel_open_card": "Открыть карточку для демо-сценария",
     "report_profile_aria": "Пожаловаться на профиль",
     "pass_profile_aria": "Пропустить профиль",
     "like_profile_aria": "Лайкнуть профиль"

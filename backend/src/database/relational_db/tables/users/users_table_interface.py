@@ -61,6 +61,14 @@ class UserInterface:
         )
         return list(rows.all())
 
+    async def list_users_missing_avatar(self) -> list[User]:
+        rows = await self.session.scalars(
+            select(User)
+            .options(selectinload(User.roles), selectinload(User.city))
+            .where(or_(User.avatar_key.is_(None), User.avatar_key == ""))
+        )
+        return list(rows.all())
+
     async def admin_list_users(
         self,
         *,

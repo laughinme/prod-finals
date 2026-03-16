@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, Query
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.dating import CompatibilityExplanationResponse, FeedResponse
+from domain.dating import (
+    CompatibilityExplanationResponse,
+    DemoFeedShortcutListResponse,
+    FeedCard,
+    FeedResponse,
+)
 from service.feed import FeedService, get_feed_service
 
 router = APIRouter()
@@ -22,6 +27,31 @@ async def get_feed(
     limit: int = Query(12, ge=1, le=20),
 ) -> FeedResponse:
     return await svc.get_feed(user, limit)
+
+
+@router.get(
+    "/demo-shortcuts",
+    response_model=DemoFeedShortcutListResponse,
+    summary="List demo shortcuts for discovery",
+)
+async def get_demo_shortcuts(
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[FeedService, Depends(get_feed_service)],
+) -> DemoFeedShortcutListResponse:
+    return await svc.list_demo_shortcuts(user)
+
+
+@router.get(
+    "/demo-shortcuts/{demo_user_key}/card",
+    response_model=FeedCard,
+    summary="Open a demo shortcut card",
+)
+async def get_demo_shortcut_card(
+    demo_user_key: str,
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[FeedService, Depends(get_feed_service)],
+) -> FeedCard:
+    return await svc.get_demo_card(user=user, demo_user_key=demo_user_key)
 
 
 @router.get(
