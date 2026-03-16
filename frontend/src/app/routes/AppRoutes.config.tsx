@@ -116,12 +116,12 @@ export const RequireIncompleteQuiz = () => {
   const isPhotoDone = Boolean(profile?.profilePicUrl);
   const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
-  if (!shouldShowQuiz && !isProfilePreviewPending) {
-    return <Navigate to="/discovery" replace />;
-  }
-
   if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!shouldShowQuiz && !isProfilePreviewPending) {
+    return <Navigate to="/discovery" replace />;
   }
 
   return <Outlet />;

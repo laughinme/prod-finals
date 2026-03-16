@@ -12,6 +12,7 @@ export default function DiscoveryPage() {
   const { t } = useTranslation();
   const {
     currentProfile,
+    stackDepth,
     isFeedLoading,
     exitX,
     showReport,
@@ -54,15 +55,33 @@ export default function DiscoveryPage() {
             </p>
           </motion.div>
         ) : (
-          <SwipeableCard
-            key={`${currentProfile.id}-${isMobile ? "mobile" : "desktop"}`}
-            profile={currentProfile}
-            isMobile={isMobile}
-            onLike={() => void handleLike()}
-            onPass={() => void handlePass()}
-            onOpenReport={openReport}
-            exitX={exitX}
-          />
+          <>
+            {[2, 1].map((i) =>
+              stackDepth > i ? (
+                <div
+                  key={`stack-${i}`}
+                  className="pointer-events-none absolute inset-x-4 mx-auto max-w-5xl md:inset-x-8"
+                  style={{
+                    zIndex: i,
+                    transform: `scale(${1 - i * 0.04}) translateY(${i * 10}px)`,
+                    opacity: 1 - i * 0.25,
+                  }}
+                >
+                  <div className="aspect-4/3 w-full rounded-4xl border border-border bg-card shadow-lg md:aspect-16/10" />
+                </div>
+              ) : null,
+            )}
+
+            <SwipeableCard
+              key={`${currentProfile.id}-${isMobile ? "mobile" : "desktop"}`}
+              profile={currentProfile}
+              isMobile={isMobile}
+              onLike={() => void handleLike()}
+              onPass={() => void handlePass()}
+              onOpenReport={openReport}
+              exitX={exitX}
+            />
+          </>
         )}
       </AnimatePresence>
 

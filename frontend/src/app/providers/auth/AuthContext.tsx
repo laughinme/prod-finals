@@ -56,6 +56,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setAxiosAccessToken(null);
     queryClient.removeQueries({ queryKey: ["me"] });
     resetFeedStore();
+    const cachedUser = queryClient.getQueryData<AuthUser>(["me"]);
+    const email = cachedUser?.email ?? "anonymous";
+    localStorage.removeItem(`t-match:quiz-profile-preview:${email}`);
   }, [queryClient]);
 
   const setSkipSessionRestore = useCallback((value: boolean): void => {
@@ -150,7 +153,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setSkipSessionRestore(false);
         }
       } catch (error) {
-        // Only report to Sentry if it's not a normal 401 when the session is just expired
         if (!isAxiosError(error) || error.response?.status !== 401) {
           Sentry.captureException(error);
         }

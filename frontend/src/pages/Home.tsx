@@ -28,11 +28,7 @@ export default function HomePage() {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (isProfilePreviewPending) {
-    return <Navigate to="/quiz" replace />;
-  }
-
-  if (shouldShowQuiz) {
+  if (shouldShowQuiz || isProfilePreviewPending) {
     return <Navigate to="/quiz" replace />;
   }
 

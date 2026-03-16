@@ -163,6 +163,7 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
+    stackDepth: Math.min(profiles.length, 3),
     isFeedLoading,
     exitX,
     showReport,
