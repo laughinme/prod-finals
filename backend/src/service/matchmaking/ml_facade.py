@@ -673,6 +673,8 @@ class HttpMlFacade(MlFacade):
         import_transactions: bool,
     ) -> None:
         categories = list(dict.fromkeys(favorite_categories))
+        if not categories:
+            categories = pick_category_keys(f"profile:{user_id}")[:3]
         payload = {
             "trace_id": str(uuid4()),
             "user_id": _normalize_ml_id(ml_user_id or str(user_id)),

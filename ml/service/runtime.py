@@ -547,7 +547,6 @@ class MlRuntime:
                 query=user_vector,
                 query_filter=query_filter,
                 limit=search_limit,  # Больше, чтобы учесть фильтры
-                score_threshold=0.5,  # Минимальный скор
                 with_payload=True,
                 with_vectors=True,
             )
@@ -559,7 +558,9 @@ class MlRuntime:
                 # Преобразуем id обратно в user_id (из payload или из id)
                 # Предполагаем, что id - это uuid от party_rk, и payload содержит party_rk
                 candidate_user_id = hit.payload.get("party_rk", str(hit.id))
-                score = hit.score
+                # Qdrant cosine similarity may be in [-1, 1], while our API contract
+                # and downstream UI expect a normalized 0..1 compatibility score.
+                score = (float(hit.score) + 1.0) / 2.0
                 # Применяем стратегию
                 if strategy == "high_precision":
                     score = min(1.0, score + 0.03)

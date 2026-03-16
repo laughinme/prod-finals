@@ -117,6 +117,7 @@ class FeedService(BaseDatingService):
     async def _create_batch(self, user: User) -> RecommendationBatch:
         excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
         requester_context = await self._build_feed_context(user)
+        await self._ensure_requester_ml_profile(user=user, requester_context=requester_context)
         all_candidates = [
             candidate
             for candidate in await self.matchmaking_repo.list_feed_candidates(requester_id=user.id)
@@ -166,6 +167,33 @@ class FeedService(BaseDatingService):
 
         await self.uow.commit()
         return batch
+
+    async def _ensure_requester_ml_profile(
+        self,
+        *,
+        user: User,
+        requester_context: FeedCandidateContext,
+    ) -> None:
+        if not requester_context.ml_user_id:
+            return
+        try:
+            import_transactions_answer = await self.matchmaking_repo.get_quiz_answer(
+                user_id=user.id,
+                step_key="import_transactions",
+            )
+            import_transactions = (
+                str((import_transactions_answer.answers or ["false"])[0]).strip().lower() == "true"
+                if import_transactions_answer is not None
+                else False
+            )
+            await self.ml_facade.sync_profile_preferences(
+                user_id=user.id,
+                ml_user_id=requester_context.ml_user_id,
+                favorite_categories=list(requester_context.interests or []),
+                import_transactions=import_transactions,
+            )
+        except Exception as exc:  # pragma: no cover - best effort sync before ranking
+            logger.warning("Requester ML profile sync failed for user=%s: %s", user.id, exc)
 
     def _candidate_passes_filters(
         self,
