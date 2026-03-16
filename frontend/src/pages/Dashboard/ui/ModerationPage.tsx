@@ -10,6 +10,12 @@ import {
   Mail,
   User as UserIcon,
 } from "lucide-react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import {
   Avatar,
@@ -35,18 +41,63 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Separator } from "@/shared/components/ui/separator";
 
-import { useBanUser } from "./hooks/use-ban-user";
-import { useModerationUsers } from "./hooks/use-moderation-users";
+import { getAllUsersAdmin } from "@/shared/api/admin/get-users";
+import { banUser } from "@/shared/api/admin/ban-user";
 
-export default function ModerationPage() {
+function useModerationUsers(filter: { banned: boolean | null }) {
+  return useInfiniteQuery({
+    queryKey: ["admin-users", filter],
+    queryFn: async ({ pageParam }) => {
+      const response = await getAllUsersAdmin({
+        banned: filter.banned,
+        limit: 12,
+        cursor: pageParam,
+      });
+      return response;
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.items || lastPage.items.length === 0) return undefined;
+      return lastPage.items[lastPage.items.length - 1].id;
+    },
+  });
+}
+
+function useBanUser() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      isBanned,
+    }: {
+      userId: string;
+      isBanned: boolean;
+    }) => {
+      return await banUser(userId, isBanned);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(
+        variables.isBanned
+          ? t("admin.moderation_page.ban_success")
+          : t("admin.moderation_page.unban_success"),
+      );
+    },
+    onError: () => {
+      toast.error(t("admin.moderation_page.update_error"));
+    },
+  });
+}
+
+export function ModerationPage() {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<"all" | "banned" | "active">("all");
 
   const apiFilter = {
     banned: filter === "all" ? null : filter === "banned",
   };
-
-  const queryResult = useModerationUsers(apiFilter);
 
   const {
     data,
@@ -56,7 +107,7 @@ export default function ModerationPage() {
     isLoading,
     isError,
     refetch,
-  } = queryResult;
+  } = useModerationUsers(apiFilter);
 
   const { mutate: toggleBan, isPending: isBanning } = useBanUser();
 
@@ -95,7 +146,7 @@ export default function ModerationPage() {
               setFilter(value)
             }
           >
-            <SelectTrigger className="w-45">
+            <SelectTrigger className="w-[180px]">
               <SelectValue
                 placeholder={t("admin.moderation_page.filter_placeholder")}
               />
@@ -176,101 +227,105 @@ export default function ModerationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {users.map((user) => (
-            <Card
-              key={user.id}
-              className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:border-primary/20 group"
-            >
-              <div className="absolute top-3 right-3 z-10">
-                <Badge
-                  variant={user.banned ? "destructive" : "outline"}
-                  className={
-                    !user.banned
-                      ? "bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500/20 hover:text-green-700 dark:border-green-900 dark:bg-green-900/20 dark:text-green-400"
-                      : ""
-                  }
-                >
-                  {user.banned
-                    ? t("admin.moderation_page.status_banned")
-                    : t("admin.moderation_page.status_active")}
-                </Badge>
-              </div>
+          {users.map((user) => {
+            const isBanned = !!user.banned;
 
-              <CardHeader className="pb-2 pt-8 flex flex-col items-center text-center relative">
-                <Avatar className="h-28 w-28 border-4 border-background shadow-md mb-3 group-hover:scale-105 transition-transform duration-300">
-                  <AvatarImage
-                    src={user.avatar_url}
-                    alt={user.first_name}
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="text-3xl bg-primary/5 text-primary font-medium">
-                    {user.first_name?.[0]?.toUpperCase()}
-                    {user.last_name?.[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-
-                <CardTitle className="text-lg font-bold truncate w-full px-2">
-                  {user.first_name} {user.last_name}
-                </CardTitle>
-
-                <div
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground truncate max-w-full px-4"
-                  title={user.email}
-                >
-                  <Mail className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{user.email}</span>
+            return (
+              <Card
+                key={user.id}
+                className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:border-primary/20 group"
+              >
+                <div className="absolute top-3 right-3 z-10">
+                  <Badge
+                    variant={isBanned ? "destructive" : "outline"}
+                    className={
+                      !isBanned
+                        ? "bg-green-500/10 text-green-600 border-green-200 hover:bg-green-500/20 hover:text-green-700 dark:border-green-900 dark:bg-green-900/20 dark:text-green-400"
+                        : ""
+                    }
+                  >
+                    {isBanned
+                      ? t("admin.moderation_page.status_banned")
+                      : t("admin.moderation_page.status_active")}
+                  </Badge>
                 </div>
-              </CardHeader>
 
-              <CardContent className="flex-1 px-5 pb-4 pt-2 space-y-4">
-                <div className="bg-muted/30 p-3 rounded-lg border border-muted/50 text-sm min-h-[5rem]">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
-                    {t("admin.moderation_page.about_label")}
-                  </span>
-                  <p className="line-clamp-3 text-muted-foreground leading-relaxed text-xs">
-                    {user.bio || (
-                      <span className="italic opacity-50">
-                        {t("admin.moderation_page.no_bio")}
-                      </span>
+                <CardHeader className="pb-2 pt-8 flex flex-col items-center text-center relative">
+                  <Avatar className="h-28 w-28 border-4 border-background shadow-md mb-3 group-hover:scale-105 transition-transform duration-300">
+                    <AvatarImage
+                      src={user.avatar_url}
+                      alt={user.first_name}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="text-3xl bg-primary/5 text-primary font-medium">
+                      {user.first_name?.[0]?.toUpperCase()}
+                      {user.last_name?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <CardTitle className="text-lg font-bold truncate w-full px-2">
+                    {user.first_name} {user.last_name}
+                  </CardTitle>
+
+                  <div
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground truncate max-w-full px-4"
+                    title={user.email}
+                  >
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{user.email}</span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 px-5 pb-4 pt-2 space-y-4">
+                  <div className="bg-muted/30 p-3 rounded-lg border border-muted/50 text-sm min-h-[5rem]">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
+                      {t("admin.moderation_page.about_label")}
+                    </span>
+                    <p className="line-clamp-3 text-muted-foreground leading-relaxed text-xs">
+                      {user.bio || (
+                        <span className="italic opacity-50">
+                          {t("admin.moderation_page.no_bio")}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary/20 py-2 rounded-full mx-auto w-fit px-4">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>
+                      {t("admin.moderation_page.since", {
+                        date: formatCreatedAt(user.created_at),
+                      })}
+                    </span>
+                  </div>
+                </CardContent>
+
+                <Separator />
+
+                <CardFooter className="pt-4 pb-5 px-5 bg-muted/5">
+                  <Button
+                    variant={isBanned ? "outline" : "destructive"}
+                    size="sm"
+                    className="w-full gap-2 font-medium"
+                    onClick={() => handleToggleBan(user.id, isBanned)}
+                    disabled={isBanning}
+                  >
+                    {isBanned ? (
+                      <>
+                        <UserCheck className="h-4 w-4" />
+                        {t("admin.moderation_page.unban_button")}
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="h-4 w-4" />
+                        {t("admin.moderation_page.ban_button")}
+                      </>
                     )}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-secondary/20 py-2 rounded-full mx-auto w-fit px-4">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {t("admin.moderation_page.since", {
-                      date: formatCreatedAt(user.created_at),
-                    })}
-                  </span>
-                </div>
-              </CardContent>
-
-              <Separator />
-
-              <CardFooter className="pt-4 pb-5 px-5 bg-muted/5">
-                <Button
-                  variant={user.banned ? "outline" : "destructive"}
-                  size="sm"
-                  className="w-full gap-2 font-medium"
-                  onClick={() => handleToggleBan(user.id, user.banned)}
-                  disabled={isBanning}
-                >
-                  {user.banned ? (
-                    <>
-                      <UserCheck className="h-4 w-4" />
-                      {t("admin.moderation_page.unban_button")}
-                    </>
-                  ) : (
-                    <>
-                      <UserX className="h-4 w-4" />
-                      {t("admin.moderation_page.ban_button")}
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
 

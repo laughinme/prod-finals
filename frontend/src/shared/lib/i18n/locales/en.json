@@ -308,6 +308,33 @@
     "random_mix_save": "Save",
     "random_mix_saving": "Saving...",
     "partial_data_title": "Some data is unavailable",
-    "partial_data_description": "A few widgets did not receive API data. The rest of the dashboard is still up to date."
+    "partial_data_description": "A few widgets did not receive API data. The rest of the dashboard is still up to date.",
+    "moderation_page": {
+      "title": "User Moderation",
+      "subtitle": "Review and manage user accounts efficiently.",
+      "filter_placeholder": "Filter by status",
+      "filter_all": "All Users",
+      "filter_active": "Active Users",
+      "filter_banned": "Banned Users",
+      "refresh": "Refresh list",
+      "error_title": "Error loading users",
+      "error_description": "We encountered a problem fetching the user list. Please check your connection and try again.",
+      "try_again": "Try Again",
+      "no_users_found": "No users found",
+      "no_users_matching": "There are no users matching your current filter criteria.",
+      "clear_filters": "Clear filters",
+      "status_banned": "Banned",
+      "status_active": "Active",
+      "about_label": "About",
+      "no_bio": "No bio provided",
+      "since": "Since {{date}}",
+      "unban_button": "Unban Account",
+      "ban_button": "Ban Account",
+      "load_more": "Load More Users",
+      "date_unavailable": "Date unavailable",
+      "ban_success": "User successfully banned",
+      "unban_success": "User successfully unbanned",
+      "update_error": "Failed to update user status"
+    }
   }
 }
