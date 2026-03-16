@@ -1,12 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
-import {
-  HeartHandshake,
-  MessageCircle,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { HeartHandshake, MessageCircle, Sparkles, Users } from "lucide-react";
 
 import { useMatches } from "@/features/match";
 import { HeaderUserMenu } from "./HeaderUserMenu";
@@ -39,9 +34,10 @@ export function Header() {
       label: t("common.matches"),
       to: "/matches",
       icon: Users,
-      badge: (matchNotifications?.unseenMatchCount ?? 0) > 0
-        ? matchNotifications?.unseenMatchCount
-        : null,
+      badge:
+        (matchNotifications?.unseenMatchCount ?? 0) > 0
+          ? matchNotifications?.unseenMatchCount
+          : null,
     },
   ];
 
@@ -64,7 +60,9 @@ export function Header() {
               <HeartHandshake className="size-4.5 text-primary-foreground md:size-5" />
             </motion.div>
             <div>
-              <div className="text-sm font-extrabold tracking-tight md:text-base">T-Match</div>
+              <div className="text-sm font-extrabold tracking-tight md:text-base">
+                T-Match
+              </div>
               <div className="hidden text-xs text-muted-foreground sm:block">
                 {t("common.slogan")}
               </div>
@@ -137,16 +135,17 @@ export function Header() {
                 className={({ isActive }) =>
                   cn(
                     "relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-4 py-1.5 text-[11px] font-medium transition-colors",
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground",
+                    isActive ? "text-primary" : "text-muted-foreground",
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
                     <div className="relative">
-                      <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
+                      <Icon
+                        className="size-5"
+                        strokeWidth={isActive ? 2.5 : 2}
+                      />
                       {item.badge ? (
                         <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                           {item.badge}
@@ -177,9 +176,7 @@ export function Header() {
             className={({ isActive }) =>
               cn(
                 "relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-4 py-1.5 text-[11px] font-medium transition-colors",
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground",
+                isActive ? "text-primary" : "text-muted-foreground",
               )
             }
           >

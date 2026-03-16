@@ -28,11 +28,11 @@ export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
   id: dto.serve_item_id,
   candidateUserId: dto.candidate.user_id,
   name: dto.candidate.display_name,
-  age: dto.candidate.age ?? null,
-  image: dto.candidate.avatar_url ?? null,
-  bio: dto.candidate.bio ?? null,
-  matchScore: dto.compatibility.score_percent ?? Math.round(dto.compatibility.score * 100),
-  categoryBreakdown: (dto.compatibility.category_breakdown ?? []).map((cat) => ({
+  age: dto.candidate.age,
+  image: dto.candidate.avatar_url,
+  bio: dto.candidate.bio,
+  matchScore: dto.compatibility.score_percent,
+  categoryBreakdown: dto.compatibility.category_breakdown.map((cat) => ({
     categoryKey: cat.category_key,
     label: cat.label,
     scorePercent: cat.score_percent,

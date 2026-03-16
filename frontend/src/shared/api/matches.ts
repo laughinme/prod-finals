@@ -6,7 +6,7 @@ export type MatchListItemDto = {
   match_id: string;
   candidate_user_id: string;
   display_name: string;
-  avatar_url: string | null;
+  avatar_url: string;
   conversation_id: string | null;
   status: MatchStatus;
   last_message_preview: string | null;

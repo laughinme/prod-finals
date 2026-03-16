@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MatchProfile } from "@/entities/match-profile/model";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
+import { getPosition } from "./utils/get-position";
+import { clamp } from "./utils/clamp";
 
 interface SwipeableCardProps {
   profile: MatchProfile;
@@ -10,19 +12,6 @@ interface SwipeableCardProps {
   onOpenReport: () => void;
   exitX: number;
 }
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max);
-
-const getPosition = (
-  event: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent,
-) => {
-  if ("touches" in event) {
-    return { x: event.touches[0].clientX, y: event.touches[0].clientY };
-  } else {
-    return { x: event.clientX, y: event.clientY };
-  }
-};
 
 export function SwipeableCard({
   profile,
@@ -128,7 +117,6 @@ export function SwipeableCard({
   const likeOpacity = clamp(progress, 0, 1);
   const nopeOpacity = clamp(-progress, 0, 1);
 
-  // Entrance animation: start from stack position, animate to front
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;

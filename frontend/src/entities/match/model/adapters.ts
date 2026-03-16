@@ -3,19 +3,13 @@ import type {
   MatchListItemDto,
 } from "@/shared/api/matches";
 
-import type {
-  ClosedMatchResult,
-  MatchListItem,
-} from "./types";
-
-const DEFAULT_MATCH_AVATAR =
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop";
+import type { ClosedMatchResult, MatchListItem } from "./types";
 
 export const toMatchListItem = (dto: MatchListItemDto): MatchListItem => ({
   matchId: dto.match_id,
   candidateUserId: dto.candidate_user_id,
   displayName: dto.display_name,
-  avatarUrl: dto.avatar_url ?? DEFAULT_MATCH_AVATAR,
+  avatarUrl: dto.avatar_url,
   conversationId: dto.conversation_id,
   status: dto.status,
   lastMessagePreview: dto.last_message_preview,
