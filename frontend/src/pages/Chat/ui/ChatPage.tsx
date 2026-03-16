@@ -352,7 +352,7 @@ export default function ChatPage() {
             >
               <div
                 className={cn(
-                  "w-fit max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 shadow-sm [overflow-wrap:anywhere] md:max-w-[70%] md:px-5 md:py-3",
+                  "w-fit max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 shadow-sm wrap-anywhere md:max-w-[70%] md:px-5 md:py-3",
                   message.sender === "me"
                     ? "rounded-br-sm bg-primary text-primary-foreground"
                     : "rounded-bl-sm border border-border bg-card text-card-foreground",
@@ -396,7 +396,7 @@ export default function ChatPage() {
               }
             }}
             placeholder={t("chat.write_message_placeholder")}
-            className="min-h-11 max-h-[140px] flex-1 resize-none rounded-2xl border border-transparent bg-secondary px-4 py-3 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:min-h-14 md:max-h-[180px] md:py-4 md:text-[15px]"
+            className="min-h-11 max-h-35 flex-1 resize-none rounded-2xl border border-transparent bg-secondary px-4 py-3 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:min-h-14 md:max-h-45 md:py-4 md:text-[15px]"
           />
           <Button
             size="icon"
@@ -411,11 +411,9 @@ export default function ChatPage() {
     </>
   );
 
-  /* ── Main layout ── */
   return (
     <main className="flex h-[calc(100dvh-120px)] overflow-hidden bg-background md:h-[calc(100vh-64px)]">
       {isMobile ? (
-        /* Mobile: slide between sidebar and chat */
         <AnimatePresence mode="wait" initial={false}>
           {showSidebar ? (
             <motion.div
@@ -436,7 +434,6 @@ export default function ChatPage() {
           ) : null}
         </AnimatePresence>
       ) : (
-        /* Desktop: sidebar + chat side by side */
         <>
           <motion.div
             initial={{ opacity: 0, x: -12 }}

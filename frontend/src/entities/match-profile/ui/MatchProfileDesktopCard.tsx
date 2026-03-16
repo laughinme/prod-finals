@@ -26,13 +26,17 @@ export function MatchProfileDesktopCard({
   const { t } = useTranslation();
   const title = profile.age !== null ? `${profile.name}, ${profile.age}` : profile.name;
   const hasMeta = Boolean(profile.location);
+  const topPillClassName =
+    "inline-flex h-12 items-center rounded-full border border-white/10 bg-black/90 px-5 shadow-xl backdrop-blur-md";
 
   return (
     <Card className="relative flex flex-col overflow-hidden rounded-4xl border-2 border-black bg-card p-0 shadow-2xl shadow-primary/5 select-none md:flex-row">
       <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
         {showMatchScore ? (
           <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-            <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md">
+            <div
+              className={`${topPillClassName} min-w-[104px] justify-center text-[22px] leading-none font-black text-primary`}
+            >
               {profile.matchScore}%
             </div>
           </ScoreBreakdownPopover>
@@ -43,7 +47,7 @@ export function MatchProfileDesktopCard({
             onTouchStart={(e) => e.stopPropagation()}
             onClick={onPrepareTestMatch}
             disabled={isPreparingTestMatch}
-            className="rounded-xl bg-black/90 px-3 py-1 text-sm font-semibold text-white shadow-xl backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-60"
+            className={`${topPillClassName} text-[15px] font-semibold text-white transition-colors hover:bg-black/80 disabled:opacity-60`}
           >
             {t("discovery.test_match_button")}
           </button>
