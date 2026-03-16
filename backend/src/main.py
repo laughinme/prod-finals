@@ -77,7 +77,6 @@ def create_app(
     app.include_router(get_webhooks())
 
 
-    # Checks
     @app.get("/api/ping")
     async def ping():
         return {"status": "ok"}

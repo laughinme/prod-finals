@@ -23,12 +23,10 @@ class User(TimestampMixin, Base):
     service_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     is_dataset_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     
-    # Credentials
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    # Minimal profile for template
     first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     avatar_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -53,7 +51,6 @@ class User(TimestampMixin, Base):
     onboarding_skipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
-    # Service
     is_onboarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     banned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     auth_version: Mapped[int] = mapped_column(
@@ -61,7 +58,6 @@ class User(TimestampMixin, Base):
     )
 
     __table_args__ = (
-        # GIN trigram indexes for fast text search
         Index(
             'users_email_trgm',
             'email',

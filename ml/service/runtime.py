@@ -303,7 +303,7 @@ class MlRuntime:
         print(f"[{request.trace_id}] Vectors synchronized dynamically for user {user_id_str}")
 
     def pull_and_process_user_transactions(self, *, user_id: str | int, trace_id: UUID) -> None:
-        # External banking pull is not wired in this deployment; keep endpoint non-breaking.
+                                                                                            
         print(f"[{trace_id}] Transaction pull skipped for user {user_id}: source is not configured")
 
     def _build_pipeline(self) -> ModelPipeline:
@@ -405,7 +405,7 @@ class MlRuntime:
         else:
             warnings.append("qdrant_unavailable")
 
-        # Fallback к модели, если Qdrant не сработал
+                                                    
         if not candidates and self._pipeline is not None:
             items, runtime_warnings, runtime_decision_mode = self._pipeline.recommend(
                 request_user_id=request.request_user_id,
@@ -512,7 +512,7 @@ class MlRuntime:
         Ищет рекомендации через Qdrant, используя обновленные векторы (с дообучением).
         """
         try:
-            # Получаем вектор пользователя
+                                          
             user_id_str = _string_to_uuid(_normalize_user_id(request_user_id))
             user_points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
@@ -521,13 +521,13 @@ class MlRuntime:
                 with_payload=True,
             )
             if not user_points:
-                return []  # Пользователь не найден в Qdrant
+                return []                                   
             user_vector = user_points[0].vector
             user_payload = dict(user_points[0].payload or {})
 
-            # Исключаем hard_exclude
+                                    
             exclude_ids = {_string_to_uuid(_normalize_user_id(uid)) for uid in hard_exclude_user_ids}
-            exclude_ids.add(user_id_str)  # Исключаем самого себя
+            exclude_ids.add(user_id_str)                         
             allowed_ids = [_normalize_user_id(uid) for uid in candidate_user_ids]
             query_filter = None
             if allowed_ids:
@@ -540,7 +540,7 @@ class MlRuntime:
                     ]
                 )
 
-            # Ищем ближайших в Qdrant
+                                     
             search_limit = (
                 max(limit * 3, min(max(len(allowed_ids), limit), 2000))
                 if allowed_ids
@@ -550,7 +550,7 @@ class MlRuntime:
                 collection_name="user_profiles",
                 query=user_vector,
                 query_filter=query_filter,
-                limit=search_limit,  # Больше, чтобы учесть фильтры
+                limit=search_limit,                                
                 with_payload=True,
                 with_vectors=True,
             )
@@ -559,21 +559,21 @@ class MlRuntime:
             for hit in search_result.points:
                 if hit.id in exclude_ids:
                     continue
-                # Преобразуем id обратно в user_id (из payload или из id)
-                # Предполагаем, что id - это uuid от party_rk, и payload содержит party_rk
+                                                                         
+                                                                                          
                 candidate_user_id = hit.payload.get("party_rk", str(hit.id))
-                # Qdrant cosine similarity may be in [-1, 1], while our API contract
-                # and downstream UI expect a normalized 0..1 compatibility score.
+                                                                                    
+                                                                                 
                 score = (float(hit.score) + 1.0) / 2.0
-                # Применяем стратегию
+                                     
                 if strategy == "high_precision":
                     score = min(1.0, score + 0.03)
                 elif strategy == "exploration":
                     score = max(0.0, score - 0.05)
-                # Soft seen
+                           
                 if _normalize_user_id(candidate_user_id) in {_normalize_user_id(uid) for uid in soft_seen_user_ids}:
                     score = max(0.0, score - 0.15)
-                # Ensure we return a structured item
+                                                    
                 from .schemas import RecommendationCandidate
                 items.append(RecommendationCandidate(
                     candidate_user_id=candidate_user_id, 
@@ -647,14 +647,14 @@ class MlRuntime:
         }
 
     def process_swipe_feedback(self, payload: SwipeFeedbackRequest) -> AckResponse:
-        # Сохраняем событие
+                           
         self.save_feedback_event(
             event_id=payload.event_id,
             trace_id=payload.trace_id,
             event_type="swipe",
         )
         
-        # Обновляем вектор на основании лайка или дизлайка
+                                                          
         if payload.action in ("like", "pass") and self._qdrant_client is not None:
             self._update_user_vector_on_swipe(payload.actor_user_id, payload.target_user_id, payload.action, payload.trace_id)
         
@@ -668,7 +668,7 @@ class MlRuntime:
             actor_id = _string_to_uuid(str(actor_user_id))
             target_id = _string_to_uuid(str(target_user_id))
             
-            # ВАЖНО: Добавили with_payload=True
+                                               
             points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
                 ids=[actor_id, target_id],
@@ -684,37 +684,37 @@ class MlRuntime:
             for point in points:
                 if point.id == actor_id:
                     actor_vector = point.vector
-                    actor_payload = point.payload # ВАЖНО: Сохраняем payload
+                    actor_payload = point.payload                           
                 elif point.id == target_id:
                     target_vector = point.vector
             
             if actor_vector is None or target_vector is None:
                 return
             
-            # ВАЖНО: Увеличили шаг, чтобы результат был заметен сразу!
+                                                                      
             alpha = 0.1
             
             if action == "like":
-                # Приближаем: складываем векторы с весом
+                                                        
                 new_vector = [
                     actor + alpha * target
                     for actor, target in zip(actor_vector, target_vector)
                 ]
                 print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} приблизился к {target_user_id} (like)"
             else:
-                # Отдаляем: вычитаем, как было
+                                              
                 new_vector = [
                     actor - alpha * target
                     for actor, target in zip(actor_vector, target_vector)
                 ]
                 print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} отдалился от {target_user_id} (pass)"
             
-            # Нормализация
+                          
             norm = np.linalg.norm(new_vector)
             if norm > 0:
-                new_vector = [float(x / norm) for x in new_vector] # Приводим к float для JSON
+                new_vector = [float(x / norm) for x in new_vector]                            
             
-            # ВАЖНО: Передаем payload обратно
+                                             
             self._qdrant_client.upsert(
                 collection_name="user_profiles",
                 points=[PointStruct(id=actor_id, vector=new_vector, payload=actor_payload)]
@@ -723,89 +723,3 @@ class MlRuntime:
             
         except Exception as exc:
             print(f"[{trace_id}] Ошибка обновления вектора: {exc}")
-    '''def update_user_profile_favorites(
-        self, 
-        user_id: int, 
-        favorite_categories: list[str], 
-        trace_id: UUID,
-        preferred_hour: float | None = None
-    ) -> AckResponse:
-        """
-        Обрабатывает выбранные юзером любимые категории.
-        Смешивает их с историей (если есть) или создает вектор с нуля для холодных юзеров.
-        """
-        if self._qdrant_client is None:
-            # Если Qdrant упал, просто логируем (в реальном проекте тут нужна очередь/Kafka)
-            print(f"[{trace_id}] Cannot update user {user_id}, Qdrant is down.")
-            return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
-
-        # ВАЖНО: Тебе нужен доступ к списку ВСЕХ уникальных категорий (например, из pipeline или настроек)
-        # Предположим, он хранится в self._pipeline.all_categories
-        if self._pipeline is None or not hasattr(self._pipeline, 'all_categories'):
-            print(f"[{trace_id}] ML Pipeline is not ready. Cannot vectorize profile.")
-            return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
-
-        all_categories = self._pipeline.all_categories
-        
-
-
-        is_warm = self._pipeline.has_user_history(user_id) 
-
-
-        raw_vector = np.zeros(len(all_categories))
-        
-        if not is_warm:
-
-
-            weight_per_cat = 1.0 / len(favorite_categories)
-            for idx, cat in enumerate(all_categories):
-                if cat in favorite_categories:
-                    raw_vector[idx] = weight_per_cat
-            
-
-            hour = preferred_hour if preferred_hour is not None else 14.0
-            
-        else:
-            existing_vector, existing_hour = self._pipeline.get_raw_user_profile(user_id)
-            
-            history_weight = 0.7
-            favorites_weight = 0.3
-            
-
-            fav_vector = np.zeros(len(all_categories))
-            weight_per_cat = 1.0 / len(favorite_categories)
-            for idx, cat in enumerate(all_categories):
-                if cat in favorite_categories:
-                    fav_vector[idx] = weight_per_cat
-
-            # Смешиваем
-            raw_vector = (existing_vector * history_weight) + (fav_vector * favorites_weight)
-            
-
-            hour = existing_hour
-
-        final_raw_features = np.append(raw_vector, hour)
-
-
-
-
-        scaled_vector = self._pipeline.scaler.transform([final_raw_features])[0]
-
-        collection_name = "user_profiles" # Вынести в settings
-        
-        self._qdrant_client.upsert(
-            collection_name=collection_name,
-            points=[
-                PointStruct(
-                    id=user_id,
-                    vector=scaled_vector.tolist(),
-                    payload={
-                        "is_warm": is_warm,
-                        "updated_at": _utcnow().isoformat()
-                    }
-                )
-            ]
-        )
-
-        return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
-'''

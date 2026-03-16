@@ -9,6 +9,14 @@
         reverse_proxy centrifugo:8000
     }
 
+    handle_path /ml/* {
+        reverse_proxy ml-service:8080
+    }
+
+    handle /openapi.json {
+        reverse_proxy ml-service:8080
+    }
+
     handle /media-public/* {
         reverse_proxy minio:9000
     }

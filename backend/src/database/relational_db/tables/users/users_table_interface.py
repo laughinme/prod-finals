@@ -86,7 +86,6 @@ class UserInterface:
                 )
             )
 
-        # Cursor pagination (created_at desc, id desc)
         if cursor_created_at is not None and cursor_id is not None:
             stmt = stmt.where(
                 or_(

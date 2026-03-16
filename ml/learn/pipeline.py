@@ -12,7 +12,7 @@ from .prepare_data import Transaction, generate_sample_transactions
 
 @dataclass(slots=True)
 class RecommendationItem:
-    # Может быть числовым (bootstrap), может быть строковым (реальные id)
+                                                                         
     candidate_user_id: str | int
     score: float
 
@@ -30,7 +30,7 @@ def _clamp_score(value: float) -> float:
 
 
 def _normalize_user_id(raw_user_id: str | int) -> str:
-    # Поддерживаем числовые id (user-1) и любые строковые id (хеши, UUID и т.п.)
+                                                                                
     if isinstance(raw_user_id, int):
         return f"user-{raw_user_id}"
     raw = str(raw_user_id)
@@ -62,7 +62,7 @@ class ModelPipeline:
         self.features_version = "features_v1"
         self.trained_at = datetime.now(timezone.utc)
 
-        # Храним ключи, которые уже есть в профилях, чтобы можно было быстро строить fallback-пул
+                                                                                                 
         self._known_user_ids: list[str] = []
         for raw_user_id in artifact.profiles.keys():
             self._known_user_ids.append(str(raw_user_id))

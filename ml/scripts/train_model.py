@@ -75,7 +75,7 @@ def _download_training_data(
     archive_member: str,
 ) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=timeout_sec) as response:  # noqa: S310
+    with urllib.request.urlopen(url, timeout=timeout_sec) as response:              
         payload = response.read()
         content_type = response.headers.get_content_type()
 

@@ -168,7 +168,7 @@ class ReasonSignal(StrictModel):
 
 
 class RecommendationCandidate(StrictModel):
-    # Может быть числовым (bootstrap / тестовые данные) или строковым (реальные user_id из транзакций)
+                                                                                                      
     candidate_user_id: str | int
     score: float = Field(ge=0, le=1)
     score_components: dict[str, float] | None = None
@@ -256,7 +256,7 @@ class RawTransaction(StrictModel):
     transaction_id: str
     merchant_nm: str
     merchant_type_code: str | int
-    category_nm: str | None = None  # Может быть None, тогда работает CatBoost
+    category_nm: str | None = None                                            
     timestamp: datetime
     amount: float = Field(default=0.0, ge=0)
 

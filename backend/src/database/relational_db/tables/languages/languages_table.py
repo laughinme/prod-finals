@@ -12,7 +12,6 @@ class Language(Base):
     name_en: Mapped[str] = mapped_column(String, nullable=False)
     
     __table_args__ = (
-        # GIN trigram indexes for fast text search
         Index(
             'languages_name_ru_trgm',
             'name_ru',

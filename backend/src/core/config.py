@@ -10,15 +10,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
-    """
-    Project dependencies config
-    """
     model_config = SettingsConfigDict(
         env_file=f'{BASE_DIR}/.env',
         extra='ignore'
     )
     
-    # Stage / debug
     APP_STAGE: Literal["dev", "prod"] = "dev"
     APP_VERSION: str = "dev"
     DEBUG: bool | None = None
@@ -39,7 +35,6 @@ class Settings(BaseSettings):
     CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
     CENTRIFUGO_TOKEN_TTL_SEC: int = 900
 
-    # ML service integration
     ML_SERVICE_URL: str = ""
     ML_SERVICE_TOKEN: str = "dev-ml-token"
     ML_PREVIEW_LLM_ENABLED: bool = False
@@ -49,18 +44,14 @@ class Settings(BaseSettings):
     ML_PREVIEW_LLM_MODEL: str = "Qwen/Qwen2.5-0.5B-Instruct"
     ML_PREVIEW_LLM_TIMEOUT_SEC: float = 4.0
 
-    # API settings
     API_PORT: int = 8080
     API_HOST: str = '0.0.0.0'
     
-    # Site data (url, paths)
     SITE_URL: str = ''
     
-    # Media settings
     MEDIA_DIR: str = 'media'
-    MAX_PHOTO_SIZE: int = 5  # in MB
+    MAX_PHOTO_SIZE: int = 5 
     
-    # S3-compatible object storage (MinIO, S3, R2, etc.)
     STORAGE_ENDPOINT_INTERNAL: str = "http://minio:9000"
     STORAGE_ENDPOINT_PUBLIC: str = "http://localhost"
     STORAGE_REGION: str = "us-east-1"
@@ -72,29 +63,24 @@ class Settings(BaseSettings):
     STORAGE_USE_PATH_STYLE: bool = True
     STORAGE_AUTO_CREATE_BUCKETS: bool = True
 
-    # Optional notifications adapter
     NOTIFICATIONS_PROVIDER: Literal["noop", "telegram"] = "noop"
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
     
-    # Auth Settings    
     JWT_SECRET: str
     JWT_ALGO: str = "HS256"
     ACCESS_TTL: int = 60 * 15
     REFRESH_TTL: int = 60 * 60 * 24 * 7
     CSRF_HMAC_KEY: bytes = b"change-me"
 
-    # Cookie settings
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     COOKIE_DOMAIN: str | None = None
     COOKIE_PATH: str = "/"
 
-    # CORS settings (optional, use only if you call backend directly)
     CORS_ALLOW_ORIGINS: str = ""
     CORS_ALLOW_ORIGIN_REGEX: str = ""
     
-    # Database settings
     DATABASE_URL: str
     REDIS_URL: str
 
@@ -168,7 +154,6 @@ def clear_settings_cache() -> None:
         from service.media import clear_media_storage_service_cache
         clear_media_storage_service_cache()
     except Exception:
-        # Media storage service may be unavailable during bootstrap/import phases.
         pass
 
 

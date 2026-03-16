@@ -27,20 +27,20 @@ def run_ingestion():
     df['merchant_type_code'] = df['merchant_type_code'].fillna('unknown').astype(str)
     df['merchant_nm'] = df['merchant_nm'].fillna('unknown').astype(str)
 
-    # 2. CatBoost Enrichment
+                            
 
     train_df = df[df['category_nm'].notna()]
     predict_df = df[df['category_nm'].isna()]
     if len(predict_df) > 0:
-        # ДОБАВЬ ЭТОТ ПРИНТ, чтобы понимать масштаб беды :)
+                                                           
         print(f"2. Обучение CatBoost... Размер train: {len(train_df)} строк, predict: {len(predict_df)} строк")
         
         model = CatBoostClassifier(
-            iterations=50,        # <-- УМЕНЬШИЛИ с 150 до 30 (для быстрого теста этого хватит)
-            verbose=3,            # <-- ВАЖНО: теперь каждые 5 итераций он будет писать прогресс в консоль
+            iterations=50,                                                                     
+            verbose=3,                                                                                    
             text_features=['merchant_nm'],
             cat_features=['merchant_type_code'],
-            thread_count=4        # <-- ОГРАНИЧИМ ПОТОКИ (чтобы Docker не задохнулся от нехватки CPU)
+            thread_count=4                                                                           
         )
         model.fit(
             train_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']],
@@ -49,7 +49,7 @@ def run_ingestion():
         preds = model.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
         df.loc[df['category_nm'].isna(), 'category_nm'] = preds.flatten()
         print("✅ Категории успешно восстановлены.")
-    # 3. Векторизация
+                     
     print("3. Создание профилей...")
     cat_dist = df.groupby(['party_rk', 'category_nm']).size().unstack(fill_value=0).astype(float)
     cat_dist = cat_dist.div(cat_dist.sum(axis=1), axis=0)
@@ -61,7 +61,7 @@ def run_ingestion():
     joblib.dump(scaler, 'models/scaler.joblib')
     joblib.dump(profiles.columns.tolist(), 'models/features_list.joblib')
 
-    # 4. Заливка в Qdrant
+                         
     print(f"4. Синхронизация с Qdrant (Коллекция: {config.COLLECTION_NAME})...")
     if client.collection_exists("user_profiles"):
         client.delete_collection("user_profiles")

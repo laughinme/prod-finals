@@ -16,7 +16,6 @@ from database.redis import CacheRepo, get_redis
 from database.relational_db import User
 from service.auth import TokenService, get_token_service
 from service.users import UserService, get_user_service
-# from service.organizations import OrganizationService, get_organization_service
 
 security = HTTPBearer(
     description="Access token must be passed as Bearer to authorize request"
@@ -87,7 +86,6 @@ def verify_auth_version(token_version: int | str | None, user: User) -> None:
 
 
 def expand_roles(roles: list[str], implications: dict[str, set[str]]) -> set[str]:
-    """Expand roles to include all implied roles"""
     base = set(roles)
     
     effective_roles = set(base)

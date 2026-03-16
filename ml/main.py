@@ -305,7 +305,7 @@ async def post_sync_transactions(
 ) -> AckResponse:
     """Event-driven обновление профиля. ML-логика выполняется в фоне."""
     
-    # Отправляем тяжелую задачу (CatBoost, Scaler, Qdrant Upsert) в фон
+                                                                       
     background_tasks.add_task(
         runtime.process_transactions_sync_background,
         payload
