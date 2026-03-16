@@ -80,7 +80,7 @@ export function MatchProfileDesktopCard({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/72 p-6 backdrop-blur-xl"
+          className="fixed inset-0 z-80 flex items-center justify-center bg-black/72 p-6 backdrop-blur-xl"
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onClick={() => setShowCompatibilityDetails(false)}
@@ -90,7 +90,7 @@ export function MatchProfileDesktopCard({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-[560px] flex-col overflow-hidden rounded-[36px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.24)]"
+            className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-140 flex-col overflow-hidden rounded-[36px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.24)]"
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}

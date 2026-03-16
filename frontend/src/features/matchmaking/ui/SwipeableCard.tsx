@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { MatchProfile } from "@/entities/match-profile/model";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { getPosition } from "./utils/get-position";
@@ -25,10 +25,27 @@ export function SwipeableCard({
   isPreparingTestMatch = false,
 }: SwipeableCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const likeBadgeRef = useRef<HTMLDivElement>(null);
+  const nopeBadgeRef = useRef<HTMLDivElement>(null);
   const interactionRef = useRef<{ x: number; y: number } | undefined>(
     undefined,
   );
-  const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
+  const frameRef = useRef<number | null>(null);
+  const pendingPositionRef = useRef<{ x: number; y: number } | null>(null);
+
+  const setBadgeOpacity = useCallback((progress: number) => {
+    const likeOpacity = clamp(progress, 0, 1);
+    const nopeOpacity = clamp(-progress, 0, 1);
+
+    if (likeBadgeRef.current) {
+      likeBadgeRef.current.style.opacity = `${likeOpacity}`;
+    }
+
+    if (nopeBadgeRef.current) {
+      nopeBadgeRef.current.style.opacity = `${nopeOpacity}`;
+    }
+  }, []);
 
   const handleStart = useCallback(
     (
@@ -38,6 +55,7 @@ export function SwipeableCard({
       if (!card) return;
 
       card.style.transition = "";
+      card.style.willChange = "transform";
 
       const { x, y } = getPosition(e);
       interactionRef.current = { x, y };
@@ -47,25 +65,44 @@ export function SwipeableCard({
 
   const handleMove = useCallback((e: TouchEvent | MouseEvent) => {
     if (!interactionRef.current) return;
-    const card = cardRef.current;
-    if (!card) return;
 
-    const { x, y } = getPosition(e);
-    const dx = (x - interactionRef.current.x) * 0.8;
-    const dy = (y - interactionRef.current.y) * 0.5;
-    const deg = (dx / 600) * -30;
+    pendingPositionRef.current = getPosition(e);
 
-    card.style.transform = `translate(${dx}px, ${dy}px) rotate(${deg}deg)`;
+    if (frameRef.current !== null) return;
 
-    const newProgress = clamp(dx / 100, -1, 1);
-    setProgress(newProgress);
-  }, []);
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+
+      if (!interactionRef.current) return;
+      const card = cardRef.current;
+      const pendingPosition = pendingPositionRef.current;
+      if (!card) return;
+      if (!pendingPosition) return;
+
+      const { x, y } = pendingPosition;
+      const dx = (x - interactionRef.current.x) * 0.8;
+      const dy = (y - interactionRef.current.y) * 0.5;
+      const deg = (dx / 600) * -30;
+
+      card.style.transform = `translate(${dx}px, ${dy}px) rotate(${deg}deg)`;
+
+      const nextProgress = clamp(dx / 100, -1, 1);
+      progressRef.current = nextProgress;
+      setBadgeOpacity(nextProgress);
+    });
+  }, [setBadgeOpacity]);
 
   const handleEnd = useCallback(() => {
     if (!interactionRef.current) return;
     const card = cardRef.current;
     if (!card) return;
 
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    const progress = progressRef.current;
     const isSelect = Math.abs(progress) === 1;
     const isGood = progress === 1;
 
@@ -82,11 +119,14 @@ export function SwipeableCard({
     if (matchRotate) currentRotate = parseFloat(matchRotate[1]);
 
     interactionRef.current = undefined;
-    setProgress(0);
+    pendingPositionRef.current = null;
+    progressRef.current = 0;
+    setBadgeOpacity(0);
 
     const resetCardPosition = () => {
       card.style.transition = "transform 0.25s ease-out";
       card.style.transform = "translate(0px, 0px) rotate(0deg)";
+      card.style.willChange = "auto";
     };
 
     const animateCardOut = (direction: "left" | "right") => {
@@ -96,17 +136,18 @@ export function SwipeableCard({
 
       card.style.transition = "transform 0.3s ease-in-out";
       card.style.transform = `translate(${currentX + dx}px, ${currentY}px) rotate(${currentRotate * 2}deg)`;
+      card.style.willChange = "auto";
     };
 
     if (isSelect) {
       if (isGood) {
+        animateCardOut("right");
         Promise.resolve(onLike())
           .then((accepted) => {
             if (accepted === false) {
               resetCardPosition();
               return;
             }
-            animateCardOut("right");
           })
           .catch(() => {
             resetCardPosition();
@@ -121,7 +162,7 @@ export function SwipeableCard({
     }
 
     resetCardPosition();
-  }, [onLike, onPass, progress]);
+  }, [onLike, onPass, setBadgeOpacity]);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleMove);
@@ -130,15 +171,15 @@ export function SwipeableCard({
     window.addEventListener("touchend", handleEnd);
 
     return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("mouseup", handleEnd);
       window.removeEventListener("touchend", handleEnd);
     };
   }, [handleMove, handleEnd]);
-
-  const likeOpacity = clamp(progress, 0, 1);
-  const nopeOpacity = clamp(-progress, 0, 1);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -165,16 +206,18 @@ export function SwipeableCard({
         style={{
           touchAction: "none",
         }}
-        className="relative w-full max-w-5xl cursor-grab select-none active:cursor-grabbing"
+      className="relative w-full max-w-5xl cursor-grab select-none active:cursor-grabbing"
       >
         <div
-          style={{ opacity: likeOpacity }}
+          ref={likeBadgeRef}
+          style={{ opacity: 0 }}
           className="pointer-events-none absolute top-12 left-12 z-20 rounded-xl border-4 border-green-500 px-4 py-2 text-4xl font-black text-green-500 uppercase -rotate-15 md:top-20 md:left-20"
         >
           LIKE
         </div>
         <div
-          style={{ opacity: nopeOpacity }}
+          ref={nopeBadgeRef}
+          style={{ opacity: 0 }}
           className="pointer-events-none absolute top-12 right-12 z-20 rounded-xl border-4 border-red-500 px-4 py-2 text-4xl font-black text-red-500 uppercase rotate-15 md:top-20 md:right-20"
         >
           NOPE
