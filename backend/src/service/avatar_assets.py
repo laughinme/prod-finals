@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -34,9 +32,9 @@ def load_default_avatar_asset() -> AvatarAsset:
 
 @lru_cache
 def load_dataset_avatar_asset() -> AvatarAsset:
-    path = _assets_dir() / "sponge bob.jpg"
+    path = _assets_dir() / "sponge_bob.jpg"
     if not path.exists():
-        path = _docs_dir() / "sponge bob.jpg"
+        path = _docs_dir() / "sponge_bob.jpg"
     return AvatarAsset(
         filename="dataset-avatar.jpg",
         content_type="image/jpeg",
