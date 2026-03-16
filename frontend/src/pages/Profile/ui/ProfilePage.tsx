@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
-import { useProfile } from "@/features/profile/useProfile";
+import { useAuth } from "@/entities/auth";
+import { useProfile } from "@/features/profile";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 import { ProfileSkeleton } from "./components/ProfileSkeleton";

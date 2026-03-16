@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
+import { useAuth } from "@/entities/auth";
+import * as Sentry from "@sentry/react";
 
 export function useQuizProfilePreviewState() {
   const auth = useAuth();
@@ -40,8 +41,8 @@ export function useQuizProfilePreviewState() {
     (value: boolean) => {
       try {
         localStorage.setItem(storageKey, value ? "true" : "false");
-      } catch {
-        // Ignore localStorage access issues and still update in-memory state.
+      } catch (e) {
+        Sentry.captureException(e);
       }
 
       queryClient.setQueryData(queryKey, value);

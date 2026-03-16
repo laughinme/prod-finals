@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/app/providers/auth/useAuth";
-import AuthPage from "@/pages/auth/ui/AuthPage";
+import { useAuth } from "@/entities/auth";
+import AuthPage from "@/pages/auth";
 
 const RedirectIfAuthenticated = () => {
   const auth = useAuth();

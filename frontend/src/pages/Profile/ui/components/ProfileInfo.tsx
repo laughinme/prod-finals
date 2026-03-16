@@ -4,7 +4,7 @@ import { IconCalendar, IconMail, IconShieldCheck } from "@tabler/icons-react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Separator } from "@/shared/components/ui/separator";
-import { ProfileAvatarUpload } from "@/features/profile/ProfileAvatarUpload";
+import { ProfileAvatarUpload } from "@/features/profile";
 import { formatDate } from "@/shared/lib/date";
 import type { User } from "@/entities/user/model";
 

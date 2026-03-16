@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useProfile } from "@/features/profile/useProfile";
+import { useProfile } from "@/features/profile";
 import type { User } from "@/entities/user/model";
 
 import { MatchmakingFlowContext } from "./useMatchmakingFlow";

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { toMatchProfiles, type MatchProfile, type MatchProfileId } from "@/entities/match-profile/model";
+import { AUTH_LOGOUT_EVENT } from "@/entities/auth";
 import { getFeed, type FeedResponseDto } from "@/shared/api/feed";
 
 export const FEED_QUERY_KEY = ["matchmaking", "feed"] as const;
@@ -107,6 +108,10 @@ export function resetFeedStore() {
     initialLoadDone: false,
   };
   emitChange();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(AUTH_LOGOUT_EVENT, resetFeedStore);
 }
 
 export function useFeed(limit = 20) {

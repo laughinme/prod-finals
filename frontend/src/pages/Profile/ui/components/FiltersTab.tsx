@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { PreferencesEditor } from "@/features/profile/PreferencesEditor";
+import { PreferencesEditor } from "@/features/profile";
 import type { User } from "@/entities/user/model";
 
 interface FiltersTabProps {

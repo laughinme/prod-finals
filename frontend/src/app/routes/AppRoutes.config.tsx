@@ -6,20 +6,20 @@ import {
 } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import HomePage from "@/pages/Home";
-import ProfilePage from "@/pages/Profile/ui/ProfilePage";
-import { useAuth } from "@/app/providers/auth/useAuth";
+import ProfilePage from "@/pages/Profile";
+import { useAuth } from "@/entities/auth";
 import { HeaderLayout } from "@/app/layouts/HeaderLayout";
-import { useProfile } from "@/features/profile/useProfile";
+import { useProfile } from "@/features/profile";
 import { useOnboardingState } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
-import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
-import PhotoUploadPage from "@/pages/PhotoUpload/ui/PhotoUploadPage";
-import DiscoveryPage from "@/pages/Discovery/ui/DiscoveryPage";
-import MatchPage from "@/pages/Match/ui/MatchPage";
-import ChatPage from "@/pages/Chat/ui/ChatPage";
-import MatchesPage from "@/pages/Matches/ui/MatchesPage";
-import { QuizPage } from "@/pages/Onboarding/ui/QuizPage";
+import OnboardingPage from "@/pages/Onboarding";
+import PhotoUploadPage from "@/pages/PhotoUpload";
+import DiscoveryPage from "@/pages/Discovery";
+import MatchPage from "@/pages/Match";
+import ChatPage from "@/pages/Chat";
+import MatchesPage from "@/pages/Matches";
+import { QuizPage } from "@/pages/Onboarding";
 import RedirectIfAuthenticated from "./RedirectIfAuthenticated";
 
 export const MatchmakingLoadingState = () => {
@@ -52,7 +52,8 @@ export const RequireAuth = () => {
 
 export const RequireMatchmakingReady = () => {
   const { isPending } = useProfile();
-  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { data: onboardingState, isPending: isOnboardingStatePending } =
+    useOnboardingState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -88,7 +89,8 @@ export const RequireAdmin = () => {
 
 export const RequireIncompleteOnboarding = () => {
   const { isPending } = useProfile();
-  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { data: onboardingState, isPending: isOnboardingStatePending } =
+    useOnboardingState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -109,7 +111,8 @@ export const RequireIncompleteOnboarding = () => {
 
 export const RequireIncompleteQuiz = () => {
   const { isPending } = useProfile();
-  const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { data: onboardingState, isPending: isOnboardingStatePending } =
+    useOnboardingState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -126,7 +129,11 @@ export const RequireIncompleteQuiz = () => {
     return <Navigate to="/discovery" replace />;
   }
 
-  if (currentStepKey === "match_preferences" || currentStepKey === "interests" || currentStepKey === "profile_preview") {
+  if (
+    currentStepKey === "match_preferences" ||
+    currentStepKey === "interests" ||
+    currentStepKey === "profile_preview"
+  ) {
     return <Outlet />;
   }
 
@@ -148,9 +155,7 @@ export const routes: RouteObject[] = [
       },
       {
         element: <RequireIncompleteQuiz />,
-        children: [
-          { path: "quiz", element: <QuizPage /> },
-        ],
+        children: [{ path: "quiz", element: <QuizPage /> }],
       },
       { path: "match", element: <MatchPage /> },
       {

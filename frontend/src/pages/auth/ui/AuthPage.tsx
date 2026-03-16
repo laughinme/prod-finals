@@ -3,10 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import * as Sentry from "@sentry/react";
-import { useAuth } from "@/app/providers/auth/useAuth";
-import type { AuthCredentials } from "@/entities/auth/model";
-import { LoginForm } from "@/features/auth/login-form";
-import { SignupForm } from "@/features/auth/signup-form";
+import { useAuth } from "@/entities/auth";
+import type { AuthCredentials } from "@/entities/auth";
+import { LoginForm, SignupForm } from "@/features/auth";
 
 type Mode = "login" | "register";
 

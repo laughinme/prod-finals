@@ -4,24 +4,25 @@ import axios, {
   type AxiosInstance,
   type AxiosRequestHeaders,
   type AxiosResponse,
-  type InternalAxiosRequestConfig
+  type InternalAxiosRequestConfig,
 } from "axios";
 import * as Sentry from "@sentry/react";
-import type { AuthTokens } from "@/entities/auth/model";
+import type { AuthTokens } from "@/entities/auth";
 import { withBasePath } from "@/shared/lib/utils";
 import { resolveCsrfToken } from "../lib/csrf";
+
 const DEFAULT_API_PATH = "/api/v1";
 const BASE_URL = withBasePath(
   import.meta.env.VITE_API_BASE_URL as string | undefined,
-  DEFAULT_API_PATH
+  DEFAULT_API_PATH,
 );
 
 export const apiPublic: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
-  withCredentials: true
+  withCredentials: true,
 });
 
 let accessToken: string | null = null;
@@ -55,9 +56,9 @@ const toAxiosHeaders = (headers?: AxiosRequestHeaders): AxiosHeaders => {
 const apiProtected: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
   },
-  withCredentials: true
+  withCredentials: true,
 });
 
 const normalizePath = (value?: string): string | undefined => {
@@ -80,8 +81,8 @@ export const refreshAccessToken = async (): Promise<string | null> => {
         {},
         {
           headers: { "X-CSRF-Token": csrfToken },
-          withCredentials: true
-        }
+          withCredentials: true,
+        },
       );
 
       return data?.access_token ?? null;
@@ -103,13 +104,15 @@ apiProtected.interceptors.request.use(
     }
     return config;
   },
-  (error: AxiosError): Promise<never> => Promise.reject(error)
+  (error: AxiosError): Promise<never> => Promise.reject(error),
 );
 
 apiProtected.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   async (error: AxiosError): Promise<AxiosResponse | never> => {
-    const originalRequest = (error.config as (InternalAxiosRequestConfig & { _retry?: boolean })) ?? null;
+    const originalRequest =
+      (error.config as InternalAxiosRequestConfig & { _retry?: boolean }) ??
+      null;
 
     const originalUrl = normalizePath(originalRequest?.url);
     if (
@@ -138,7 +141,7 @@ apiProtected.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiProtected;

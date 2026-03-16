@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, MessageCircle } from "lucide-react";
 
 import type { MatchProfile } from "@/entities/match-profile/model";
-import { useProfile } from "@/features/profile/useProfile";
+import { useProfile } from "@/features/profile";
 import { Button } from "@/shared/components/ui/button";
 
 type MatchNavigationState = {

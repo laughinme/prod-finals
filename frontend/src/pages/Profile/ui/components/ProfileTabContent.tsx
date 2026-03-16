@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
+import { ProfileEditForm } from "@/features/profile";
 import type { User } from "@/entities/user/model";
 import { ProfileInfo } from "./ProfileInfo";
 import { ProfilePreview } from "./ProfilePreview";

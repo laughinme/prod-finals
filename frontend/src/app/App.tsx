@@ -2,7 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Toaster } from "sonner";
 import { MatchmakingFlowProvider } from "@/features/matchmaking/model";
-import { useAuth } from "@/app/providers/auth/useAuth";
+import { useAuth } from "@/entities/auth";
 import { RealtimeProvider } from "@/app/providers/realtime";
 import { AppRoutes } from "@/app/routes/AppRoutes";
 

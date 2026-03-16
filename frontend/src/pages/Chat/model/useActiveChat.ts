@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
+import { useAuth } from "@/entities/auth";
 import { useMatches } from "@/features/match";
 import { useMatchNotifications } from "@/app/providers/realtime/useMatchNotifications";
 import { useIsMobile } from "@/shared/hooks/use-mobile";

@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Centrifuge, UnauthorizedError } from "centrifuge";
 
-import { useAuth } from "@/app/providers/auth/useAuth";
+import { useAuth } from "@/entities/auth";
 import { MatchNotificationModal } from "./MatchNotificationModal";
 import { MatchNotificationsContext, type MatchNotification } from "./context";
 import {

@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { useProfile, useUpdateProfile } from "@/features/profile/useProfile";
+import { useProfile, useUpdateProfile } from "@/features/profile";
 import { postOnboardingAnswers } from "@/shared/api/onboarding";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";

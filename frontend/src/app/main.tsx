@@ -1,9 +1,8 @@
-import "@/instrument";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import { AuthProvider } from "./providers/auth/AuthContext";
+import { AuthProvider } from "@/entities/auth";
 import "./styles/index.css";
 import "@/shared/lib/i18n";
 import * as Sentry from "@sentry/react";
@@ -21,15 +20,12 @@ Sentry.init({
   dsn: "https://36c479372735efd0da21508044214ce5@o4511044892033024.ingest.de.sentry.io/4511044893868112",
   sendDefaultPii: true,
   integrations: [Sentry.browserTracingIntegration()],
-  // Tracing
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  tracesSampleRate: 1.0,
   tracePropagationTargets: [
     "localhost",
     /^https:\/\/team-26-test-vm-6b7c17.pages.prodcontest.ru\/api/,
   ],
-  // Session Replay
-  replaysOnErrorSampleRate: 1.0, // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.,
-  // Enable logs to be sent to Sentry
+  replaysOnErrorSampleRate: 1.0,
   enableLogs: true,
 });
 
