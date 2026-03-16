@@ -7,5 +7,6 @@ export function useOnboardingState() {
     queryKey: ["onboarding", "state"],
     queryFn: getOnboardingState,
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 }

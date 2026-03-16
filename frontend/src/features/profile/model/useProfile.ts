@@ -13,6 +13,7 @@ export function useProfile() {
         queryKey: PROFILE_KEY,
         queryFn: getProfile,
         staleTime: 1000 * 60 * 5,
+        retry: 1,
     });
 }
 

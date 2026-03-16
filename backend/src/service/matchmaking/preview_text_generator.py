@@ -194,6 +194,8 @@ class LlmCategoryPreviewGenerator:
                 response = await client.post(endpoint, json=payload, headers=headers)
         except Exception as exc:  # pragma: no cover - network/runtime safety
             logger.warning("%s preview generation failed: %s", self._provider, exc)
+            self._generation_disabled = True
+            logger.warning("%s preview generation disabled after transport error", self._provider)
             return None
 
         if response.status_code >= 400:

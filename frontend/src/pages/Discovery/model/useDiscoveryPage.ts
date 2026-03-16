@@ -22,15 +22,6 @@ type MatchNavigationState = {
 
 type ReasonStrength = "high" | "medium" | "low";
 
-const COMPAT_TITLE_MAP: Record<string, string> = {
-  lifestyle_similarity: "Похожий образ жизни",
-  activity_overlap: "Общие интересы",
-  communication_style_fit: "Комфортный стиль общения",
-  meetup_rhythm_fit: "Похожий ритм встреч",
-  locality_fit: "Удобная география",
-  novelty_boost: "Новый релевантный кандидат",
-};
-
 const COMPAT_TEXT_MAP: Record<string, Record<ReasonStrength, string>> = {
   lifestyle_similarity: {
     high: "Ваши привычки и стиль жизни хорошо совпадают.",
@@ -60,9 +51,6 @@ const COMPAT_TEXT_MAP: Record<string, Record<ReasonStrength, string>> = {
 };
 
 const RAW_COMPAT_TOKEN_PATTERN = /^(?:compat\.)?[a-z_]+(?:\.(?:high|medium|low))?$/i;
-const EN_REASON_TITLE_MAP: Record<string, string> = {
-  "strong profile signal": "Совместимость профилей",
-};
 const EN_REASON_TEXT_MAP: Record<string, string> = {
   "the profile contains enough detail to support a more stable recommendation.":
     "Найдены признаки совместимости по интересам и поведению.",
@@ -127,20 +115,6 @@ function parseCompatToken(raw: string): { code: string; strength: ReasonStrength
   }
 
   return null;
-}
-
-function normalizeReasonTitle(reason: MatchProfileExplanationReason): string {
-  const rawTitle = reason.title.trim();
-  const enMapped = EN_REASON_TITLE_MAP[rawTitle.toLowerCase()];
-  if (enMapped) {
-    return enMapped;
-  }
-  const parsedFromTitle = parseCompatToken(rawTitle);
-  if (!parsedFromTitle) {
-    return rawTitle;
-  }
-
-  return COMPAT_TITLE_MAP[parsedFromTitle.code] ?? "Совместимость профилей";
 }
 
 function normalizeReasonText(reason: MatchProfileExplanationReason): string {

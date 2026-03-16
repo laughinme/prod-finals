@@ -19,6 +19,7 @@ const BASE_URL = withBasePath(
 
 export const apiPublic: AxiosInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -55,6 +56,7 @@ const toAxiosHeaders = (headers?: AxiosRequestHeaders): AxiosHeaders => {
 
 const apiProtected: AxiosInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
