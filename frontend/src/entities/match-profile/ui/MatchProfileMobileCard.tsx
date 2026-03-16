@@ -263,13 +263,13 @@ export function MatchProfileMobileCard({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="shrink-0 px-6 pt-3 pb-2">
-                  <div className="mx-auto h-1.5 w-14 rounded-full bg-[#D9DCE3]" />
+                  <div className="mx-auto h-1.5 w-14 rounded-full bg-primary/35" />
                   <button
                     type="button"
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => setShowCompatibilityDetails(false)}
-                    className="absolute top-5 right-5 flex size-11 items-center justify-center rounded-full bg-[#F3F4F7] text-[#9AA1AE] transition-colors hover:text-[#677083]"
+                    className="absolute top-5 right-5 flex size-11 items-center justify-center rounded-full bg-primary/15 text-foreground/55 transition-colors hover:bg-primary/25 hover:text-foreground/75"
                     aria-label={t("common.close")}
                     title={t("common.close")}
                   >
@@ -280,60 +280,60 @@ export function MatchProfileMobileCard({
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-5">
                   <div className="space-y-5 pt-1">
                     <div className="text-center">
-                      <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-[#FFF1F1] shadow-inner">
-                        <Heart className="size-10 fill-[#FF2D3D] text-[#FF2D3D]" />
+                      <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-primary/18 shadow-inner shadow-primary/20">
+                        <Heart className="size-10 fill-black text-black" />
                       </div>
                       <h3 className="text-[22px] font-bold text-black">
                         {t("discovery.compatibility_match_title")}
                       </h3>
-                      <div className="mt-2 text-[58px] leading-none font-black tracking-[-0.06em] text-[#428BF9]">
+                      <div className="mt-2 text-[58px] leading-none font-black tracking-[-0.06em] text-primary">
                         {profile.matchScore}%
                       </div>
                     </div>
 
                     <div className="space-y-3.5">
-                      <h4 className="text-center text-[11px] font-bold uppercase tracking-[0.28em] text-[#98A2B3]">
+                      <h4 className="text-center text-[11px] font-bold uppercase tracking-[0.28em] text-primary/80">
                         {t("discovery.compatibility_criteria_title")}
                       </h4>
 
                       <div className="space-y-3">
-                        <div className="flex items-center gap-4 rounded-[24px] border border-[#CFE0FF] bg-[#EAF2FF] p-4">
+                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-                            <Sparkles className="size-7 text-[#4F86F7]" />
+                            <Sparkles className="size-7 text-primary" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-[14px] font-bold text-black">
                               {t("discovery.compatibility_interests_title")}
                             </p>
-                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                            <p className="mt-1 text-[13px] leading-5 text-foreground/65">
                               {interestsSummary}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 rounded-[24px] border border-[#C9F2D8] bg-[#ECFBF2] p-4">
+                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-                            <MapPin className="size-7 text-[#12A150]" />
+                            <MapPin className="size-7 text-primary" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-[14px] font-bold text-black">
                               {t("discovery.compatibility_location_title")}
                             </p>
-                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                            <p className="mt-1 text-[13px] leading-5 text-foreground/65">
                               {locationSummary}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 rounded-[24px] border border-[#E8D7FF] bg-[#F5EEFF] p-4">
+                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-                            <Info className="size-7 text-[#8E2CFF]" />
+                            <Info className="size-7 text-primary" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-[14px] font-bold text-black">
                               {t("discovery.compatibility_lifestyle_title")}
                             </p>
-                            <p className="mt-1 text-[13px] leading-5 text-[#667085]">
+                            <p className="mt-1 text-[13px] leading-5 text-foreground/65">
                               {lifestyleSummary}
                             </p>
                           </div>
@@ -341,13 +341,13 @@ export function MatchProfileMobileCard({
                       </div>
                     </div>
 
-                    <div className="sticky bottom-0 -mx-6 bg-gradient-to-t from-white via-white to-white/90 px-6 pt-4 pb-1">
+                    <div className="sticky bottom-0 -mx-6 bg-gradient-to-t from-white via-[#fffdf0] to-white/90 px-6 pt-4 pb-1">
                       <button
                         type="button"
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         onClick={() => setShowCompatibilityDetails(false)}
-                        className="w-full rounded-[28px] bg-black px-6 py-4 text-[18px] font-bold text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition-colors hover:bg-neutral-900"
+                        className="w-full rounded-[28px] bg-primary px-6 py-4 text-[18px] font-bold text-primary-foreground shadow-[0_14px_30px_rgba(255,221,45,0.32)] transition-colors hover:bg-primary/90"
                       >
                         {t("discovery.compatibility_done")}
                       </button>
