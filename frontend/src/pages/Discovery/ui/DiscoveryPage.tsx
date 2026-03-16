@@ -4,7 +4,7 @@ import { Coffee, ShieldAlert } from "lucide-react";
 
 import { SwipeableCard } from "@/features/matchmaking";
 import { useDiscoveryPage } from "@/pages/Discovery/model";
-import { Button } from "@/shared/components/ui/button";
+
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 export default function DiscoveryPage() {
@@ -20,6 +20,9 @@ export default function DiscoveryPage() {
     closeReport,
     handleLike,
     handlePass,
+    handleBlock,
+    handleReport,
+    isSafetyPending,
   } = useDiscoveryPage();
 
   return (
@@ -91,54 +94,46 @@ export default function DiscoveryPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
+            className="absolute inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-xs md:items-center"
+            onClick={closeReport}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-2xl"
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full max-w-xs rounded-2xl bg-card p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-xl bg-destructive/10 p-3">
-                  <ShieldAlert className="size-6 text-destructive" />
-                </div>
-                <h3 className="text-2xl font-bold">{t("discovery.safety")}</h3>
+              <div className="mb-4 flex items-center gap-2.5">
+                <ShieldAlert className="size-5 text-muted-foreground" />
+                <h3 className="text-lg font-semibold">{t("discovery.safety")}</h3>
               </div>
 
-              <p className="mb-8 text-muted-foreground">
-                {t("discovery.safety_description")}
-              </p>
-
-              <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="h-14 w-full justify-start rounded-2xl text-left text-base"
-                  onClick={() => {
-                    closeReport();
-                    void handlePass();
-                  }}
+              <div className="space-y-2">
+                <button
+                  className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+                  onClick={() => void handleBlock()}
+                  disabled={isSafetyPending}
                 >
                   {t("discovery.dont_show_again")}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-14 w-full justify-start rounded-2xl text-left text-base text-destructive hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => {
-                    closeReport();
-                    void handlePass();
-                  }}
+                </button>
+                <button
+                  className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                  onClick={() => void handleReport()}
+                  disabled={isSafetyPending}
                 >
                   {t("discovery.report_profile")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="mt-4 h-14 w-full rounded-2xl text-base"
-                  onClick={closeReport}
-                >
-                  {t("common.cancel")}
-                </Button>
+                </button>
               </div>
+
+              <button
+                className="mt-3 w-full rounded-xl py-2.5 text-center text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                onClick={closeReport}
+                disabled={isSafetyPending}
+              >
+                {t("common.cancel")}
+              </button>
             </motion.div>
           </motion.div>
         )}

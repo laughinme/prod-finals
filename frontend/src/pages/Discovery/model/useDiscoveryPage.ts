@@ -10,6 +10,7 @@ import {
   useFeedExplanation,
   useFeedReaction,
 } from "@/features/matchmaking";
+import { useBlockUser, useReportUser } from "@/features/safety";
 
 type MatchNavigationState = {
   matchedProfile: MatchProfile;
@@ -46,6 +47,8 @@ export function useDiscoveryPage() {
   const navigate = useNavigate();
   const { profiles, isLoading: isFeedLoading, notifyVisible, removeProfile } = useFeed();
   const feedReactionMutation = useFeedReaction();
+  const blockUserMutation = useBlockUser();
+  const reportUserMutation = useReportUser();
   const [showReport, setShowReport] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
   const currentProfileSeenAtRef = useRef<number | null>(null);
@@ -62,13 +65,14 @@ export function useDiscoveryPage() {
     typeof baseCurrentProfile.id === "string"
       ? baseCurrentProfile.id
       : null;
+  const currentProfileId = baseCurrentProfile?.id ?? null;
   const { data: currentProfileExplanation } = useFeedExplanation(
     baseCurrentProfile?.detailsAvailable ? currentProfileServeItemId : null,
   );
 
   useEffect(() => {
-    currentProfileSeenAtRef.current = baseCurrentProfile ? Date.now() : null;
-  }, [baseCurrentProfile?.id]);
+    currentProfileSeenAtRef.current = currentProfileId ? Date.now() : null;
+  }, [currentProfileId]);
 
   const currentProfile = baseCurrentProfile
     ? {
@@ -102,6 +106,45 @@ export function useDiscoveryPage() {
     }
 
     removeProfile(currentProfile.id);
+  };
+
+  const handleBlock = async () => {
+    if (!currentProfile?.candidateUserId) {
+      return;
+    }
+
+    try {
+      await blockUserMutation.mutateAsync({
+        targetUserId: currentProfile.candidateUserId,
+        sourceContext: "feed",
+        reasonCode: "unwanted_contact",
+      });
+      setShowReport(false);
+      setExitX(-1000);
+      dismissCurrentProfile();
+    } catch {
+      // handled in safety mutation hook
+    }
+  };
+
+  const handleReport = async () => {
+    if (!currentProfile?.candidateUserId) {
+      return;
+    }
+
+    try {
+      await reportUserMutation.mutateAsync({
+        targetUserId: currentProfile.candidateUserId,
+        sourceContext: "feed",
+        category: "other",
+        alsoBlock: true,
+      });
+      setShowReport(false);
+      setExitX(-1000);
+      dismissCurrentProfile();
+    } catch {
+      // handled in safety mutation hook
+    }
   };
 
   const handleLike = async () => {
@@ -165,11 +208,14 @@ export function useDiscoveryPage() {
     currentProfile,
     stackDepth: Math.min(profiles.length, 3),
     isFeedLoading,
+    isSafetyPending: blockUserMutation.isPending || reportUserMutation.isPending,
     exitX,
     showReport,
     openReport: () => setShowReport(true),
     closeReport: () => setShowReport(false),
     handleLike,
     handlePass,
+    handleBlock,
+    handleReport,
   };
 }

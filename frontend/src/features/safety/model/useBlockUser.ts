@@ -3,20 +3,20 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import * as Sentry from "@sentry/react";
 
-import { postReport } from "@/shared/api/safety";
-import type { ReportUserPayload } from "@/entities/safety";
+import { postBlock } from "@/shared/api/safety";
+import type { BlockUserPayload } from "@/entities/safety";
 
-export function useReportUser() {
+export function useBlockUser() {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (payload: ReportUserPayload) => postReport(payload),
+    mutationFn: (payload: BlockUserPayload) => postBlock(payload),
     onSuccess: () => {
-      toast.success(t("safety.report_sent_success"));
+      toast.success(t("safety.block_success"));
     },
     onError: (error) => {
       Sentry.captureException(error);
-      toast.error(t("safety.report_error"));
+      toast.error(t("safety.block_error"));
     },
   });
 }

@@ -152,6 +152,8 @@
     "error_failed": "Failed to upload photo. Please try again."
   },
   "safety": {
+    "block_success": "User blocked",
+    "block_error": "Failed to block user",
     "report_sent_success": "Report sent",
     "report_error": "Failed to send report"
   },
