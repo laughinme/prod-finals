@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
@@ -31,6 +32,7 @@ const mobileSlide = {
 export default function ChatPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const {
     activeChatAvatar,
     activeChatInitial,
@@ -63,9 +65,23 @@ export default function ChatPage() {
     toggleMenu,
     visibleMatches,
   } = useChatPage();
+  const maxComposerHeight = isMobile ? 140 : 180;
 
   const showSidebar = !isMobile || !hasActiveChat;
   const showChat = !isMobile || hasActiveChat;
+
+  useLayoutEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) {
+      return;
+    }
+
+    composer.style.height = "0px";
+    const nextHeight = Math.min(composer.scrollHeight, maxComposerHeight);
+    composer.style.height = `${nextHeight}px`;
+    composer.style.overflowY =
+      composer.scrollHeight > maxComposerHeight ? "auto" : "hidden";
+  }, [input, maxComposerHeight]);
 
   const handleBack = () => {
     selectMatch(null);
@@ -321,7 +337,7 @@ export default function ChatPage() {
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm md:max-w-[70%] md:px-5 md:py-3",
+                  "w-fit max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 shadow-sm [overflow-wrap:anywhere] md:max-w-[70%] md:px-5 md:py-3",
                   message.sender === "me"
                     ? "rounded-br-sm bg-primary text-primary-foreground"
                     : "rounded-bl-sm border border-border bg-card text-card-foreground",
@@ -347,19 +363,25 @@ export default function ChatPage() {
         transition={{ delay: 0.05, duration: 0.15 }}
         className="z-10 border-t border-border bg-card p-3 md:p-4"
       >
-        <div className="mx-auto flex max-w-4xl items-center gap-2 md:gap-3">
-          <input
-            type="text"
+        <div className="mx-auto flex max-w-4xl items-end gap-2 md:gap-3">
+          <textarea
+            ref={composerRef}
+            rows={1}
             value={input}
             onChange={(event) => setInput(event.target.value)}
             disabled={conversationIsClosed}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
                 handleSend();
               }
             }}
             placeholder={t("chat.write_message_placeholder")}
-            className="flex-1 rounded-xl border border-transparent bg-secondary px-4 py-3 text-sm outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:py-4 md:text-[15px]"
+            className="min-h-11 max-h-[140px] flex-1 resize-none rounded-2xl border border-transparent bg-secondary px-4 py-3 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:min-h-14 md:max-h-[180px] md:py-4 md:text-[15px]"
           />
           <Button
             size="icon"
