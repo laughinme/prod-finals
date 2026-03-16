@@ -11,10 +11,12 @@ import {
 } from "@/features/chat/model";
 import { useCloseMatch } from "@/features/match";
 import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
+import { useBlockUser, useReportUser } from "@/features/safety";
 import {
   conversationsApi,
   type ConversationMessagesResponse,
 } from "@/shared/api/conversations";
+import { FEED_REFRESH_EVENT } from "@/features/matchmaking/model/useFeed";
 import { useActiveChat } from "./useActiveChat";
 import { useConversationData } from "./useConversationData";
 
@@ -22,6 +24,8 @@ export function useChatPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const closeMatchMutation = useCloseMatch();
+  const blockUserMutation = useBlockUser();
+  const reportUserMutation = useReportUser();
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -42,9 +46,11 @@ export function useChatPage() {
     activeChatMeta,
     activeChatName,
     conversationIsClosed,
+    conversationSafetyActions,
     hasActiveChat,
     isLoadingConversation,
     messages,
+    peerUserId,
   } = useConversationData({
     activeConversationId,
     activeMatch,
@@ -119,6 +125,51 @@ export function useChatPage() {
     }
   };
 
+  const handleBlockUser = async () => {
+    if (!activeMatch || !peerUserId || blockUserMutation.isPending) {
+      return;
+    }
+
+    setShowMenu(false);
+
+    try {
+      await blockUserMutation.mutateAsync({
+        targetUserId: peerUserId,
+        sourceContext: "conversation",
+        reasonCode: "unwanted_contact",
+      });
+      await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+      window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
+      moveAwayFromMatch(activeMatch.matchId);
+    } catch (error) {
+      Sentry.captureException(error);
+      toast.error(t("safety.block_error"));
+    }
+  };
+
+  const handleReportUser = async () => {
+    if (!activeMatch || !peerUserId || reportUserMutation.isPending) {
+      return;
+    }
+
+    setShowMenu(false);
+
+    try {
+      await reportUserMutation.mutateAsync({
+        targetUserId: peerUserId,
+        sourceContext: "conversation",
+        category: "other",
+        alsoBlock: true,
+      });
+      await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+      window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
+      moveAwayFromMatch(activeMatch.matchId);
+    } catch (error) {
+      Sentry.captureException(error);
+      toast.error(t("safety.report_error"));
+    }
+  };
+
   const hasAnyChats = visibleMatches.length > 0;
 
   return {
@@ -128,15 +179,20 @@ export function useChatPage() {
     activeChatName,
     activeMatch,
     conversationIsClosed,
+    conversationSafetyActions,
     goToDiscovery,
+    handleBlockUser,
     handleCloseMatch,
+    handleReportUser,
     handleSend,
     hasActiveChat,
     hasAnyChats,
     input,
+    isBlockingUser: blockUserMutation.isPending,
     isClosingMatch: closeMatchMutation.isPending,
     isLoadingConversation,
     isLoadingInitialChat,
+    isReportingUser: reportUserMutation.isPending,
     isSendingMessage: sendMessageMutation.isPending,
     messages,
     messagesEndRef,

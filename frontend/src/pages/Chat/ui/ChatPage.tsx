@@ -38,14 +38,19 @@ export default function ChatPage() {
     activeChatName,
     activeMatch,
     conversationIsClosed,
+    conversationSafetyActions,
     goToDiscovery,
+    handleBlockUser,
     handleCloseMatch,
+    handleReportUser,
     handleSend,
     hasAnyChats,
     input,
+    isBlockingUser,
     isClosingMatch,
     isLoadingConversation,
     isLoadingInitialChat,
+    isReportingUser,
     isSendingMessage,
     messages,
     messagesEndRef,
@@ -254,6 +259,26 @@ export default function ChatPage() {
                     {t("chat.close_match")}
                   </button>
                 )}
+                {conversationSafetyActions?.can_block ? (
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
+                    disabled={isBlockingUser}
+                    onClick={() => void handleBlockUser()}
+                  >
+                    <MessageCircle className="size-4" />
+                    {t("chat.block_user")}
+                  </button>
+                ) : null}
+                {conversationSafetyActions?.can_report ? (
+                  <button
+                    className="flex w-full items-center gap-2 px-4 py-3 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
+                    disabled={isReportingUser}
+                    onClick={() => void handleReportUser()}
+                  >
+                    <MessageCircle className="size-4" />
+                    {t("chat.report_user")}
+                  </button>
+                ) : null}
               </motion.div>
             )}
           </AnimatePresence>

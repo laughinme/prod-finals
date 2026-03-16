@@ -129,6 +129,8 @@
     "back_to_discovery": "Вернуться к знакомствам",
     "messages_title": "Сообщения",
     "close_match": "Закрыть мэтч",
+    "block_user": "Заблокировать",
+    "report_user": "Пожаловаться",
     "close_match_error": "Не удалось закрыть мэтч.",
     "conversation_closed": "Диалог закрыт",
     "no_messages_yet": "Сообщений пока нет",

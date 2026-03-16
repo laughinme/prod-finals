@@ -129,6 +129,8 @@
     "back_to_discovery": "Back to discovery",
     "messages_title": "Messages",
     "close_match": "Close match",
+    "block_user": "Block user",
+    "report_user": "Report user",
     "close_match_error": "Failed to close match.",
     "conversation_closed": "Conversation closed",
     "no_messages_yet": "No messages yet",

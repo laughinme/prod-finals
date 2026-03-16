@@ -48,6 +48,7 @@ export function useConversationData({
   const conversationIsClosed =
     conversationQuery.data?.status != null &&
     conversationQuery.data.status !== "active";
+  const conversationSafetyActions = conversationQuery.data?.safety_actions ?? null;
   const isLoadingConversation =
     Boolean(activeConversationId) &&
     (conversationQuery.isLoading || messagesQuery.isLoading);
@@ -67,8 +68,10 @@ export function useConversationData({
     activeChatMeta,
     activeChatName,
     conversationIsClosed,
+    conversationSafetyActions,
     hasActiveChat,
     isLoadingConversation,
     messages,
+    peerUserId,
   };
 }
