@@ -38,7 +38,7 @@ export function QuizControls({
         <Button
           variant="outline"
           size="lg"
-          className="h-14 flex-1 rounded-2xl"
+          className="h-14 flex-1 rounded-2xl text-lg"
           onClick={onBack}
           disabled={isBackDisabled || isBackLoading}
         >
@@ -48,7 +48,7 @@ export function QuizControls({
 
       <Button
         size="lg"
-        className="h-14 flex-2 rounded-2xl text-lg"
+        className="h-14 flex-1 rounded-2xl text-lg"
         onClick={onNext}
         disabled={isNextDisabled || isNextLoading}
       >
