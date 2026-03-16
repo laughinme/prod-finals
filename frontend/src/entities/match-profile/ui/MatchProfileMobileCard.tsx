@@ -45,6 +45,7 @@ interface MatchProfileMobileCardProps {
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
+  showInfoButton?: boolean;
   customBioContent?: ReactNode;
 }
 
@@ -55,6 +56,7 @@ export function MatchProfileMobileCard({
   isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
+  showInfoButton = true,
   customBioContent,
 }: MatchProfileMobileCardProps) {
   const { t } = useTranslation();
@@ -227,27 +229,29 @@ export function MatchProfileMobileCard({
                 <div />
               )}
 
-              <button
-                type="button"
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => {
-                  if (!hasDetails) {
-                    return;
-                  }
-                  setShowDetails((value) => !value);
-                }}
-                disabled={!hasDetails}
-                className={`flex size-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
-                  showDetails
-                    ? "border-sky-300/50 bg-sky-500/22 text-sky-200"
-                    : "border-sky-300/30 bg-black/45 text-sky-300 hover:bg-black/55 hover:text-sky-200"
-                }`}
-                aria-label={t("common.details")}
-                title={t("common.details")}
-              >
-                <Info size={20} strokeWidth={1.5} />
-              </button>
+              {showInfoButton ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    if (!hasDetails) {
+                      return;
+                    }
+                    setShowDetails((value) => !value);
+                  }}
+                  disabled={!hasDetails}
+                  className={`flex size-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
+                    showDetails
+                      ? "border-sky-300/50 bg-sky-500/22 text-sky-200"
+                      : "border-sky-300/30 bg-black/45 text-sky-300 hover:bg-black/55 hover:text-sky-200"
+                  }`}
+                  aria-label={t("common.details")}
+                  title={t("common.details")}
+                >
+                  <Info size={20} strokeWidth={1.5} />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

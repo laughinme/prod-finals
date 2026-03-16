@@ -243,7 +243,7 @@ export function ProfilePreviewStep() {
                     className={[
                       "pointer-events-none absolute z-20",
                       isMobile
-                        ? "left-4 right-4 top-[16%]"
+                        ? "left-4 right-4 top-[5%]"
                         : "left-6 top-1/2 w-[calc(45%-3rem)] -translate-y-1/2",
                     ].join(" ")}
                   >
@@ -294,23 +294,16 @@ export function ProfilePreviewStep() {
                 ) : null}
               </AnimatePresence>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(event) => void handleFileSelect(event)}
-              />
-            </div>
-
-            <div className="mx-auto mt-4 w-full max-w-3xl space-y-4">
               {profile.hasApprovedPhoto ? (
-                <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className={[
+                  "absolute bottom-4 z-20 flex -translate-x-1/2 items-center gap-2",
+                  isMobile ? "left-1/2 px-4" : "left-[22.5%]",
+                ].join(" ")}>
                   <Button
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="rounded-full"
+                    className="rounded-full border border-white/15 bg-white/90 shadow-lg backdrop-blur-md"
                     disabled={isPhotoPending}
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -321,7 +314,7 @@ export function ProfilePreviewStep() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    className="rounded-full"
+                    className="rounded-full border border-white/15 bg-white/90 shadow-lg backdrop-blur-md"
                     disabled={isPhotoPending}
                     onClick={() => void handleSetDefaultAvatar()}
                   >
@@ -331,6 +324,16 @@ export function ProfilePreviewStep() {
                 </div>
               ) : null}
 
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => void handleFileSelect(event)}
+              />
+            </div>
+
+            <div className="mx-auto mt-4 w-full max-w-3xl space-y-4">
               <div className="rounded-[1.8rem] border border-border/60 bg-card/92 p-4 shadow-lg shadow-primary/5">
                 <div className="rounded-[1.4rem] border border-border/60 bg-background/60 px-4 py-3 text-sm leading-6 text-foreground/80">
                   {profile.hasApprovedPhoto ? (

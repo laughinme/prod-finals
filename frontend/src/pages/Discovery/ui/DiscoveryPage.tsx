@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Camera, ChevronLeft, ChevronRight, Coffee, ShieldAlert, Users, Wand2 } from "lucide-react";
 
-import { SwipeableCard } from "@/features/matchmaking";
+import { SwipeableCard, SwipeHint } from "@/features/matchmaking";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { useDiscoveryPage } from "@/pages/Discovery/model";
 
@@ -301,6 +301,8 @@ export default function DiscoveryPage() {
               isPreparingTestMatch={isPreparingTestMatch}
               exitX={exitX}
             />
+
+            <SwipeHint />
           </>
         )}
       </AnimatePresence>

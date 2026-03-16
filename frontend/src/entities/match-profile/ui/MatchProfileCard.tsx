@@ -42,6 +42,7 @@ export function MatchProfileCard({
         showMatchScore={showMatchScore}
         showReportButton={showReportButton}
         showActions={showActions}
+        showInfoButton={showActions}
         customBioContent={customBioContent}
       />
     );

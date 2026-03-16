@@ -129,7 +129,7 @@
     "age_range_description": "Keep the default range or fine-tune it manually.",
     "interests_title": "Interests",
     "interests_description": "These tags help us find people who fit your rhythm more precisely.",
-    "ml_recommendations_label": "ML recommendations by transactions",
+    "ml_recommendations_label": "Access to transaction analysis",
     "ml_recommendations_description": "We use aggregated banking transactions to better understand your rhythm of life. Consent is enabled by default.",
     "add_description_hint": "Click to add description...",
     "profile_ready_title": "Preview your card",
