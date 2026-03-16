@@ -7,7 +7,7 @@ import { clamp } from "./utils/clamp";
 interface SwipeableCardProps {
   profile: MatchProfile;
   isMobile: boolean;
-  onLike: () => void;
+  onLike: () => void | boolean | Promise<boolean | void>;
   onPass: () => void;
   onOpenReport: () => void;
   onPrepareTestMatch?: () => void;
@@ -81,27 +81,46 @@ export function SwipeableCard({
     const matchRotate = transformStr.match(/rotate\(([^d]+)deg\)/);
     if (matchRotate) currentRotate = parseFloat(matchRotate[1]);
 
-    const dx = isGood
-      ? window.innerWidth
-      : (window.innerWidth + card.getBoundingClientRect().width) * -1;
-
-    card.style.transition = "transform 0.3s ease-in-out";
-    card.style.transform = isSelect
-      ? `translate(${currentX + dx}px, ${currentY}px) rotate(${currentRotate * 2}deg)`
-      : "translate(0px, 0px) rotate(0deg)";
-
     interactionRef.current = undefined;
     setProgress(0);
 
+    const resetCardPosition = () => {
+      card.style.transition = "transform 0.25s ease-out";
+      card.style.transform = "translate(0px, 0px) rotate(0deg)";
+    };
+
+    const animateCardOut = (direction: "left" | "right") => {
+      const dx = direction === "right"
+        ? window.innerWidth
+        : (window.innerWidth + card.getBoundingClientRect().width) * -1;
+
+      card.style.transition = "transform 0.3s ease-in-out";
+      card.style.transform = `translate(${currentX + dx}px, ${currentY}px) rotate(${currentRotate * 2}deg)`;
+    };
+
     if (isSelect) {
-      setTimeout(() => {
-        if (isGood) {
-          onLike();
-        } else {
+      if (isGood) {
+        Promise.resolve(onLike())
+          .then((accepted) => {
+            if (accepted === false) {
+              resetCardPosition();
+              return;
+            }
+            animateCardOut("right");
+          })
+          .catch(() => {
+            resetCardPosition();
+          });
+      } else {
+        animateCardOut("left");
+        setTimeout(() => {
           onPass();
-        }
-      }, 300);
+        }, 300);
+      }
+      return;
     }
+
+    resetCardPosition();
   }, [onLike, onPass, progress]);
 
   useEffect(() => {

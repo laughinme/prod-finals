@@ -1,19 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { Coffee, ShieldAlert } from "lucide-react";
+import { Camera, Coffee, ShieldAlert, Wand2 } from "lucide-react";
 
 import { SwipeableCard } from "@/features/matchmaking";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { useDiscoveryPage } from "@/pages/Discovery/model";
 
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { Button } from "@/shared/components/ui/button";
 
 const noop = () => {};
 
 export default function DiscoveryPage() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lock vertical scrolling on mobile for this page
   useEffect(() => {
@@ -30,13 +32,18 @@ export default function DiscoveryPage() {
     isFeedLoading,
     exitX,
     showReport,
+    showPhotoGate,
     openReport,
     closeReport,
+    closePhotoGate,
     handleLike,
     handlePass,
     handlePrepareTestMatch,
     handleBlock,
     handleReport,
+    handleUseDefaultPhoto,
+    handleUploadPhoto,
+    isPhotoGatePending,
     isSafetyPending,
     isPreparingTestMatch,
   } = useDiscoveryPage();
@@ -170,6 +177,90 @@ export default function DiscoveryPage() {
               >
                 {t("common.cancel")}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPhotoGate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-end justify-center bg-black/45 p-4 backdrop-blur-sm md:items-center"
+            onClick={closePhotoGate}
+          >
+            <motion.div
+              initial={{ y: 32, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 32, opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-2xl shadow-black/20"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="bg-[radial-gradient(circle_at_top,_rgba(255,221,45,0.22),_transparent_52%),linear-gradient(180deg,rgba(255,221,45,0.06),transparent)] px-6 pt-6 pb-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-primary/90">
+                  <Wand2 className="size-4" />
+                  {t("discovery.photo_gate_badge")}
+                </div>
+                <h3 className="mt-4 text-2xl font-black tracking-tight">
+                  {t("discovery.photo_gate_title")}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {t("discovery.photo_gate_description")}
+                </p>
+              </div>
+
+              <div className="space-y-3 px-6 py-5">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full rounded-2xl"
+                  disabled={isPhotoGatePending}
+                  onClick={() => void handleUseDefaultPhoto()}
+                >
+                  <Wand2 className="size-4.5" />
+                  {t("profile.set_default_photo")}
+                </Button>
+
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="secondary"
+                  className="w-full rounded-2xl"
+                  disabled={isPhotoGatePending}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="size-4.5" />
+                  {t("profile.upload_photo")}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="lg"
+                  className="w-full rounded-2xl"
+                  disabled={isPhotoGatePending}
+                  onClick={closePhotoGate}
+                >
+                  {t("discovery.photo_gate_skip")}
+                </Button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleUploadPhoto(file);
+                    }
+                    event.target.value = "";
+                  }}
+                />
+              </div>
             </motion.div>
           </motion.div>
         )}

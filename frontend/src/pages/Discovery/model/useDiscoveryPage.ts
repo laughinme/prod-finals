@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as Sentry from "@sentry/react";
+import axios from "axios";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import type {
   MatchProfile,
@@ -12,6 +15,7 @@ import {
   useFeedReaction,
   useFeedTestMatch,
 } from "@/features/matchmaking";
+import { useProfile, useSetDefaultAvatar, useUploadAvatar } from "@/features/profile";
 import { useBlockUser, useReportUser } from "@/features/safety";
 
 type MatchNavigationState = {
@@ -146,7 +150,9 @@ function getExplanationText(
 }
 
 export function useDiscoveryPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const { data: viewerProfile } = useProfile();
   const {
     profiles,
     isLoading: isFeedLoading,
@@ -157,8 +163,12 @@ export function useDiscoveryPage() {
   const feedTestMatchMutation = useFeedTestMatch();
   const blockUserMutation = useBlockUser();
   const reportUserMutation = useReportUser();
+  const uploadAvatarMutation = useUploadAvatar();
+  const setDefaultAvatarMutation = useSetDefaultAvatar();
   const [showReport, setShowReport] = useState(false);
+  const [showPhotoGate, setShowPhotoGate] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
+  const [retryLikeAfterPhoto, setRetryLikeAfterPhoto] = useState(false);
   const currentProfileSeenAtRef = useRef<number | null>(null);
 
   const baseCurrentProfile = profiles[0] ?? null;
@@ -215,6 +225,15 @@ export function useDiscoveryPage() {
     removeProfile(currentProfile.id);
   };
 
+  const openPhotoGate = () => {
+    setShowPhotoGate(true);
+  };
+
+  const closePhotoGate = () => {
+    setRetryLikeAfterPhoto(false);
+    setShowPhotoGate(false);
+  };
+
   const handleBlock = async () => {
     if (!currentProfile?.candidateUserId) {
       return;
@@ -254,14 +273,21 @@ export function useDiscoveryPage() {
     }
   };
 
-  const handleLike = async () => {
-    if (!currentProfile) return;
+  const handleLike = useCallback(async (): Promise<boolean> => {
+    if (!currentProfile) {
+      return false;
+    }
+
+    const canLikeProfiles =
+      viewerProfile?.canLikeProfiles ?? currentProfile.actions?.canLike ?? false;
+
+    if (!canLikeProfiles) {
+      openPhotoGate();
+      return false;
+    }
 
     const likedProfile = currentProfile;
     const dwellTimeMs = getCurrentDwellTimeMs();
-
-    setExitX(1000);
-    dismissCurrentProfile();
 
     if (likedProfile.source === "feed" && typeof likedProfile.id === "string") {
       try {
@@ -273,6 +299,9 @@ export function useDiscoveryPage() {
           dwellTimeMs,
         });
 
+        setExitX(1000);
+        dismissCurrentProfile();
+
         if (reaction?.result === "matched" && reaction.match) {
           const state: MatchNavigationState = {
             matchedProfile: likedProfile,
@@ -281,9 +310,57 @@ export function useDiscoveryPage() {
           };
           navigate("/match", { state });
         }
+        return true;
       } catch (e) {
+        if (
+          axios.isAxiosError(e) &&
+          typeof e.response?.data === "object" &&
+          e.response?.data &&
+          "error_code" in e.response.data &&
+          e.response.data.error_code === "PHOTO_REQUIRED_TO_LIKE"
+        ) {
+          openPhotoGate();
+          return false;
+        }
         Sentry.captureException(e);
+        toast.error(t("discovery.like_failed"));
       }
+    }
+    return false;
+  }, [
+    currentProfile,
+    currentProfileExplanation,
+    feedReactionMutation,
+    navigate,
+    t,
+    viewerProfile?.canLikeProfiles,
+  ]);
+
+  useEffect(() => {
+    if (!retryLikeAfterPhoto || !viewerProfile?.canLikeProfiles) {
+      return;
+    }
+
+    setRetryLikeAfterPhoto(false);
+    setShowPhotoGate(false);
+    void handleLike();
+  }, [handleLike, retryLikeAfterPhoto, viewerProfile?.canLikeProfiles]);
+
+  const handleUseDefaultPhoto = async () => {
+    try {
+      await setDefaultAvatarMutation.mutateAsync();
+      setRetryLikeAfterPhoto(true);
+    } catch (e) {
+      Sentry.captureException(e);
+    }
+  };
+
+  const handleUploadPhoto = async (file: File) => {
+    try {
+      await uploadAvatarMutation.mutateAsync(file);
+      setRetryLikeAfterPhoto(true);
+    } catch (e) {
+      Sentry.captureException(e);
     }
   };
 
@@ -335,15 +412,21 @@ export function useDiscoveryPage() {
     isFeedLoading,
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,
+    isPhotoGatePending:
+      uploadAvatarMutation.isPending || setDefaultAvatarMutation.isPending,
     exitX,
     showReport,
+    showPhotoGate,
     openReport: () => setShowReport(true),
     closeReport: () => setShowReport(false),
+    closePhotoGate,
     handleLike,
     handlePass,
     handlePrepareTestMatch,
     handleBlock,
     handleReport,
+    handleUseDefaultPhoto,
+    handleUploadPhoto,
     isPreparingTestMatch: feedTestMatchMutation.isPending,
   };
 }
