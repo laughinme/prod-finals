@@ -204,7 +204,13 @@
     "demo_panel_open_card": "Открыть карточку для демо-сценария",
     "report_profile_aria": "Пожаловаться на профиль",
     "pass_profile_aria": "Пропустить профиль",
-    "like_profile_aria": "Лайкнуть профиль"
+    "like_profile_aria": "Лайкнуть профиль",
+    "swipe_hint_title": "Свайпайте карточки",
+    "swipe_hint_like": "Лайк",
+    "swipe_hint_pass": "Пас",
+    "swipe_hint_right_like": "Вправо — лайк",
+    "swipe_hint_left_pass": "Влево — пас",
+    "swipe_hint_tap_dismiss": "Нажмите, чтобы закрыть"
   },
   "match": {
     "its_a_match": "Это мэтч!",

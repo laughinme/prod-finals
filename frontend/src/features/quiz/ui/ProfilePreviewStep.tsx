@@ -158,6 +158,7 @@ export function ProfilePreviewStep() {
         await updateProfile({ bio: bioDraft.trim() || null });
       }
       await completePreview.mutateAsync();
+      document.cookie = "t-match-show-swipe-hint=1;path=/;max-age=60";
       navigate("/discovery", { replace: true });
     } catch (error) {
       Sentry.captureException(error);
@@ -243,22 +244,31 @@ export function ProfilePreviewStep() {
                     className={[
                       "pointer-events-none absolute z-20",
                       isMobile
-                        ? "left-4 right-4 top-[5%]"
+                        ? "left-4 right-4 top-[3.5%]"
                         : "left-6 top-1/2 w-[calc(45%-3rem)] -translate-y-1/2",
                     ].join(" ")}
                   >
-                    <div className="pointer-events-auto w-full rounded-[1.8rem] border border-white/15 bg-black/60 p-5 text-center text-white shadow-xl backdrop-blur-xl">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
+                    <div className={[
+                      "pointer-events-auto w-full border border-white/15 bg-black/60 text-center text-white shadow-xl backdrop-blur-xl",
+                      isMobile ? "rounded-[1.6rem] p-4" : "rounded-[1.8rem] p-5",
+                    ].join(" ")}>
+                      <p className={[
+                        "font-semibold uppercase text-primary",
+                        isMobile ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.24em]",
+                      ].join(" ")}>
                         {t("profile.preview_photo_label")}
                       </p>
-                      <p className="mt-3 text-sm leading-6 text-white/80">
+                      <p className={[
+                        "text-white/80",
+                        isMobile ? "mt-2 text-[13px] leading-5" : "mt-3 text-sm leading-6",
+                      ].join(" ")}>
                         {t("profile.preview_photo_required")}
                       </p>
-                      <div className="mt-5 flex flex-col gap-3">
+                      <div className={isMobile ? "mt-4 flex flex-col gap-2.5" : "mt-5 flex flex-col gap-3"}>
                         <Button
                           type="button"
-                          size="lg"
-                          className="w-full rounded-2xl"
+                          size={isMobile ? "default" : "lg"}
+                          className={isMobile ? "h-11 w-full rounded-[1.1rem]" : "w-full rounded-2xl"}
                           disabled={isPhotoPending}
                           onClick={() => void handleSetDefaultAvatar()}
                         >
@@ -274,8 +284,11 @@ export function ProfilePreviewStep() {
                         <Button
                           type="button"
                           variant="secondary"
-                          size="lg"
-                          className="w-full rounded-2xl bg-white/12 text-white hover:bg-white/18"
+                          size={isMobile ? "default" : "lg"}
+                          className={[
+                            "w-full bg-white/12 text-white hover:bg-white/18",
+                            isMobile ? "h-11 rounded-[1.1rem]" : "rounded-2xl",
+                          ].join(" ")}
                           disabled={isPhotoPending}
                           onClick={() => fileInputRef.current?.click()}
                         >

@@ -166,6 +166,12 @@ export function MatchProfileMobileCard({
               <h2 className="text-[34px] font-bold leading-[0.96] tracking-[-0.04em] text-white drop-shadow-md">
                 {title}
               </h2>
+              {primaryLocation ? (
+                <div className="flex items-center gap-1.5 text-[15px] text-white/65">
+                  <MapPin size={14} className="shrink-0" />
+                  <span>{primaryLocation}</span>
+                </div>
+              ) : null}
               {customBioContent ? (
                 <div>{customBioContent}</div>
               ) : profile.bio ? (
@@ -217,9 +223,9 @@ export function MatchProfileMobileCard({
                   onClick={() => setShowCompatibilityDetails(true)}
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-md transition-colors hover:bg-black/55"
                 >
-                  <Heart
+                  <Sparkles
                     size={14}
-                    className="fill-[#FF453A] text-[#FF453A]"
+                    className="text-primary"
                   />
                   <span className="text-[15px] font-semibold text-white">
                     {profile.matchScore}%

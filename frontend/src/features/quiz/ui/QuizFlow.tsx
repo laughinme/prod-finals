@@ -238,6 +238,9 @@ export function QuizFlow() {
   const handleSkipAll = async () => {
     try {
       const nextState = await skipMutation.mutateAsync();
+      if (!nextState.shouldShow) {
+        document.cookie = "t-match-show-swipe-hint=1;path=/;max-age=60";
+      }
       navigate(nextState.shouldShow ? "/quiz" : "/discovery", { replace: true });
     } catch (error) {
       Sentry.captureException(error);

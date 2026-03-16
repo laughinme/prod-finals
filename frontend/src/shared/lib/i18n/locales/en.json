@@ -205,7 +205,13 @@
     "demo_panel_open_card": "Open this card for the jury flow",
     "report_profile_aria": "Report profile",
     "pass_profile_aria": "Pass profile",
-    "like_profile_aria": "Like profile"
+    "like_profile_aria": "Like profile",
+    "swipe_hint_title": "Swipe the cards",
+    "swipe_hint_like": "Like",
+    "swipe_hint_pass": "Pass",
+    "swipe_hint_right_like": "Right — like",
+    "swipe_hint_left_pass": "Left — pass",
+    "swipe_hint_tap_dismiss": "Tap to dismiss"
   },
   "match": {
     "its_a_match": "It's a match!",
