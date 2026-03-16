@@ -215,14 +215,13 @@ export function QuizFlow() {
     let finalAnswers = currentAnswer;
 
     if (question.stepType === "range") {
-      if (finalAnswers.length < 2) {
-        if (question.optional && finalAnswers.length === 0) {
-          // handled below
-        } else {
-          const min = question.rangeMin ?? 18;
-          const max = question.rangeMax ?? 99;
-          finalAnswers = [String(min), String(max)];
-        }
+      const isOptionalEmpty = question.optional && finalAnswers.length === 0;
+      const needsDefaultRange = finalAnswers.length < 2 && !isOptionalEmpty;
+
+      if (needsDefaultRange) {
+        const min = question.rangeMin ?? 18;
+        const max = question.rangeMax ?? 99;
+        finalAnswers = [String(min), String(max)];
       }
 
       if (finalAnswers.length >= 2 && finalAnswers[0] === finalAnswers[1]) {
