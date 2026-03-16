@@ -8,6 +8,7 @@ import axios, {
 } from "axios";
 import * as Sentry from "@sentry/react";
 import type { AuthTokens } from "@/entities/auth";
+import { markNetworkRecoveryRequired } from "@/shared/lib/network/useNetworkStatus";
 import { withBasePath } from "@/shared/lib/utils";
 import { resolveCsrfToken } from "../lib/csrf";
 
@@ -112,6 +113,14 @@ apiProtected.interceptors.request.use(
 apiProtected.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   async (error: AxiosError): Promise<AxiosResponse | never> => {
+    if (
+      !error.response &&
+      typeof window !== "undefined" &&
+      !window.navigator.onLine
+    ) {
+      markNetworkRecoveryRequired();
+    }
+
     const originalRequest =
       (error.config as InternalAxiosRequestConfig & { _retry?: boolean }) ??
       null;

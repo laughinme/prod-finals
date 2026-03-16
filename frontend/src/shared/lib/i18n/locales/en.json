@@ -19,7 +19,7 @@
     "messages": "Messages",
     "dashboard": "Dashboard",
     "matches": "Matches",
-    "slogan": "reliable dating preview",
+    "slogan": "dating service",
     "to": "to",
     "from": "From",
     "you": "You",
@@ -28,7 +28,13 @@
     "compatibility_by_categories": "Compatibility by categories",
     "save_and_start": "Save and start",
     "details": "Details",
-    "close": "Close"
+    "close": "Close",
+    "offline_title": "No internet connection",
+    "offline_description": "We paused the site so actions and cards are not lost. Check your connection and refresh the page when the network is back.",
+    "connection_restored_reload_title": "Internet connection restored",
+    "connection_restored_reload_description": "The connection is back, but the current page state may already be inconsistent. Refresh the page to continue.",
+    "connection_problem_badge": "Connection issue",
+    "refresh_page": "Refresh page"
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",

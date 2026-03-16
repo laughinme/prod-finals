@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { MatchProfile } from "@/entities/match-profile/model";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
+import { useNetworkStatus } from "@/shared/lib/network/useNetworkStatus";
 import { getPosition } from "./utils/get-position";
 import { clamp } from "./utils/clamp";
 
@@ -24,6 +25,7 @@ export function SwipeableCard({
   onPrepareTestMatch,
   isPreparingTestMatch = false,
 }: SwipeableCardProps) {
+  const { isBlockingConnectionIssue } = useNetworkStatus();
   const cardRef = useRef<HTMLDivElement>(null);
   const likeBadgeRef = useRef<HTMLDivElement>(null);
   const nopeBadgeRef = useRef<HTMLDivElement>(null);
@@ -32,6 +34,7 @@ export function SwipeableCard({
   );
   const progressRef = useRef(0);
   const frameRef = useRef<number | null>(null);
+  const passTimeoutRef = useRef<number | null>(null);
   const pendingPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const setBadgeOpacity = useCallback((progress: number) => {
@@ -47,10 +50,42 @@ export function SwipeableCard({
     }
   }, []);
 
+  const resetCardPosition = useCallback((animated = true) => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    card.style.transition = animated ? "transform 0.25s ease-out" : "none";
+    card.style.transform = "translate(0px, 0px) rotate(0deg)";
+    card.style.willChange = "auto";
+    progressRef.current = 0;
+    setBadgeOpacity(0);
+  }, [setBadgeOpacity]);
+
+  const cancelInteraction = useCallback((animated = true) => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    if (passTimeoutRef.current !== null) {
+      window.clearTimeout(passTimeoutRef.current);
+      passTimeoutRef.current = null;
+    }
+
+    interactionRef.current = undefined;
+    pendingPositionRef.current = null;
+    resetCardPosition(animated);
+  }, [resetCardPosition]);
+
   const handleStart = useCallback(
     (
       e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     ) => {
+      if (isBlockingConnectionIssue) {
+        cancelInteraction(false);
+        return;
+      }
+
       const card = cardRef.current;
       if (!card) return;
 
@@ -60,10 +95,15 @@ export function SwipeableCard({
       const { x, y } = getPosition(e);
       interactionRef.current = { x, y };
     },
-    [],
+    [cancelInteraction, isBlockingConnectionIssue],
   );
 
   const handleMove = useCallback((e: TouchEvent | MouseEvent) => {
+    if (isBlockingConnectionIssue) {
+      cancelInteraction();
+      return;
+    }
+
     if (!interactionRef.current) return;
 
     pendingPositionRef.current = getPosition(e);
@@ -90,9 +130,14 @@ export function SwipeableCard({
       progressRef.current = nextProgress;
       setBadgeOpacity(nextProgress);
     });
-  }, [setBadgeOpacity]);
+  }, [cancelInteraction, isBlockingConnectionIssue, setBadgeOpacity]);
 
   const handleEnd = useCallback(() => {
+    if (isBlockingConnectionIssue) {
+      cancelInteraction();
+      return;
+    }
+
     if (!interactionRef.current) return;
     const card = cardRef.current;
     if (!card) return;
@@ -123,12 +168,6 @@ export function SwipeableCard({
     progressRef.current = 0;
     setBadgeOpacity(0);
 
-    const resetCardPosition = () => {
-      card.style.transition = "transform 0.25s ease-out";
-      card.style.transform = "translate(0px, 0px) rotate(0deg)";
-      card.style.willChange = "auto";
-    };
-
     const animateCardOut = (direction: "left" | "right") => {
       const dx = direction === "right"
         ? window.innerWidth
@@ -154,7 +193,8 @@ export function SwipeableCard({
           });
       } else {
         animateCardOut("left");
-        setTimeout(() => {
+        passTimeoutRef.current = window.setTimeout(() => {
+          passTimeoutRef.current = null;
           onPass();
         }, 300);
       }
@@ -162,7 +202,14 @@ export function SwipeableCard({
     }
 
     resetCardPosition();
-  }, [onLike, onPass, setBadgeOpacity]);
+  }, [
+    cancelInteraction,
+    isBlockingConnectionIssue,
+    onLike,
+    onPass,
+    resetCardPosition,
+    setBadgeOpacity,
+  ]);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleMove);
@@ -174,12 +221,23 @@ export function SwipeableCard({
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
       }
+      if (passTimeoutRef.current !== null) {
+        window.clearTimeout(passTimeoutRef.current);
+      }
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("mouseup", handleEnd);
       window.removeEventListener("touchend", handleEnd);
     };
   }, [handleMove, handleEnd]);
+
+  useEffect(() => {
+    if (!isBlockingConnectionIssue) {
+      return;
+    }
+
+    cancelInteraction();
+  }, [cancelInteraction, isBlockingConnectionIssue]);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -204,7 +262,7 @@ export function SwipeableCard({
         onTouchStart={handleStart}
         onMouseDown={handleStart}
         style={{
-          touchAction: "none",
+          touchAction: isBlockingConnectionIssue ? "auto" : "none",
         }}
       className="relative w-full max-w-5xl cursor-grab select-none active:cursor-grabbing"
       >

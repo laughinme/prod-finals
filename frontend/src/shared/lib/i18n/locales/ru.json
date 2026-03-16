@@ -28,7 +28,13 @@
     "compatibility_by_categories": "Совместимость по категориям",
     "save_and_start": "Сохранить и начать",
     "details": "Подробнее",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "offline_title": "Нет интернета",
+    "offline_description": "Мы остановили сайт, чтобы не потерять действия и карточки. Проверьте подключение и обновите страницу, когда сеть вернется.",
+    "connection_restored_reload_title": "Интернет вернулся",
+    "connection_restored_reload_description": "Соединение восстановлено, но текущее состояние страницы уже может быть некорректным. Обновите страницу, чтобы продолжить.",
+    "connection_problem_badge": "Проблема с соединением",
+    "refresh_page": "Обновить страницу"
   },
   "auth": {
     "invalid_credentials": "Неверный email или пароль",
