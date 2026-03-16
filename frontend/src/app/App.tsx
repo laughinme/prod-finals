@@ -1,5 +1,6 @@
 import { BrowserRouter } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Toaster } from "sonner";
 import { MatchmakingFlowProvider } from "@/features/matchmaking/model";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { RealtimeProvider } from "@/app/providers/realtime";
@@ -48,6 +49,7 @@ function App() {
           <AppRoutes />
         </MatchmakingFlowProvider>
       </RealtimeProvider>
+      <Toaster position="top-center" richColors />
     </BrowserRouter>
   );
 }

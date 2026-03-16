@@ -98,6 +98,18 @@ def _category_preview_text(
     return f"Ваш общий интерес — «{category_label}»."
 
 
+def _preview_topic_from_reason(code: CompatibilityReasonCode) -> str:
+    mapping = {
+        CompatibilityReasonCode.CATEGORY_FIT: "общие интересы",
+        CompatibilityReasonCode.CITY_FIT: "удобная география встречи",
+        CompatibilityReasonCode.AGE_FIT: "возрастная совместимость",
+        CompatibilityReasonCode.GOAL_FIT: "похожие цели знакомства",
+        CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "взаимные предпочтения",
+        CompatibilityReasonCode.PROFILE_QUALITY: "совместимость профилей",
+    }
+    return mapping.get(code, "совместимость профилей")
+
+
 def _diversify_by_top_category(scored: list[RankedCandidate]) -> list[RankedCandidate]:
     if len(scored) < 3:
         return scored
@@ -260,7 +272,7 @@ class MockMlFacade(MlFacade):
             serve_item_id=payload.serve_item_id,
             candidate_user_id=payload.candidate.user_id,
             reasons=reasons,
-            disclaimer="These explanations use aggregated profile and onboarding filter signals only.",
+            disclaimer="Объяснения сформированы по агрегированным данным профиля и фильтрам онбординга.",
         )
 
     async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
@@ -271,28 +283,30 @@ class MockMlFacade(MlFacade):
         if not reason_codes:
             reason_codes = [CompatibilityReasonCode.PROFILE_QUALITY]
         primary = reason_codes[0]
-        top_category = _top_category(scored.category_scores)
-        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
-            fallback_preview = _category_preview_text(
-                category_label=top_category.label,
-                score_percent=top_category.score_percent,
-            )
-            preview = await self._preview_text_generator.render_category_preview(
-                category_label=top_category.label,
-                score_percent=top_category.score_percent,
-                fallback_text=fallback_preview,
-            )
-        else:
-            preview_map = {
-                CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
-                CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
-                CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
-                CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
-                CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
-                CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
-            }
-            preview = preview_map[primary]
         score_percent = int(round(scored.score * 100))
+        top_category = _top_category(scored.category_scores)
+        preview_map = {
+            CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
+            CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
+            CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
+            CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
+            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
+        }
+        fallback_preview = (
+            _category_preview_text(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+            )
+            if top_category is not None
+            else preview_map[primary]
+        )
+        preview_topic = top_category.label if top_category is not None else _preview_topic_from_reason(primary)
+        preview = await self._preview_text_generator.render_category_preview(
+            category_label=preview_topic,
+            score_percent=top_category.score_percent if top_category is not None else score_percent,
+            fallback_text=fallback_preview,
+        )
         return CompatibilityPreview(
             score=scored.score,
             score_percent=score_percent,
@@ -422,33 +436,33 @@ class MockMlFacade(MlFacade):
     def _reason_from_code(self, code: CompatibilityReasonCode) -> CompatibilityReason:
         mapping = {
             CompatibilityReasonCode.CITY_FIT: (
-                "Similar city rhythm",
-                "You appear to be in a compatible local context for actually meeting offline.",
+                "Похожий ритм города",
+                "По локации и расстоянию вам будет проще встретиться офлайн.",
                 0.78,
             ),
             CompatibilityReasonCode.CATEGORY_FIT: (
-                "Common interests and habits",
-                "Your selected preference categories suggest a stronger everyday compatibility.",
+                "Общие интересы и привычки",
+                "Категории интересов показывают хорошее совпадение в повседневных сценариях.",
                 0.79,
             ),
             CompatibilityReasonCode.AGE_FIT: (
-                "Mutual age fit",
-                "Both profiles fall within each other's preferred age range.",
+                "Взаимный возрастной диапазон",
+                "Вы попадаете в предпочтительный возрастной диапазон друг друга.",
                 0.76,
             ),
             CompatibilityReasonCode.GOAL_FIT: (
-                "Aligned intentions",
-                "You are looking for a similar type of connection right now.",
+                "Схожие ожидания",
+                "Сейчас вы ищете похожий формат отношений.",
                 0.74,
             ),
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: (
-                "Preferences align both ways",
-                "Your mutual preferences suggest the match is viable from both sides.",
+                "Взаимное совпадение предпочтений",
+                "Предпочтения совпадают с обеих сторон, поэтому мэтч выглядит устойчивым.",
                 0.81,
             ),
             CompatibilityReasonCode.PROFILE_QUALITY: (
-                "Strong profile signal",
-                "The profile contains enough detail to support a more stable recommendation.",
+                "Достаточно данных профиля",
+                "В анкете достаточно данных для уверенной рекомендации.",
                 0.63,
             ),
         }
@@ -793,8 +807,8 @@ class HttpMlFacade(MlFacade):
             reasons.append(
                 CompatibilityReason(
                     code=CompatibilityReasonCode.PROFILE_QUALITY.value,
-                    title="Strong profile signal",
-                    text="The profile contains enough detail to support a more stable recommendation.",
+                    title="Достаточно данных профиля",
+                    text="В анкете достаточно данных для уверенной рекомендации.",
                     confidence=0.63,
                 )
             )
@@ -803,7 +817,7 @@ class HttpMlFacade(MlFacade):
             serve_item_id=payload.serve_item_id,
             candidate_user_id=payload.candidate.user_id,
             reasons=reasons,
-            disclaimer="These explanations use aggregated profile and ML signals.",
+            disclaimer="Объяснения сформированы по агрегированным данным профиля и ML-сигналам.",
         )
 
     async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
@@ -813,22 +827,19 @@ class HttpMlFacade(MlFacade):
         ]
         if not reason_codes:
             reason_codes = [CompatibilityReasonCode.PROFILE_QUALITY]
+        primary = reason_codes[0]
         score_percent = int(round(scored.score * 100))
         top_category = _top_category(scored.category_scores)
-        preview_text = self._preview_text(
+        fallback_preview = self._preview_text(
             reason_codes,
             category_scores=scored.category_scores,
         )
-        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
-            fallback_preview = _category_preview_text(
-                category_label=top_category.label,
-                score_percent=top_category.score_percent,
-            )
-            preview_text = await self._preview_text_generator.render_category_preview(
-                category_label=top_category.label,
-                score_percent=top_category.score_percent,
-                fallback_text=fallback_preview,
-            )
+        preview_topic = top_category.label if top_category is not None else _preview_topic_from_reason(primary)
+        preview_text = await self._preview_text_generator.render_category_preview(
+            category_label=preview_topic,
+            score_percent=top_category.score_percent if top_category is not None else score_percent,
+            fallback_text=fallback_preview,
+        )
         return CompatibilityPreview(
             score=scored.score,
             score_percent=score_percent,

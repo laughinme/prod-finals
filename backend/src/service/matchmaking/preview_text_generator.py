@@ -22,14 +22,20 @@ class LlmCategoryPreviewGenerator:
         enabled: bool = False,
         provider: str = "huggingface",
         api_key: str = "",
-        model: str = "google/flan-t5-small",
+        model: str = "Qwen/Qwen2.5-0.5B-Instruct",
         timeout_sec: float = 4.0,
     ) -> None:
         self._enabled = bool(enabled)
         self._provider = provider.strip().lower()
         self._api_key = api_key.strip()
-        self._model = model.strip() or "google/flan-t5-small"
+        self._model = model.strip() or "Qwen/Qwen2.5-0.5B-Instruct"
         self._timeout_sec = max(float(timeout_sec), 1.0)
+        self._fallback_models = [
+            "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            "google/flan-t5-small",
+        ]
+        self._unavailable_models: set[str] = set()
         self._cache: dict[tuple[str, ScoreBand], str] = {}
         self._lock = asyncio.Lock()
 
@@ -90,13 +96,31 @@ class LlmCategoryPreviewGenerator:
         }[score_band]
         prompt = (
             "Сгенерируй одну короткую фразу для дейтинг-рекомендации. "
-            f"Категория интересов: {category_label}. "
+            f"Тема совпадения: {category_label}. "
             f"Сила совпадения: {strength_ru}. "
             "Язык: русский. Ограничение: 8-14 слов. "
             "Без кавычек, без списков, без префиксов."
         )
+        models_to_try = self._ordered_models()
+        for model_name in models_to_try:
+            generated, status_code = await self._call_huggingface_model(model_name=model_name, prompt=prompt)
+            if generated:
+                if model_name != self._model:
+                    logger.info("HF preview generation switched model from %s to %s", self._model, model_name)
+                self._model = model_name
+                return generated
+            if status_code in {404, 410}:
+                self._unavailable_models.add(model_name)
+        return None
 
-        endpoint = f"https://api-inference.huggingface.co/models/{self._model}"
+    def _ordered_models(self) -> list[str]:
+        ordered = [self._model]
+        ordered.extend(model for model in self._fallback_models if model not in ordered)
+        available = [model for model in ordered if model not in self._unavailable_models]
+        return available or ordered
+
+    async def _call_huggingface_model(self, *, model_name: str, prompt: str) -> tuple[str | None, int | None]:
+        endpoint = f"https://api-inference.huggingface.co/models/{model_name}"
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -114,32 +138,42 @@ class LlmCategoryPreviewGenerator:
         try:
             async with httpx.AsyncClient(timeout=self._timeout_sec) as client:
                 response = await client.post(endpoint, json=payload, headers=headers)
-            if response.status_code >= 400:
-                logger.warning(
-                    "HF preview generation failed with status %s for model %s",
-                    response.status_code,
-                    self._model,
-                )
-                return None
-            raw = response.json()
         except Exception as exc:  # pragma: no cover - network/runtime safety
-            logger.warning("HF preview generation failed: %s", exc)
-            return None
+            logger.warning("HF preview generation failed for model %s: %s", model_name, exc)
+            return None, None
 
+        if response.status_code >= 400:
+            if response.status_code in {404, 410}:
+                logger.info(
+                    "HF model %s is unavailable (status %s), trying fallback",
+                    model_name,
+                    response.status_code,
+                )
+            else:
+                body_preview = response.text.strip().replace("\n", " ")[:160]
+                logger.warning(
+                    "HF preview generation failed with status %s for model %s: %s",
+                    response.status_code,
+                    model_name,
+                    body_preview,
+                )
+            return None, response.status_code
+
+        raw = response.json()
         if isinstance(raw, list):
             for item in raw:
                 if isinstance(item, dict):
                     text = item.get("generated_text")
                     if isinstance(text, str) and text.strip():
-                        return text
-            return None
+                        return text, None
+            return None, response.status_code
 
         if isinstance(raw, dict):
             text = raw.get("generated_text")
             if isinstance(text, str) and text.strip():
-                return text
+                return text, None
 
-        return None
+        return None, response.status_code
 
     def _sanitize_generated_text(self, text: str | None) -> str | None:
         if not text:

@@ -60,6 +60,13 @@ const COMPAT_TEXT_MAP: Record<string, Record<ReasonStrength, string>> = {
 };
 
 const RAW_COMPAT_TOKEN_PATTERN = /^(?:compat\.)?[a-z_]+(?:\.(?:high|medium|low))?$/i;
+const EN_REASON_TITLE_MAP: Record<string, string> = {
+  "strong profile signal": "Достаточно данных профиля",
+};
+const EN_REASON_TEXT_MAP: Record<string, string> = {
+  "the profile contains enough detail to support a more stable recommendation.":
+    "В анкете достаточно данных для уверенной рекомендации.",
+};
 
 function parseCompatToken(raw: string): { code: string; strength: ReasonStrength } | null {
   const normalized = raw.trim().toLowerCase();
@@ -92,6 +99,10 @@ function parseCompatToken(raw: string): { code: string; strength: ReasonStrength
 
 function normalizeReasonTitle(reason: MatchProfileExplanationReason): string {
   const rawTitle = reason.title.trim();
+  const enMapped = EN_REASON_TITLE_MAP[rawTitle.toLowerCase()];
+  if (enMapped) {
+    return enMapped;
+  }
   const parsedFromTitle = parseCompatToken(rawTitle);
   if (!parsedFromTitle) {
     return rawTitle;
@@ -102,6 +113,10 @@ function normalizeReasonTitle(reason: MatchProfileExplanationReason): string {
 
 function normalizeReasonText(reason: MatchProfileExplanationReason): string {
   const rawText = reason.text.trim();
+  const enMapped = EN_REASON_TEXT_MAP[rawText.toLowerCase()];
+  if (enMapped) {
+    return enMapped;
+  }
   const parsedFromText = parseCompatToken(rawText);
   if (!parsedFromText) {
     return rawText;
@@ -180,12 +195,13 @@ export function useDiscoveryPage() {
   const currentProfile = baseCurrentProfile
     ? {
         ...baseCurrentProfile,
-        explanation: currentProfileExplanation
-          ? getExplanationText(
-              currentProfileExplanation.reasons,
-              baseCurrentProfile.explanation,
-            )
-          : baseCurrentProfile.explanation,
+        explanation: baseCurrentProfile.explanation
+          || (currentProfileExplanation
+            ? getExplanationText(
+                currentProfileExplanation.reasons,
+                baseCurrentProfile.explanation,
+              )
+            : ""),
         tags: currentProfileExplanation
           ? getExplanationTags(
               currentProfileExplanation.reasons,
