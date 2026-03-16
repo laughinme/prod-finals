@@ -18,7 +18,6 @@ export default function DiscoveryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDemoPanelExpanded, setIsDemoPanelExpanded] = useState(false);
 
-  // Lock vertical scrolling on mobile for this page
   useEffect(() => {
     if (!isMobile) return;
     document.body.style.overflow = "hidden";
@@ -67,7 +66,7 @@ export default function DiscoveryPage() {
               : "left-5 top-5",
           ].join(" ")}
         >
-          <div className="overflow-hidden rounded-[24px] border border-white/70 bg-white/85 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+          <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/85 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setIsDemoPanelExpanded((current) => !current)}
@@ -308,10 +307,10 @@ export default function DiscoveryPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 32, opacity: 0 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="w-full max-w-md overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-2xl shadow-black/20"
+              className="w-full max-w-md overflow-hidden rounded-4xl border border-border/60 bg-card shadow-2xl shadow-black/20"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="bg-[radial-gradient(circle_at_top,_rgba(255,221,45,0.22),_transparent_52%),linear-gradient(180deg,rgba(255,221,45,0.06),transparent)] px-6 pt-6 pb-5">
+              <div className="bg-[radial-gradient(circle_at_top,rgba(255,221,45,0.22),transparent_52%),linear-gradient(180deg,rgba(255,221,45,0.06),transparent)] px-6 pt-6 pb-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-primary/90">
                   <Wand2 className="size-4" />
                   {t("discovery.photo_gate_badge")}
