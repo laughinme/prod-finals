@@ -175,7 +175,7 @@ async def _promote_to_admin(user_id: str) -> None:
 
 @pytest.mark.asyncio
 async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
-    _, access_a = await _register_user(client, faker, "alice")
+    credentials_a, access_a = await _register_user(client, faker, "alice")
     _, access_b = await _register_user(client, faker, "bob")
     _, access_c = await _register_user(client, faker, "charlie")
 
@@ -474,6 +474,14 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert messages.status_code == 200
     assert len(messages.json()["items"]) >= 2
 
+    reply = await client.post(
+        f"/api/v1/conversations/{match['conversation_id']}/messages",
+        json={"text": "Doing well, thanks!"},
+        headers=auth_header(access_b),
+    )
+    assert reply.status_code == 201
+    assert reply.json()["status"] == "sent"
+
     close_match = await client.post(
         f"/api/v1/matches/{match['match_id']}/close",
         json={"reason_code": "not_interested"},
@@ -489,6 +497,55 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert message_after_close.status_code == 409
+
+    await _promote_to_admin(profile_a["id"])
+    relogin = await client.post(
+        "/api/v1/auth/login",
+        json={"email": credentials_a["email"], "password": credentials_a["password"]},
+        headers=_mobile_headers(),
+    )
+    assert relogin.status_code == 200
+    admin_access = relogin.json()["access_token"]
+
+    funnel_summary = await client.get(
+        "/api/v1/admins/stats/funnel/summary",
+        headers=auth_header(admin_access),
+    )
+    assert funnel_summary.status_code == 200
+    summary_json = funnel_summary.json()
+    assert summary_json["totals"]["feed_served"] >= 2
+    assert summary_json["totals"]["feed_explanation_opened"] >= 1
+    assert summary_json["totals"]["feed_like"] >= 2
+    assert summary_json["totals"]["match_created"] == 1
+    assert summary_json["totals"]["chat_first_message_sent"] == 1
+    assert summary_json["totals"]["chat_first_reply_received"] == 1
+    assert summary_json["totals"]["match_closed"] == 1
+    assert any(segment["user_source"] == "cold_start" for segment in summary_json["by_user_source"])
+    assert any(segment["decision_mode"] in {"model", "fallback", "unknown"} for segment in summary_json["by_decision_mode"])
+
+    funnel_daily = await client.get(
+        "/api/v1/admins/stats/funnel/daily",
+        params={"days": 7},
+        headers=auth_header(admin_access),
+    )
+    assert funnel_daily.status_code == 200
+    assert funnel_daily.json()
+
+    engine = get_engine()
+    async with engine.begin() as conn:
+        outbox_topics = (
+            await conn.execute(
+                text(
+                    """
+                    SELECT topic
+                    FROM outbox_events
+                    WHERE topic = 'ml.interactions.match_outcome'
+                    ORDER BY created_at ASC
+                    """
+                )
+            )
+        ).scalars().all()
+    assert outbox_topics
 
 
 @pytest.mark.asyncio
@@ -720,6 +777,82 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
         assert feed.status_code == 200
         assert feed.json()["feed_state"] == "ready"
         assert feed.json()["cards"]
+
+    application.dependency_overrides.clear()
+    with suppress(RuntimeError):
+        await close_redis()
+    await dispose_engine()
+    os.environ["DEV_SEED_ENABLED"] = "false"
+    clear_settings_cache()
+
+
+@pytest.mark.asyncio
+async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(redis_client, faker: Faker):
+    os.environ["MOCK_USER_SEED_ENABLED"] = "true"
+    clear_settings_cache()
+    storage = get_media_storage_service()
+    await asyncio.to_thread(storage.ensure_buckets)
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        async with UoW(session) as uow:
+            await run_registered_seeders(
+                SeedContext(
+                    settings=get_settings(),
+                    uow=uow,
+                    storage=storage,
+                )
+            )
+    application = create_app(enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False)
+    application.dependency_overrides[get_redis] = lambda: redis_client
+    transport = ASGITransport(app=application)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
+        dataset_login = await seeded_client.post(
+            "/api/v1/auth/login",
+            json={"email": "mock-user-0001@example.com", "password": "DemoPass123!"},
+            headers=_mobile_headers(),
+        )
+        assert dataset_login.status_code == 200
+        dataset_access = dataset_login.json()["access_token"]
+
+        cold_credentials, cold_access = await _register_user(seeded_client, faker, "segmentcold")
+        cold_profile = await _complete_profile(
+            seeded_client,
+            cold_access,
+            display_name="Segment Cold",
+            birth_date="1997-06-12",
+            city_id="msk",
+            gender="female",
+        )
+        await _answer_onboarding_filters(
+            seeded_client,
+            cold_access,
+            genders=["male"],
+            age_min=18,
+            age_max=99,
+        )
+
+        dataset_feed = await seeded_client.get("/api/v1/feed", headers=auth_header(dataset_access))
+        cold_feed = await seeded_client.get("/api/v1/feed", headers=auth_header(cold_access))
+        assert dataset_feed.status_code == 200
+        assert cold_feed.status_code == 200
+
+        await _promote_to_admin(cold_profile["id"])
+        relogin = await seeded_client.post(
+            "/api/v1/auth/login",
+            json={"email": cold_credentials["email"], "password": cold_credentials["password"]},
+            headers=_mobile_headers(),
+        )
+        assert relogin.status_code == 200
+        admin_access = relogin.json()["access_token"]
+
+        summary = await seeded_client.get(
+            "/api/v1/admins/stats/funnel/summary",
+            headers=auth_header(admin_access),
+        )
+        assert summary.status_code == 200
+        by_source = {item["user_source"]: item for item in summary.json()["by_user_source"]}
+        assert by_source["dataset"]["counts"]["feed_served"] >= 1
+        assert by_source["cold_start"]["counts"]["feed_served"] >= 1
 
     application.dependency_overrides.clear()
     with suppress(RuntimeError):
