@@ -26,7 +26,8 @@
     "skip": "Пропустить",
     "skip_all": "Пропустить все",
     "compatibility_by_categories": "Совместимость по категориям",
-    "save_and_start": "Сохранить и начать"
+    "save_and_start": "Сохранить и начать",
+    "details": "Подробнее"
   },
   "auth": {
     "invalid_credentials": "Неверный email или пароль",

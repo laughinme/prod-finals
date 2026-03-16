@@ -26,7 +26,8 @@
     "skip": "Skip",
     "skip_all": "Skip all",
     "compatibility_by_categories": "Compatibility by categories",
-    "save_and_start": "Save and start"
+    "save_and_start": "Save and start",
+    "details": "Details"
   },
   "auth": {
     "invalid_credentials": "Invalid email or password",

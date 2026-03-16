@@ -87,11 +87,10 @@ export function DiscoveryMobileProfileCard({
 
               <button
                 onClick={() => setShowDetails(!showDetails)}
-                className={`flex size-9 items-center justify-center rounded-full border transition-all ${
-                  showDetails
+                className={`flex size-9 items-center justify-center rounded-full border transition-all ${showDetails
                     ? "border-primary bg-primary text-black"
                     : "border-border bg-secondary/50 text-muted-foreground hover:bg-secondary"
-                }`}
+                  }`}
               >
                 <Info className="size-4" />
               </button>
