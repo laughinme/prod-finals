@@ -79,7 +79,7 @@ export function MatchProfileDesktopCard({
         </div>
       </div>
 
-      <div className="flex w-full shrink-0 flex-col p-8 md:h-[70vh] md:w-[55%] md:overflow-y-auto md:px-12 md:pt-6 md:pb-12">
+      <div className="flex w-full shrink-0 flex-col p-8 md:h-[70vh] md:w-[55%] md:overflow-hidden md:px-12 md:pt-6 md:pb-12">
         <div className="mb-6 hidden items-start justify-between gap-6 md:flex">
           <div className="min-w-0 pt-15">
             <h2 className="mb-3 text-6xl font-black tracking-tight text-foreground">{title}</h2>

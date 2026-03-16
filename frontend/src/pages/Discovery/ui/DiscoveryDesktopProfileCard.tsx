@@ -61,7 +61,7 @@ export function DiscoveryDesktopProfileCard({
         </div>
       </div>
 
-      <div className="flex w-full shrink-0 flex-col p-5 sm:p-8 md:h-[70vh] md:w-[55%] md:overflow-y-auto md:p-12">
+      <div className="flex w-full shrink-0 flex-col p-5 sm:p-8 md:h-[70vh] md:w-[55%] md:overflow-hidden md:p-12">
         <div className="relative mb-6 hidden items-center justify-between md:flex">
           <div className="pr-12">
             <h2 className="mb-3 text-5xl font-black tracking-tight text-foreground">
