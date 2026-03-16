@@ -1,809 +1,1119 @@
+---
 openapi: 3.1.0
-x-stoplight:
-  id: tjd4ulo9ofe5o
 info:
   title: T-Match Internal ML API (Backend <-> ML Service)
-  version: 1.0.0
-  summary: 'Внутренний контракт для ранжирования, explanations и feedback.'
-  description: |
+  summary: Внутренний контракт для ранжирования, explanations и feedback.
+  description: |-
     Внутренний контракт между main backend и ML service.
 
-    Нормы разграничения:
-    1. Main backend владеет бизнес-состоянием контакта, мэтчами, чатами, блоками, жалобами и правилом повторного показа.
-    2. ML service владеет scoring, reason codes, quality/degradation signals и ingestion feedback.
-    3. ML service НЕ возвращает готовый свободный пользовательский текст; он возвращает reason codes и template keys.
-    4. Feedback в ML отправляется асинхронно через outbox/worker, чтобы сбой ML не ломал основной пользовательский сценарий.
+    Main backend владеет бизнес-состоянием, ML service владеет scoring/explanations/feedback ingestion.
+  version: 1.0.0
 servers:
-  - url: 'http://ml-service:8080'
-    description: ML service
-security:
-  - serviceToken: []
-tags:
-  - name: health
-    description: Состояние ML-компонента и деградации
-  - name: recommendations
-    description: Ранжирование кандидатов
-  - name: feedback
-    description: Feedback-события для обучения и аналитики
-  - name: explanations
-    description: Безопасные объяснения в виде reason codes
+- url: http://ml-service:8080
+  description: ML service
 paths:
-  /v1/health:
+  "/v1/health":
     get:
       tags:
-        - health
-      summary: Проверить состояние ML service
+      - health
+      summary: Get Ml Health
       operationId: getMlHealth
       responses:
         '200':
-          description: ML service доступен
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MlHealthResponse'
-              example:
-                status: degraded
-                timestamp: '2026-03-13T19:00:00Z'
-                decision_mode: fallback_only
-                model_version: ranker_2026_03_13_v4
-                features_version: features_v12
-                checks:
-                  ranker_loaded: true
-                  explainer_loaded: true
-                  feedback_ingest: true
-                warnings:
-                  - candidate_pool_low
+                "$ref": "#/components/schemas/MlHealthResponse"
         '503':
-          description: ML service недоступен
+          description: Service Unavailable
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-stoplight:
-        id: q3nszwmhwmic4
-  /v1/recommendations:
+                "$ref": "#/components/schemas/ErrorResponse"
+      security:
+      - APIKeyHeader: []
+  "/v1/recommendations":
     post:
       tags:
-        - recommendations
-      summary: Построить ранжированный список кандидатов для пользователя
+      - recommendations
+      summary: Post Recommendations
       operationId: postRecommendations
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecommendationRequest'
-            example:
-              trace_id: 33f117f8-7347-4c0d-80f8-2bce0a1b34e5
-              request_user_id: 1
-              limit: 12
-              strategy: balanced
-              hard_filters:
-                age_min: 24
-                age_max: 32
-                city_id: msk
-                distance_km: 20
-                genders:
-                  - male
-              exclusion:
-                hard_exclude_user_ids:
-                  - 2
-                  - 3
-                  - 4
-                soft_seen_user_ids:
-                  - 5
-                  - 6
-                  - 7
-              context:
-                request_ts: '2026-03-13T19:00:00Z'
-                session_id: sess_123
-                locale: ru-RU
-                timezone: Europe/Moscow
-                client: web
-                decision_policy: daily_batch
+              "$ref": "#/components/schemas/RecommendationRequest"
+        required: true
       responses:
         '200':
-          description: Кандидаты ранжированы
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RecommendationResponse'
-              example:
-                trace_id: 33f117f8-7347-4c0d-80f8-2bce0a1b34e5
-                generated_at: '2026-03-13T19:00:00Z'
-                model_version: ranker_2026_03_13_v4
-                features_version: features_v12
-                decision_mode: model
-                warnings: []
-                candidates:
-                  - candidate_user_id: 42
-                    score: 0.84
-                    reason_signals:
-                      - code: lifestyle_similarity
-                        strength: high
-                        confidence: 0.81
-                      - code: activity_overlap
-                        strength: medium
-                        confidence: 0.74
-                    policy_flags: []
+                "$ref": "#/components/schemas/RecommendationResponse"
         '400':
-          description: Некорректный payload
+          description: Bad Request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '401':
-          description: Невалидный service token
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '422':
-          description: Запрос не может быть обработан
+          description: Unprocessable Content
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-stoplight:
-        id: ntaeaazev3izc
-  /v1/interactions/swipe:
+                "$ref": "#/components/schemas/ErrorResponse"
+      security:
+      - APIKeyHeader: []
+  "/v1/interactions/swipe":
     post:
       tags:
-        - feedback
-      summary: Передать feedback по действию в выдаче или safety flow
+      - feedback
+      summary: Post Swipe Feedback
       operationId: postSwipeFeedback
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SwipeFeedbackRequest'
-            example:
-              trace_id: 3180e6d4-3d06-4dcb-8b53-5cde2b4e58c9
-              event_id: d90e0d5c-d3d7-4a77-8c3e-5d4ca7042c59
-              actor_user_id: 1
-              target_user_id: 42
-              action: hide
-              shown_rank: 3
-              shown_score: 0.84
-              shown_at: '2026-03-13T19:00:10Z'
-              acted_at: '2026-03-13T19:00:16Z'
-              source_context: feed
+              "$ref": "#/components/schemas/SwipeFeedbackRequest"
+        required: true
       responses:
         '202':
-          description: Feedback принят асинхронно
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AckResponse'
+                "$ref": "#/components/schemas/AckResponse"
         '400':
-          description: Некорректный payload
+          description: Bad Request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '401':
-          description: Невалидный service token
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-stoplight:
-        id: 25jea4xgwlpt8
-  /v1/interactions/match-outcome:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/interactions/match-outcome":
     post:
       tags:
-        - feedback
-      summary: Передать outcome после мэтча
+      - feedback
+      summary: Post Match Outcome
       operationId: postMatchOutcome
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MatchOutcomeRequest'
-            example:
-              trace_id: 5431c647-233d-47a4-84ec-ef1d70df4d8d
-              event_id: d7e3ae66-2e70-4375-b0f0-55cab6b0b3cb
-              match_id: ccf67468-f759-4725-bef8-b2442e1741e1
-              user_a_id: 1
-              user_b_id: 42
-              outcome: first_message_sent
-              happened_at: '2026-03-13T19:05:00Z'
+              "$ref": "#/components/schemas/MatchOutcomeRequest"
+        required: true
       responses:
         '202':
-          description: Outcome принят асинхронно
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AckResponse'
+                "$ref": "#/components/schemas/AckResponse"
         '400':
-          description: Некорректный payload
+          description: Bad Request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '401':
-          description: Невалидный service token
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-stoplight:
-        id: fnvfg6nr3rccr
-  /v1/explanations/compatibility:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/explanations/compatibility":
     post:
       tags:
-        - explanations
-      summary: Получить safe explanation signals по паре пользователей
+      - explanations
+      summary: Post Compatibility Explanation
       operationId: postCompatibilityExplanation
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CompatibilityExplanationRequest'
-            example:
-              trace_id: 5d9d2c4e-98a5-42cf-a6f7-4a2c81f892e4
-              requester_user_id: 1
-              candidate_user_id: 42
-              channel: feed
-              locale: ru-RU
-              max_reasons: 3
+              "$ref": "#/components/schemas/CompatibilityExplanationRequest"
+        required: true
       responses:
         '200':
-          description: Reason signals построены
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CompatibilityExplanationResponse'
-              example:
-                trace_id: 5d9d2c4e-98a5-42cf-a6f7-4a2c81f892e4
-                candidate_user_id: 42
-                privacy_level: safe_aggregate
-                reasons:
-                  - code: lifestyle_similarity
-                    template_key: compat.lifestyle_similarity.high
-                    strength: high
-                    confidence: 0.81
-                  - code: activity_overlap
-                    template_key: compat.activity_overlap.medium
-                    strength: medium
-                    confidence: 0.74
-                privacy_checks:
-                  - aggregate_only
-                  - no_raw_merchants
-                  - no_amounts
+                "$ref": "#/components/schemas/CompatibilityExplanationResponse"
         '400':
-          description: Некорректный payload
+          description: Bad Request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '401':
-          description: Невалидный service token
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/ErrorResponse"
         '404':
-          description: Пара пользователей не найдена в контексте ML
+          description: Not Found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-stoplight:
-        id: x3lkkohv0tdzy
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/profile/favorites":
+    post:
+      tags:
+      - feedback
+      summary: Post Update Favorites
+      operationId: postProfileFavorites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AckResponse"
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/profile/preferences":
+    post:
+      tags:
+      - feedback
+      summary: Post Update Preferences
+      operationId: postProfilePreferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AckResponse"
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ErrorResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/profiles/onboarding":
+    post:
+      tags:
+      - onboarding
+      summary: Post Onboarding
+      operationId: postOnboarding
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AckResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
+  "/v1/transactions/sync":
+    post:
+      tags:
+      - onboarding
+      - events
+      summary: Post Sync Transactions
+      description: Event-driven обновление профиля. ML-логика выполняется в фоне.
+      operationId: postSyncTransactions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/TransactionSyncRequest"
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AckResponse"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - APIKeyHeader: []
 components:
-  securitySchemes:
-    serviceToken:
-      type: apiKey
-      in: header
-      name: X-Service-Token
   schemas:
-    MlHealthResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - status
-        - timestamp
-        - decision_mode
-        - model_version
-        - features_version
-        - checks
-        - warnings
+    AckResponse:
       properties:
         status:
-          type: string
-          enum:
-            - ok
-            - degraded
-            - down
-        timestamp:
+          "$ref": "#/components/schemas/AckStatus"
+        received_at:
           type: string
           format: date-time
-        decision_mode:
-          type: string
-          enum:
-            - model
-            - fallback_only
-        model_version:
-          type: string
-        features_version:
-          type: string
-        checks:
-          type: object
-          additionalProperties: false
-          required:
-            - ranker_loaded
-            - explainer_loaded
-            - feedback_ingest
-          properties:
-            ranker_loaded:
-              type: boolean
-            explainer_loaded:
-              type: boolean
-            feedback_ingest:
-              type: boolean
-        warnings:
-          type: array
-          items:
-            type: string
-          maxItems: 20
-      x-stoplight:
-        id: 4ai7vv2jk86m6
-    RecommendationRequest:
-      type: object
+          title: Received At
       additionalProperties: false
+      type: object
       required:
-        - trace_id
-        - request_user_id
-        - limit
-        - context
+      - status
+      - received_at
+      title: AckResponse
+    AckStatus:
+      type: string
+      enum:
+      - accepted
+      title: AckStatus
+    ClientType:
+      type: string
+      enum:
+      - ios
+      - android
+      - web
+      title: ClientType
+    CompatibilityExplanationRequest:
       properties:
         trace_id:
           type: string
           format: uuid
-        request_user_id:
-          type: integer
-          format: int64
-        limit:
-          type: integer
-          minimum: 1
-          maximum: 50
-          default: 12
-        strategy:
+          title: Trace Id
+        requester_user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Requester User Id
+        candidate_user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Candidate User Id
+        channel:
+          "$ref": "#/components/schemas/ExplanationChannel"
+          default: feed
+        locale:
           type: string
-          enum:
-            - balanced
-            - high_precision
-            - exploration
-          default: balanced
-        hard_filters:
-          $ref: '#/components/schemas/HardFilters'
-        exclusion:
-          $ref: '#/components/schemas/ExclusionSet'
-        context:
-          $ref: '#/components/schemas/RecommendationContext'
-      x-stoplight:
-        id: ocv09kt2wdhar
-    HardFilters:
-      type: object
+          title: Locale
+          default: ru-RU
+        max_reasons:
+          type: integer
+          maximum: 5.0
+          minimum: 1.0
+          title: Max Reasons
+          default: 3
       additionalProperties: false
+      type: object
+      required:
+      - trace_id
+      - requester_user_id
+      - candidate_user_id
+      title: CompatibilityExplanationRequest
+    CompatibilityExplanationResponse:
       properties:
-        age_min:
-          type: integer
-          minimum: 18
-          maximum: 99
-        age_max:
-          type: integer
-          minimum: 18
-          maximum: 99
-        city_id:
+        trace_id:
           type: string
-        distance_km:
-          type: integer
-          minimum: 1
-          maximum: 300
-        genders:
+          format: uuid
+          title: Trace Id
+        candidate_user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Candidate User Id
+        privacy_level:
+          "$ref": "#/components/schemas/PrivacyLevel"
+        reasons:
+          items:
+            "$ref": "#/components/schemas/ExplanationReason"
           type: array
+          maxItems: 5
+          minItems: 1
+          title: Reasons
+        privacy_checks:
           items:
             type: string
-          maxItems: 5
-      x-stoplight:
-        id: qrsbp26lhhb5x
-    ExclusionSet:
-      type: object
+          type: array
+          maxItems: 10
+          title: Privacy Checks
       additionalProperties: false
+      type: object
+      required:
+      - trace_id
+      - candidate_user_id
+      - privacy_level
+      - reasons
+      title: CompatibilityExplanationResponse
+    DecisionPolicy:
+      type: string
+      enum:
+      - daily_batch
+      title: DecisionPolicy
+    ErrorResponse:
+      properties:
+        error_code:
+          type: string
+          title: Error Code
+        message:
+          type: string
+          title: Message
+        details:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Details
+        trace_id:
+          type: string
+          format: uuid
+          title: Trace Id
+      additionalProperties: false
+      type: object
+      required:
+      - error_code
+      - message
+      - trace_id
+      title: ErrorResponse
+    ExclusionSet:
       properties:
         hard_exclude_user_ids:
-          type: array
-          items:
-            type: integer
-            format: int64
-          maxItems: 20000
+          anyOf:
+          - items:
+              anyOf:
+              - type: string
+              - type: integer
+            type: array
+            maxItems: 20000
+          - type: 'null'
+          title: Hard Exclude User Ids
         soft_seen_user_ids:
-          type: array
-          items:
-            type: integer
-            format: int64
-          maxItems: 20000
-      x-stoplight:
-        id: 5dl6vvy49ap5w
-    RecommendationContext:
-      type: object
+          anyOf:
+          - items:
+              anyOf:
+              - type: string
+              - type: integer
+            type: array
+            maxItems: 20000
+          - type: 'null'
+          title: Soft Seen User Ids
       additionalProperties: false
+      type: object
+      title: ExclusionSet
+    ExplanationChannel:
+      type: string
+      enum:
+      - feed
+      - match
+      - conversation
+      title: ExplanationChannel
+    ExplanationReason:
+      properties:
+        code:
+          "$ref": "#/components/schemas/ExplanationReasonCode"
+        template_key:
+          type: string
+          title: Template Key
+        strength:
+          "$ref": "#/components/schemas/Strength"
+        confidence:
+          anyOf:
+          - type: number
+            maximum: 1.0
+            minimum: 0.0
+          - type: 'null'
+          title: Confidence
+      additionalProperties: false
+      type: object
       required:
-        - request_ts
-        - client
-        - decision_policy
+      - code
+      - template_key
+      - strength
+      title: ExplanationReason
+    ExplanationReasonCode:
+      type: string
+      enum:
+      - lifestyle_similarity
+      - activity_overlap
+      - communication_style_fit
+      - meetup_rhythm_fit
+      - locality_fit
+      title: ExplanationReasonCode
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            "$ref": "#/components/schemas/ValidationError"
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HardFilters:
+      properties:
+        age_min:
+          anyOf:
+          - type: integer
+            maximum: 99.0
+            minimum: 18.0
+          - type: 'null'
+          title: Age Min
+        age_max:
+          anyOf:
+          - type: integer
+            maximum: 99.0
+            minimum: 18.0
+          - type: 'null'
+          title: Age Max
+        city_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: City Id
+        distance_km:
+          anyOf:
+          - type: integer
+            maximum: 300.0
+            minimum: 1.0
+          - type: 'null'
+          title: Distance Km
+        genders:
+          anyOf:
+          - items:
+              type: string
+            type: array
+            maxItems: 5
+          - type: 'null'
+          title: Genders
+      additionalProperties: false
+      type: object
+      title: HardFilters
+    HealthDecisionMode:
+      type: string
+      enum:
+      - model
+      - fallback_only
+      title: HealthDecisionMode
+    MatchOutcome:
+      type: string
+      enum:
+      - match_created
+      - first_message_sent
+      - mutual_conversation_started
+      - first_reply_within_24h
+      - conversation_closed
+      - block_after_match
+      - report_after_match
+      title: MatchOutcome
+    MatchOutcomeRequest:
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+          title: Trace Id
+        event_id:
+          type: string
+          format: uuid
+          title: Event Id
+        match_id:
+          type: string
+          format: uuid
+          title: Match Id
+        user_a_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: User A Id
+        user_b_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: User B Id
+        outcome:
+          "$ref": "#/components/schemas/MatchOutcome"
+        happened_at:
+          type: string
+          format: date-time
+          title: Happened At
+      additionalProperties: false
+      type: object
+      required:
+      - trace_id
+      - event_id
+      - match_id
+      - user_a_id
+      - user_b_id
+      - outcome
+      - happened_at
+      title: MatchOutcomeRequest
+    MlChecks:
+      properties:
+        ranker_loaded:
+          type: boolean
+          title: Ranker Loaded
+        explainer_loaded:
+          type: boolean
+          title: Explainer Loaded
+        feedback_ingest:
+          type: boolean
+          title: Feedback Ingest
+      additionalProperties: false
+      type: object
+      required:
+      - ranker_loaded
+      - explainer_loaded
+      - feedback_ingest
+      title: MlChecks
+    MlHealthResponse:
+      properties:
+        status:
+          "$ref": "#/components/schemas/MlStatus"
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+        decision_mode:
+          "$ref": "#/components/schemas/HealthDecisionMode"
+        model_version:
+          type: string
+          title: Model Version
+        features_version:
+          type: string
+          title: Features Version
+        checks:
+          "$ref": "#/components/schemas/MlChecks"
+        warnings:
+          items:
+            type: string
+          type: array
+          maxItems: 20
+          title: Warnings
+      additionalProperties: false
+      type: object
+      required:
+      - status
+      - timestamp
+      - decision_mode
+      - model_version
+      - features_version
+      - checks
+      title: MlHealthResponse
+    MlStatus:
+      type: string
+      enum:
+      - ok
+      - degraded
+      - down
+      title: MlStatus
+    PolicyFlag:
+      type: string
+      enum:
+      - cooldown_candidate
+      - low_profile_quality
+      - sparse_behavioral_data
+      title: PolicyFlag
+    PrivacyLevel:
+      type: string
+      enum:
+      - safe_aggregate
+      title: PrivacyLevel
+    RawTransaction:
+      properties:
+        transaction_id:
+          type: string
+          title: Transaction Id
+        merchant_nm:
+          type: string
+          title: Merchant Nm
+        merchant_type_code:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Merchant Type Code
+        category_nm:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category Nm
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+        amount:
+          type: number
+          minimum: 0.0
+          title: Amount
+          default: 0.0
+      additionalProperties: false
+      type: object
+      required:
+      - transaction_id
+      - merchant_nm
+      - merchant_type_code
+      - timestamp
+      title: RawTransaction
+    ReasonCode:
+      type: string
+      enum:
+      - lifestyle_similarity
+      - activity_overlap
+      - communication_style_fit
+      - meetup_rhythm_fit
+      - locality_fit
+      - novelty_boost
+      title: ReasonCode
+    ReasonSignal:
+      properties:
+        code:
+          "$ref": "#/components/schemas/ReasonCode"
+        strength:
+          "$ref": "#/components/schemas/Strength"
+        confidence:
+          anyOf:
+          - type: number
+            maximum: 1.0
+            minimum: 0.0
+          - type: 'null'
+          title: Confidence
+      additionalProperties: false
+      type: object
+      required:
+      - code
+      - strength
+      title: ReasonSignal
+    RecommendationCandidate:
+      properties:
+        candidate_user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Candidate User Id
+        score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Score
+        score_components:
+          anyOf:
+          - additionalProperties:
+              type: number
+            type: object
+          - type: 'null'
+          title: Score Components
+        reason_signals:
+          items:
+            "$ref": "#/components/schemas/ReasonSignal"
+          type: array
+          maxItems: 5
+          minItems: 1
+          title: Reason Signals
+        policy_flags:
+          items:
+            "$ref": "#/components/schemas/PolicyFlag"
+          type: array
+          maxItems: 10
+          title: Policy Flags
+      additionalProperties: false
+      type: object
+      required:
+      - candidate_user_id
+      - score
+      - reason_signals
+      title: RecommendationCandidate
+    RecommendationContext:
       properties:
         request_ts:
           type: string
           format: date-time
+          title: Request Ts
         session_id:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session Id
         locale:
-          type: string
-          example: ru-RU
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Locale
         timezone:
-          type: string
-          example: Europe/Moscow
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Timezone
         client:
-          type: string
-          enum:
-            - ios
-            - android
-            - web
+          "$ref": "#/components/schemas/ClientType"
         decision_policy:
-          type: string
-          enum:
-            - daily_batch
-      x-stoplight:
-        id: 6cwg5ddqy6wsm
-    RecommendationResponse:
-      type: object
+          "$ref": "#/components/schemas/DecisionPolicy"
       additionalProperties: false
+      type: object
       required:
-        - trace_id
-        - generated_at
-        - model_version
-        - features_version
-        - decision_mode
-        - warnings
-        - candidates
+      - request_ts
+      - client
+      - decision_policy
+      title: RecommendationContext
+    RecommendationDecisionMode:
+      type: string
+      enum:
+      - model
+      - fallback
+      title: RecommendationDecisionMode
+    RecommendationRequest:
       properties:
         trace_id:
           type: string
           format: uuid
+          title: Trace Id
+        request_user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: Request User Id
+        limit:
+          type: integer
+          maximum: 2000.0
+          minimum: 1.0
+          title: Limit
+          default: 12
+        strategy:
+          "$ref": "#/components/schemas/Strategy"
+          default: balanced
+        candidate_user_ids:
+          anyOf:
+          - items:
+              anyOf:
+              - type: string
+              - type: integer
+            type: array
+            maxItems: 5000
+          - type: 'null'
+          title: Candidate User Ids
+        hard_filters:
+          anyOf:
+          - "$ref": "#/components/schemas/HardFilters"
+          - type: 'null'
+        exclusion:
+          anyOf:
+          - "$ref": "#/components/schemas/ExclusionSet"
+          - type: 'null'
+        context:
+          "$ref": "#/components/schemas/RecommendationContext"
+      additionalProperties: false
+      type: object
+      required:
+      - trace_id
+      - request_user_id
+      - context
+      title: RecommendationRequest
+    RecommendationResponse:
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+          title: Trace Id
         generated_at:
           type: string
           format: date-time
+          title: Generated At
         model_version:
           type: string
+          title: Model Version
         features_version:
           type: string
+          title: Features Version
         decision_mode:
-          type: string
-          enum:
-            - model
-            - fallback
+          "$ref": "#/components/schemas/RecommendationDecisionMode"
         warnings:
-          type: array
           items:
             type: string
+          type: array
           maxItems: 20
+          title: Warnings
         candidates:
-          type: array
-          minItems: 0
-          maxItems: 50
           items:
-            $ref: '#/components/schemas/RecommendationCandidate'
-      x-stoplight:
-        id: 8laxvpgr83f0t
-    ReasonSignal:
-      type: object
+            "$ref": "#/components/schemas/RecommendationCandidate"
+          type: array
+          maxItems: 5000
+          title: Candidates
       additionalProperties: false
-      required:
-        - code
-        - strength
-      properties:
-        code:
-          type: string
-          enum:
-            - lifestyle_similarity
-            - activity_overlap
-            - communication_style_fit
-            - meetup_rhythm_fit
-            - locality_fit
-            - novelty_boost
-        strength:
-          type: string
-          enum:
-            - low
-            - medium
-            - high
-        confidence:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 1
-      x-stoplight:
-        id: 7yipipgz5cosn
-    RecommendationCandidate:
       type: object
-      additionalProperties: false
       required:
-        - candidate_user_id
-        - score
-        - reason_signals
-        - policy_flags
-      properties:
-        candidate_user_id:
-          type: integer
-          format: int64
-        score:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 1
-        score_components:
-          type: object
-          additionalProperties:
-            type: number
-            format: double
-        reason_signals:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReasonSignal'
-          minItems: 1
-          maxItems: 5
-        policy_flags:
-          type: array
-          items:
-            type: string
-            enum:
-              - cooldown_candidate
-              - low_profile_quality
-              - sparse_behavioral_data
-          maxItems: 10
-      x-stoplight:
-        id: wfcqs9dhzvnjf
+      - trace_id
+      - generated_at
+      - model_version
+      - features_version
+      - decision_mode
+      title: RecommendationResponse
+    Strategy:
+      type: string
+      enum:
+      - balanced
+      - high_precision
+      - exploration
+      title: Strategy
+    Strength:
+      type: string
+      enum:
+      - low
+      - medium
+      - high
+      title: Strength
+    SwipeAction:
+      type: string
+      enum:
+      - like
+      - pass
+      - hide
+      - block
+      - report
+      title: SwipeAction
     SwipeFeedbackRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - trace_id
-        - event_id
-        - actor_user_id
-        - target_user_id
-        - action
-        - acted_at
       properties:
         trace_id:
           type: string
           format: uuid
+          title: Trace Id
         event_id:
           type: string
           format: uuid
+          title: Event Id
         actor_user_id:
-          type: integer
-          format: int64
+          anyOf:
+          - type: string
+          - type: integer
+          title: Actor User Id
         target_user_id:
-          type: integer
-          format: int64
+          anyOf:
+          - type: string
+          - type: integer
+          title: Target User Id
         action:
-          type: string
-          enum:
-            - like
-            - pass
-            - hide
-            - block
-            - report
+          "$ref": "#/components/schemas/SwipeAction"
         shown_rank:
-          type: integer
-          minimum: 1
-          maximum: 100
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 1.0
+          - type: 'null'
+          title: Shown Rank
         shown_score:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 1
+          anyOf:
+          - type: number
+            maximum: 1.0
+            minimum: 0.0
+          - type: 'null'
+          title: Shown Score
         shown_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Shown At
         acted_at:
           type: string
           format: date-time
+          title: Acted At
         source_context:
-          type: string
-          enum:
-            - feed
-            - conversation
-            - match_list
-            - safety_sheet
+          "$ref": "#/components/schemas/SwipeSourceContext"
           default: feed
-      x-stoplight:
-        id: vn615hcgceiyk
-    MatchOutcomeRequest:
-      type: object
       additionalProperties: false
+      type: object
       required:
-        - trace_id
-        - event_id
-        - match_id
-        - user_a_id
-        - user_b_id
-        - outcome
-        - happened_at
+      - trace_id
+      - event_id
+      - actor_user_id
+      - target_user_id
+      - action
+      - acted_at
+      title: SwipeFeedbackRequest
+    SwipeSourceContext:
+      type: string
+      enum:
+      - feed
+      - conversation
+      - match_list
+      - safety_sheet
+      title: SwipeSourceContext
+    TransactionSyncRequest:
       properties:
         trace_id:
           type: string
           format: uuid
-        event_id:
-          type: string
-          format: uuid
-        match_id:
-          type: string
-          format: uuid
-        user_a_id:
-          type: integer
-          format: int64
-        user_b_id:
-          type: integer
-          format: int64
-        outcome:
-          type: string
-          enum:
-            - match_created
-            - first_message_sent
-            - mutual_conversation_started
-            - first_reply_within_24h
-            - conversation_closed
-            - block_after_match
-            - report_after_match
-        happened_at:
-          type: string
-          format: date-time
-      x-stoplight:
-        id: 646xyvhqs280h
-    CompatibilityExplanationRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - trace_id
-        - requester_user_id
-        - candidate_user_id
-      properties:
-        trace_id:
-          type: string
-          format: uuid
-        requester_user_id:
-          type: integer
-          format: int64
-        candidate_user_id:
-          type: integer
-          format: int64
-        channel:
-          type: string
-          enum:
-            - feed
-            - match
-            - conversation
-          default: feed
-        locale:
-          type: string
-          default: ru-RU
-        max_reasons:
-          type: integer
-          minimum: 1
-          maximum: 5
-          default: 3
-      x-stoplight:
-        id: fzu8q5we8x2ta
-    ExplanationReason:
-      type: object
-      additionalProperties: false
-      required:
-        - code
-        - template_key
-        - strength
-      properties:
-        code:
-          type: string
-          enum:
-            - lifestyle_similarity
-            - activity_overlap
-            - communication_style_fit
-            - meetup_rhythm_fit
-            - locality_fit
-        template_key:
-          type: string
-        strength:
-          type: string
-          enum:
-            - low
-            - medium
-            - high
-        confidence:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 1
-      x-stoplight:
-        id: f5myc7phy9tdt
-    CompatibilityExplanationResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - trace_id
-        - candidate_user_id
-        - privacy_level
-        - reasons
-        - privacy_checks
-      properties:
-        trace_id:
-          type: string
-          format: uuid
-        candidate_user_id:
-          type: integer
-          format: int64
-        privacy_level:
-          type: string
-          enum:
-            - safe_aggregate
-        reasons:
-          type: array
+          title: Trace Id
+        user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: User Id
+        transactions:
           items:
-            $ref: '#/components/schemas/ExplanationReason'
-          minItems: 1
-          maxItems: 5
-        privacy_checks:
+            "$ref": "#/components/schemas/RawTransaction"
           type: array
+          maxItems: 1000
+          minItems: 1
+          title: Transactions
+      additionalProperties: false
+      type: object
+      required:
+      - trace_id
+      - user_id
+      - transactions
+      title: TransactionSyncRequest
+    UserProfileUpdateRequest:
+      properties:
+        trace_id:
+          type: string
+          format: uuid
+          title: Trace Id
+        user_id:
+          anyOf:
+          - type: string
+          - type: integer
+          title: User Id
+        favorite_categories:
           items:
             type: string
-            enum:
-              - aggregate_only
-              - no_raw_merchants
-              - no_amounts
-              - no_raw_mcc_dump
-          maxItems: 10
-      x-stoplight:
-        id: b3kalksfk7ykq
-    AckResponse:
-      type: object
+          type: array
+          maxItems: 15
+          minItems: 1
+          title: Favorite Categories
+        import_transactions:
+          type: boolean
+          title: Import Transactions
+          description: Флаг согласия на импорт банковских транзакций
+          default: false
+        preferred_activity_hour:
+          anyOf:
+          - type: number
+            maximum: 23.0
+            minimum: 0.0
+          - type: 'null'
+          title: Preferred Activity Hour
       additionalProperties: false
-      required:
-        - status
-        - received_at
-      properties:
-        status:
-          type: string
-          enum:
-            - accepted
-        received_at:
-          type: string
-          format: date-time
-      x-stoplight:
-        id: p6hs34t1lswx3
-    ErrorResponse:
       type: object
-      additionalProperties: false
       required:
-        - error_code
-        - message
-        - trace_id
+      - trace_id
+      - user_id
+      - favorite_categories
+      title: UserProfileUpdateRequest
+    ValidationError:
       properties:
-        error_code:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
           type: string
-          example: invalid_request
-        message:
+          title: Message
+        type:
           type: string
-        details:
+          title: Error Type
+        input:
+          title: Input
+        ctx:
           type: object
-          additionalProperties: true
-        trace_id:
-          type: string
-          format: uuid
-      x-stoplight:
-        id: e8jl2t974jzw2
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    APIKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Service-Token
+tags:
+- name: health
+  description: Состояние ML-компонента и деградации
+- name: recommendations
+  description: Ранжирование кандидатов
+- name: feedback
+  description: Feedback-события для обучения и аналитики
+- name: explanations
+  description: Безопасные объяснения в виде reason codes

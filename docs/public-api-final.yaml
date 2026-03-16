@@ -1,429 +1,400 @@
+---
 openapi: 3.1.0
 info:
-  title: T-Match Public API (Frontend <-> Backend)
-  version: 2.0.0
-  summary: Финальный MVP-контракт публичного API дейтинг-сервиса.
-  description: 'Контракт покрывает MVP-критический путь кейса: mock T-ID login, профиль, обязательная одна primary photo для открытия реальной выдачи, optional onboarding quiz, персональная выдача, explanation, reactions, match, чат, icebreakers, safety, audit.
-
-
-    Правила:
-
-    1. Feed открывается только когда есть минимальный профиль и одобренная avatar photo.
-
-    2. Onboarding quiz опционален и влияет на качество рекомендаций, но не заменяет обязательную готовность профиля.
-
-    3. Frontend не общается с ML напрямую.
-
-    4. Все first-run состояния возвращаются как нормальные UI-state, а не как transport errors.'
-servers:
-- url: https://api.t-match.local
-  description: Main backend
-security:
-- bearerAuth: []
-tags:
-- name: system
-  description: Диагностика и служебные endpoints
-- name: auth
-  description: Авторизация и mock T-ID
-- name: profile
-  description: Профиль, avatar и персональные инсайты
-- name: onboarding
-  description: Optional onboarding quiz и готовность профиля
-- name: feed
-  description: Выдача, explanation и реакции
-- name: matches
-  description: Список мэтчей и завершение контакта
-- name: conversations
-  description: Чат и icebreakers
-- name: safety
-  description: Блокировки и жалобы
-- name: audit
-  description: Внутреннее чтение аудита для демо и защиты
-- name: admin
-  description: Служебные endpoints шаблона
+  title: Backend Template
+  version: 0.1.0
 paths:
-  /api/health:
-    get:
-      tags:
-      - system
-      summary: Сводный health-check backend
-      operationId: getHealth
-      security: []
-      responses:
-        '200':
-          description: Backend healthy/degraded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BackendHealthResponse'
-        '503':
-          description: Critical degradation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/ping:
-    get:
-      tags:
-      - system
-      summary: Liveness probe
-      operationId: getPing
-      security: []
-      responses:
-        '200':
-          description: Alive
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
-  /api/ready:
-    get:
-      tags:
-      - system
-      summary: Readiness probe
-      operationId: getReady
-      security: []
-      responses:
-        '200':
-          description: Ready
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReadyResponse'
-        '503':
-          description: Not ready
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/auth/register:
+  "/api/v1/auth/register":
     post:
       tags:
-      - auth
-      summary: Dev-only регистрация пользователя
-      operationId: registerUser
-      security: []
+      - Auth
+      summary: Register User
+      operationId: register_user_api_v1_auth_register_post
+      parameters:
+      - name: X-Client
+        in: header
+        required: false
+        schema:
+          enum:
+          - web
+          - mobile
+          type: string
+          default: web
+          title: X-Client
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserRegister'
+              "$ref": "#/components/schemas/UserRegister"
       responses:
         '201':
-          description: Created
+          description: refresh_token field varies depending on the source of request.
+            For web it is always null and being set as httponly cookie, however any
+            other platform gets access and refresh tokens in response body. It is
+            made to protect web from xss and csrf attacks
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenPairWithUser'
-        '422':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/auth/login:
-    post:
-      tags:
-      - auth
-      summary: Dev-only логин
-      operationId: loginUser
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserLogin'
-      responses:
-        '200':
-          description: Logged in
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenPairWithUser'
+                "$ref": "#/components/schemas/TokenPair"
         '401':
           description: Unauthorized
+        '403':
+          description: Forbidden
+        '429':
+          description: Too Many Requests
+        '409':
+          description: User with provided credentials already exists
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/auth/demo-login:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/auth/login":
     post:
       tags:
-      - auth
-      summary: Mock T-ID login для демо
-      operationId: demoLogin
-      security: []
+      - Auth
+      summary: Authenticate user and issue tokens
+      operationId: login_user_api_v1_auth_login_post
+      parameters:
+      - name: X-Client
+        in: header
+        required: false
+        schema:
+          enum:
+          - web
+          - mobile
+          type: string
+          default: web
+          title: X-Client
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DemoLoginRequest'
+              "$ref": "#/components/schemas/UserLogin"
       responses:
         '200':
-          description: Mock user selected
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenPairWithUser'
-        '404':
-          description: Demo user not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/auth/logout:
-    post:
-      tags:
-      - auth
-      summary: Завершить текущую сессию
-      operationId: logout
-      responses:
-        '204':
-          description: Logged out
-  /api/v1/auth/refresh:
-    post:
-      tags:
-      - auth
-      summary: Обновить access token
-      operationId: refreshToken
-      requestBody:
-        required: false
-      responses:
-        '200':
-          description: Refreshed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenPair'
+                "$ref": "#/components/schemas/TokenPair"
         '401':
-          description: Invalid refresh token
+          description: Wrong credentials
+        '403':
+          description: Forbidden
+        '429':
+          description: Too Many Requests
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/users/me:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/auth/logout":
+    post:
+      tags:
+      - Auth
+      summary: Logout
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Logout Api V1 Auth Logout Post
+        '401':
+          description: Not authorized
+        '403':
+          description: Forbidden
+        '429':
+          description: Too Many Requests
+      security:
+      - HTTPBearer: []
+  "/api/v1/auth/refresh":
+    post:
+      tags:
+      - Auth
+      summary: Rotate tokens
+      operationId: refresh_tokens_api_v1_auth_refresh_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Must only be passed for requests from browsers
+          title: X-Csrf-Token
+        description: Must only be passed for requests from browsers
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/TokenPair"
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '429':
+          description: Too Many Requests
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/users/me":
     get:
       tags:
-      - profile
-      summary: Получить текущего пользователя и все клиентские статусы
-      operationId: getCurrentUser
+      - Users
+      summary: Get user account info
+      operationId: profile_api_v1_users_me_get
       responses:
         '200':
-          description: Current user
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserModel'
+                "$ref": "#/components/schemas/UserModel"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
     patch:
       tags:
-      - profile
-      summary: Обновить профиль и поисковые предпочтения
-      operationId: patchCurrentUser
+      - Users
+      summary: Update user info
+      operationId: update_profile_api_v1_users_me_patch
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserPatch'
+              "$ref": "#/components/schemas/UserPatch"
+        required: true
       responses:
         '200':
-          description: Updated
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserModel'
+                "$ref": "#/components/schemas/UserModel"
+        '401':
+          description: Not authorized
         '422':
-          description: Validation error
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/users/me/avatar/presign:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/users/me/avatar/presign":
     post:
       tags:
-      - profile
-      summary: Получить presigned URL для единственной avatar photo
-      operationId: presignAvatarUpload
+      - Users
+      summary: Create presigned URL for avatar upload
+      operationId: create_avatar_presigned_upload_api_v1_users_me_avatar_presign_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AvatarPresignRequest'
+              "$ref": "#/components/schemas/AvatarPresignRequest"
+        required: true
       responses:
         '200':
-          description: Presigned URL
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AvatarPresignResponse'
-  /api/v1/users/me/avatar/confirm:
+                "$ref": "#/components/schemas/AvatarPresignResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/users/me/avatar/confirm":
     post:
       tags:
-      - profile
-      summary: Подтвердить загрузку avatar photo и запустить модерацию
-      operationId: confirmAvatarUpload
+      - Users
+      summary: Confirm uploaded avatar and attach it to profile
+      operationId: confirm_avatar_upload_api_v1_users_me_avatar_confirm_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AvatarConfirmRequest'
+              "$ref": "#/components/schemas/AvatarConfirmRequest"
+        required: true
       responses:
         '200':
-          description: Avatar accepted for moderation
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AvatarResponse'
+                "$ref": "#/components/schemas/UserModel"
+        '401':
+          description: Not authorized
         '422':
-          description: Invalid file key
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/users/me/avatar:
-    get:
-      tags:
-      - profile
-      summary: Получить текущую avatar photo
-      operationId: getMyAvatar
-      responses:
-        '200':
-          description: Avatar metadata
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AvatarResponse'
-        '404':
-          description: Avatar missing
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/users/me/avatar":
     delete:
       tags:
-      - profile
-      summary: Удалить текущую avatar photo
-      operationId: deleteMyAvatar
-      responses:
-        '204':
-          description: Deleted
-  /api/v1/users/me/insights:
-    get:
-      tags:
-      - profile
-      summary: Получить lifestyle insights для экрана профиля
-      operationId: getMyInsights
+      - Users
+      summary: Remove current user avatar
+      operationId: delete_avatar_api_v1_users_me_avatar_delete
       responses:
         '200':
-          description: Insights
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserInsightsResponse'
-  /api/v1/onboarding/state:
+                "$ref": "#/components/schemas/UserModel"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/onboarding/config":
     get:
       tags:
-      - onboarding
-      summary: Получить состояние optional quiz и обязательной готовности профиля
-      operationId: getOnboardingState
+      - Onboarding
+      summary: Get onboarding filter config
+      operationId: get_onboarding_config_api_v1_onboarding_config_get
       responses:
         '200':
-          description: Onboarding state
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OnboardingStateResponse'
-  /api/v1/onboarding/config:
+                "$ref": "#/components/schemas/OnboardingConfigResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/onboarding/state":
     get:
       tags:
-      - onboarding
-      summary: Конфигурация шагов onboarding quiz
-      operationId: getOnboardingConfig
+      - Onboarding
+      summary: Get current onboarding progress state
+      operationId: get_onboarding_state_api_v1_onboarding_state_get
       responses:
         '200':
-          description: Config
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OnboardingConfigResponse'
-  /api/v1/onboarding/answers:
+                "$ref": "#/components/schemas/OnboardingStateResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/onboarding/answers":
     post:
       tags:
-      - onboarding
-      summary: Сохранить ответы на шаг onboarding quiz
-      operationId: submitOnboardingAnswers
+      - Onboarding
+      summary: Save onboarding filter answers
+      operationId: post_onboarding_answers_api_v1_onboarding_answers_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OnboardingAnswersRequest'
+              "$ref": "#/components/schemas/OnboardingAnswersRequest"
+        required: true
       responses:
         '200':
-          description: Saved
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OnboardingAnswersResponse'
-  /api/v1/onboarding/skip:
+                "$ref": "#/components/schemas/OnboardingAnswersResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/onboarding/skip":
     post:
       tags:
-      - onboarding
-      summary: Пропустить optional quiz
-      operationId: skipOnboardingQuiz
+      - Onboarding
+      summary: Skip onboarding for now
+      operationId: post_onboarding_skip_api_v1_onboarding_skip_post
       responses:
         '200':
-          description: Skipped
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OnboardingStateResponse'
-  /api/v1/onboarding/resume:
-    post:
-      tags:
-      - onboarding
-      summary: Вернуться к optional quiz после skip
-      operationId: resumeOnboardingQuiz
-      responses:
-        '200':
-          description: Resumed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OnboardingStateResponse'
-  /api/v1/feed:
+                "$ref": "#/components/schemas/OnboardingStateResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/feed":
     get:
       tags:
-      - feed
-      summary: Получить текущую персональную выдачу либо нормальный locked/degraded UI-state
-      operationId: getFeed
+      - Feed
+      summary: Get daily personalized feed
+      operationId: get_feed_api_v1_feed_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: limit
         in: query
         required: false
         schema:
           type: integer
+          maximum: 20
           minimum: 1
-          maximum: 50
           default: 12
+          title: Limit
       responses:
         '200':
-          description: Feed state
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FeedResponse'
-  /api/v1/feed/items/{serve_item_id}/explanation:
+                "$ref": "#/components/schemas/FeedResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/feed/items/{serve_item_id}/explanation":
     get:
       tags:
-      - feed
-      summary: Получить безопасное explanation по конкретной карточке
-      operationId: getFeedItemExplanation
+      - Feed
+      summary: Get safe compatibility explanation for served card
+      operationId: get_feed_item_explanation_api_v1_feed_items__serve_item_id__explanation_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: serve_item_id
         in: path
@@ -431,25 +402,30 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Serve Item Id
       responses:
         '200':
-          description: Explanation
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CompatibilityExplanationResponse'
-        '404':
-          description: Card not found
+                "$ref": "#/components/schemas/CompatibilityExplanationResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/feed/items/{serve_item_id}/reaction:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/feed/items/{serve_item_id}/reaction":
     post:
       tags:
-      - feed
-      summary: Поставить реакцию по карточке
-      operationId: postFeedReaction
+      - Feed
+      summary: Submit reaction to card
+      operationId: post_feed_reaction_api_v1_feed_items__serve_item_id__reaction_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: serve_item_id
         in: path
@@ -457,44 +433,84 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Serve Item Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FeedReactionRequest'
+              "$ref": "#/components/schemas/FeedReactionRequest"
       responses:
         '200':
-          description: Reaction stored
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FeedReactionResponse'
-        '409':
-          description: Invalid pair state transition
+                "$ref": "#/components/schemas/FeedReactionResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/matches:
-    get:
-      tags:
-      - matches
-      summary: Получить список активных и недавно закрытых мэтчей
-      operationId: getMatches
-      responses:
-        '200':
-          description: Matches
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MatchListResponse'
-  /api/v1/matches/{match_id}/close:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/feed/items/{serve_item_id}/test-match":
     post:
       tags:
-      - matches
-      summary: Закрыть контакт без блока
-      operationId: closeMatch
+      - Feed
+      summary: Prepare reciprocal like for current card (testing)
+      operationId: post_feed_test_match_api_v1_feed_items__serve_item_id__test_match_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: serve_item_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Serve Item Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FeedTestMatchResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/matches":
+    get:
+      tags:
+      - Matches
+      summary: Get current user's matches
+      operationId: get_matches_api_v1_matches_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MatchListResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/matches/{match_id}/close":
+    post:
+      tags:
+      - Matches
+      summary: Close match without blocking
+      operationId: close_match_api_v1_matches__match_id__close_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: match_id
         in: path
@@ -502,31 +518,36 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Match Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CloseMatchRequest'
+              "$ref": "#/components/schemas/CloseMatchRequest"
       responses:
         '200':
-          description: Closed
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CloseMatchResponse'
-        '409':
-          description: Already closed
+                "$ref": "#/components/schemas/CloseMatchResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/conversations/{conversation_id}:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/conversations/{conversation_id}":
     get:
       tags:
-      - conversations
-      summary: Получить conversation header и состояние чата
-      operationId: getConversation
+      - Conversations
+      summary: Get conversation metadata
+      operationId: get_conversation_api_v1_conversations__conversation_id__get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: conversation_id
         in: path
@@ -534,19 +555,30 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Conversation Id
       responses:
         '200':
-          description: Conversation
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConversationResponse'
-  /api/v1/conversations/{conversation_id}/messages:
+                "$ref": "#/components/schemas/ConversationResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/conversations/{conversation_id}/messages":
     get:
       tags:
-      - conversations
-      summary: Получить сообщения в чате
-      operationId: getConversationMessages
+      - Conversations
+      summary: Get conversation messages
+      operationId: get_conversation_messages_api_v1_conversations__conversation_id__messages_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: conversation_id
         in: path
@@ -554,31 +586,46 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Conversation Id
       - name: cursor
         in: query
         required: false
         schema:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cursor
       - name: limit
         in: query
         required: false
         schema:
           type: integer
-          minimum: 1
           maximum: 100
+          minimum: 1
           default: 50
+          title: Limit
       responses:
         '200':
-          description: Messages page
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConversationMessagesResponse'
+                "$ref": "#/components/schemas/ConversationMessagesResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
     post:
       tags:
-      - conversations
-      summary: Отправить сообщение
-      operationId: sendConversationMessage
+      - Conversations
+      summary: Send message to conversation
+      operationId: post_conversation_message_api_v1_conversations__conversation_id__messages_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: conversation_id
         in: path
@@ -586,31 +633,36 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Conversation Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SendMessageRequest'
+              "$ref": "#/components/schemas/SendMessageRequest"
       responses:
         '201':
-          description: Sent
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '409':
-          description: Conversation closed
+                "$ref": "#/components/schemas/MessageResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/conversations/{conversation_id}/icebreakers:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/conversations/{conversation_id}/icebreakers":
     get:
       tags:
-      - conversations
-      summary: Получить AI/templated icebreakers для старта общения
-      operationId: getConversationIcebreakers
+      - Conversations
+      summary: Get templated conversation icebreakers
+      operationId: get_conversation_icebreakers_api_v1_conversations__conversation_id__icebreakers_get
+      security:
+      - HTTPBearer: []
       parameters:
       - name: conversation_id
         in: path
@@ -618,19 +670,30 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Conversation Id
       responses:
         '200':
-          description: Icebreakers
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/IcebreakersResponse'
-  /api/v1/conversations/{conversation_id}/icebreakers/{icebreaker_id}/send:
+                "$ref": "#/components/schemas/IcebreakersResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/conversations/{conversation_id}/icebreakers/{icebreaker_id}/send":
     post:
       tags:
-      - conversations
-      summary: Отправить выбранный icebreaker как сообщение
-      operationId: sendIcebreaker
+      - Conversations
+      summary: Send selected icebreaker as a message
+      operationId: send_conversation_icebreaker_api_v1_conversations__conversation_id__icebreakers__icebreaker_id__send_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: conversation_id
         in: path
@@ -638,139 +701,380 @@ paths:
         schema:
           type: string
           format: uuid
+          title: Conversation Id
       - name: icebreaker_id
         in: path
         required: true
         schema:
           type: string
+          title: Icebreaker Id
       responses:
         '201':
-          description: Icebreaker sent
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-  /api/v1/blocks:
-    post:
-      tags:
-      - safety
-      summary: Заблокировать пользователя и закрыть активный контакт
-      operationId: createBlock
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BlockRequest'
-      responses:
-        '200':
-          description: Blocked
+                "$ref": "#/components/schemas/MessageResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BlockResponse'
-  /api/v1/reports:
-    post:
-      tags:
-      - safety
-      summary: Создать жалобу; можно одновременно заблокировать
-      operationId: createReport
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReportRequest'
-      responses:
-        '200':
-          description: Reported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ReportResponse'
-  /api/v1/audit/events:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/conversations/{conversation_id}/realtime-token":
     get:
       tags:
-      - audit
-      summary: Внутреннее чтение audit событий для демо/защиты
-      operationId: getAuditEvents
+      - Conversations
+      summary: Get Centrifugo subscription token for conversation realtime channel
+      operationId: get_conversation_realtime_token_api_v1_conversations__conversation_id__realtime_token_get
+      security:
+      - HTTPBearer: []
       parameters:
-      - name: entity_type
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Conversation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RealtimeSubscriptionResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/matches":
+    get:
+      tags:
+      - Notifications
+      summary: List match notifications for current user
+      operationId: get_match_notifications_api_v1_notifications_matches_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: unseen_only
         in: query
         required: false
         schema:
-          type: string
-      - name: entity_id
-        in: query
-        required: false
-        schema:
-          type: string
+          type: boolean
+          default: false
+          title: Unseen Only
       - name: limit
         in: query
         required: false
         schema:
           type: integer
-          default: 50
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
       responses:
         '200':
-          description: Audit page
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditEventsResponse'
-      x-internal: true
-  /api/v1/languages:
-    get:
+                "$ref": "#/components/schemas/MatchNotificationsResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/matches/{notification_id}/seen":
+    post:
       tags:
-      - admin
-      summary: Список доступных языков интерфейса
-      operationId: getLanguages
+      - Notifications
+      summary: Mark match notification as seen
+      operationId: mark_match_notification_seen_api_v1_notifications_matches__notification_id__seen_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
       responses:
         '200':
-          description: Languages
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MarkNotificationSeenResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/realtime/connection-token":
+    get:
+      tags:
+      - Realtime
+      summary: Get Centrifugo connection token for personal realtime channel
+      operationId: get_realtime_connection_token_api_v1_realtime_connection_token_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RealtimeConnectionResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/blocks":
+    post:
+      tags:
+      - Safety
+      summary: Block a user
+      operationId: post_block_api_v1_blocks_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/BlockRequest"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BlockResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/reports":
+    post:
+      tags:
+      - Safety
+      summary: Report a user
+      operationId: post_report_api_v1_reports_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/ReportRequest"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ReportResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
+  "/api/v1/audit/events":
+    get:
+      tags:
+      - Audit
+      summary: Read audit events by entity
+      operationId: get_audit_events_api_v1_audit_events_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: entity_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Entity Type
+      - name: entity_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+          title: Entity Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 50
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AuditEventsResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/languages":
+    get:
+      tags:
+      - Languages
+      summary: List languages with search
+      operationId: list_languages_api_v1_languages_get
+      parameters:
+      - name: query
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 50
+          default: ''
+          title: Query
+      - name: limit
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 50
+            minimum: 1
+          - type: 'null'
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/LanguageModel'
-  /api/v1/admins/users/:
-    get:
-      tags:
-      - admin
-      summary: Служебный список пользователей
-      operationId: getAdminUsers
-      responses:
-        '200':
-          description: Users page
+                  "$ref": "#/components/schemas/LanguageModel"
+                title: Response List Languages Api V1 Languages Get
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CursorPage_UserModel_'
-      x-internal: true
-  /api/v1/admins/users/{user_id}/ban:
-    post:
-      tags:
-      - admin
-      summary: Забанить пользователя в служебном режиме
-      operationId: banAdminUser
-      parameters:
-      - name: user_id
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/ml-status":
+    get:
+      summary: Check backend connectivity to ML service
+      operationId: get_ml_status_api_v1_ml_status_get
       responses:
-        '204':
-          description: User banned
-      x-internal: true
-  /api/v1/admins/users/{user_id}/roles:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MlConnectionStatusModel"
+  "/api/v1/admins/users/":
+    get:
+      tags:
+      - Admins
+      summary: List users with filters and search (cursor pagination)
+      operationId: list_users_api_v1_admins_users__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: banned
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          description: Filter by banned status
+          title: Banned
+        description: Filter by banned status
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Search by name or email
+          title: Search
+        description: Search by name or email
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Page size
+          default: 50
+          title: Limit
+        description: Page size
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Opaque cursor
+          title: Cursor
+        description: Opaque cursor
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/CursorPage_UserModel_"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/admins/users/{user_id}/ban":
     post:
       tags:
-      - admin
-      summary: Обновить роли пользователя
-      operationId: updateAdminUserRoles
+      - Admins
+      summary: Ban or unban a user
+      operationId: set_ban_api_v1_admins_users__user_id__ban_post
+      security:
+      - HTTPBearer: []
       parameters:
       - name: user_id
         in: path
@@ -778,923 +1082,597 @@ paths:
         schema:
           type: string
           format: uuid
+          title: User Id
+      - name: banned
+        in: query
+        required: false
+        schema:
+          type: boolean
+          description: Set to false to remove ban
+          default: true
+          title: Banned
+        description: Set to false to remove ban
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/UserModel"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/admins/users/{user_id}/roles":
+    put:
+      tags:
+      - Admins
+      summary: Assign roles to user
+      operationId: set_roles_api_v1_admins_users__user_id__roles_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: User Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserRolesUpdate'
+              "$ref": "#/components/schemas/UserRolesUpdate"
       responses:
         '200':
-          description: Roles updated
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserModel'
-      x-internal: true
-  /api/v1/admins/stats/summary:
+                "$ref": "#/components/schemas/UserModel"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/admins/stats/summary":
     get:
       tags:
-      - admin
-      summary: Служебная сводка по продуктовым метрикам
-      operationId: getAdminStatsSummary
+      - Admins
+      summary: Get users summary counters
+      operationId: users_summary_api_v1_admins_stats_summary_get
       responses:
         '200':
-          description: Summary
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserStatsSummary'
-      x-internal: true
-  /api/v1/admins/stats/registrations:
+                "$ref": "#/components/schemas/UserStatsSummary"
+      security:
+      - HTTPBearer: []
+  "/api/v1/admins/stats/registrations":
     get:
       tags:
-      - admin
-      summary: Служебный график регистраций/активаций
-      operationId: getAdminStatsRegistrations
-      responses:
-        '200':
-          description: Graph
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegistrationsGraph'
-      x-internal: true
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-  schemas:
-    ValidationError:
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      properties:
-        loc:
-          type: array
-          items:
-            oneOf:
-            - type: string
-            - type: integer
-        msg:
-          type: string
-        type:
-          type: string
-    HTTPValidationError:
-      type: object
-      properties:
-        detail:
-          type: array
-          items:
-            $ref: '#/components/schemas/ValidationError'
-    ErrorResponse:
-      type: object
-      required:
-      - error_code
-      - message
-      - trace_id
-      properties:
-        error_code:
-          type: string
-        message:
-          type: string
-        trace_id:
-          type: string
-          format: uuid
-        details:
-          type: object
-          additionalProperties: true
-    QuizStatus:
-      type: string
-      enum:
-      - not_started
-      - in_progress
-      - skipped
-      - completed
-    ProfileStatus:
-      type: string
-      enum:
-      - draft
-      - required_fields_missing
-      - avatar_required
-      - avatar_pending
-      - ready
-      - blocked
-    RecommendationMode:
-      type: string
-      enum:
-      - cold_start
-      - behavioral
-      - hybrid
-    FeedState:
-      type: string
-      enum:
-      - locked
-      - ready
-      - exhausted
-      - degraded
-    DecisionMode:
-      type: string
-      enum:
-      - model
-      - fallback
-    AvatarModerationStatus:
-      type: string
-      enum:
-      - missing
-      - pending
-      - approved
-      - rejected
-    Gender:
-      type: string
-      enum:
-      - male
-      - female
-      - non_binary
-      - unknown
-    Goal:
-      type: string
-      enum:
-      - serious_relationship
-      - new_friends
-      - casual_dates
-    FeedAction:
-      type: string
-      enum:
-      - like
-      - pass
-      - hide
-    SafetySourceContext:
-      type: string
-      enum:
-      - feed
-      - match_list
-      - conversation
-      - profile
-    MessageStatus:
-      type: string
-      enum:
-      - sent
-      - delivered
-      - read
-    ConversationStatus:
-      type: string
-      enum:
-      - active
-      - closed_by_user
-      - closed_by_block
-      - closed_by_report
-    MatchStatus:
-      type: string
-      enum:
-      - active
-      - closed
-      - blocked
-    InsightStrength:
-      type: string
-      enum:
-      - low
-      - medium
-      - high
-    TokenPair:
-      type: object
-      required:
-      - access_token
-      - refresh_token
-      - token_type
-      - expires_in
-      properties:
-        access_token:
-          type: string
-        refresh_token:
-          type: string
-        token_type:
-          type: string
-          default: bearer
-        expires_in:
+      - Admins
+      summary: Get graph data for new registrations by days
+      operationId: registrations_api_v1_admins_stats_registrations_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
           type: integer
-    UserLogin:
-      type: object
-      required:
-      - email
-      - password
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-    UserRegister:
-      type: object
-      required:
-      - email
-      - password
-      - display_name
-      properties:
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-        display_name:
-          type: string
-          maxLength: 80
-    DemoLoginRequest:
-      type: object
-      required:
-      - demo_user_id
-      properties:
-        demo_user_id:
-          type: string
-          description: ID заранее подготовленного mock-пользователя
+          description: Number of days back to retrieve data for
+          default: 30
+          title: Days
+        description: Number of days back to retrieve data for
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/RegistrationsGraph"
+                title: Response Registrations Api V1 Admins Stats Registrations Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/admins/stats/funnel/summary":
+    get:
+      tags:
+      - Admins
+      summary: Get product funnel summary counters with segmentation
+      operationId: funnel_summary_api_v1_admins_stats_funnel_summary_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FunnelSummary"
+      security:
+      - HTTPBearer: []
+  "/api/v1/admins/stats/funnel/daily":
+    get:
+      tags:
+      - Admins
+      summary: Get product funnel daily counters with segmentation
+      operationId: funnel_daily_api_v1_admins_stats_funnel_daily_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 1
+          description: Number of days back to retrieve daily funnel rows for
+          default: 30
+          title: Days
+        description: Number of days back to retrieve daily funnel rows for
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/FunnelDailyRow"
+                title: Response Funnel Daily Api V1 Admins Stats Funnel Daily Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/ping":
+    get:
+      summary: Ping
+      operationId: ping_api_ping_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  "/api/health":
+    get:
+      summary: Health
+      operationId: health_api_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  "/api/ready":
+    get:
+      summary: Readiness
+      operationId: readiness_api_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
     AgeRange:
+      properties:
+        min:
+          type: integer
+          maximum: 99.0
+          minimum: 18.0
+          title: Min
+        max:
+          type: integer
+          maximum: 99.0
+          minimum: 18.0
+          title: Max
       type: object
       required:
       - min
       - max
+      title: AgeRange
+    AuditEntityType:
+      type: string
+      enum:
+      - user
+      - feed_item
+      - pair
+      - match
+      - conversation
+      - block
+      - report
+      - quiz
+      title: AuditEntityType
+    AuditEvent:
       properties:
-        min:
-          type: integer
-          minimum: 18
-          maximum: 99
-        max:
-          type: integer
-          minimum: 18
-          maximum: 99
-    SearchPreferences:
-      type: object
-      properties:
-        looking_for_genders:
-          type: array
-          items:
-            $ref: '#/components/schemas/Gender'
-        age_range:
-          $ref: '#/components/schemas/AgeRange'
-        distance_km:
-          type: integer
-          minimum: 1
-          maximum: 300
-        goal:
-          $ref: '#/components/schemas/Goal'
-    LifestyleTag:
-      type: object
-      required:
-      - code
-      - label
-      - strength
-      properties:
-        code:
-          type: string
-        label:
-          type: string
-        strength:
-          $ref: '#/components/schemas/InsightStrength'
-    AvatarResponse:
-      type: object
-      required:
-      - status
-      properties:
-        avatar_url:
-          type:
-          - string
-          - 'null'
-          format: uri
-        status:
-          $ref: '#/components/schemas/AvatarModerationStatus'
-        uploaded_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        moderation_reason:
-          type:
-          - string
-          - 'null'
-    UserModel:
-      type: object
-      required:
-      - id
-      - display_name
-      - quiz_status
-      - profile_status
-      - recommendation_mode
-      - avatar
-      properties:
-        id:
+        event_id:
           type: string
           format: uuid
-        email:
-          type:
-          - string
-          - 'null'
-          format: email
-        display_name:
+          title: Event Id
+        event_type:
           type: string
-        birth_date:
-          type:
-          - string
-          - 'null'
-          format: date
-        age:
-          type:
-          - integer
-          - 'null'
-        city:
-          type:
-          - string
-          - 'null'
-        gender:
-          oneOf:
-          - $ref: '#/components/schemas/Gender'
+          title: Event Type
+        entity_type:
+          "$ref": "#/components/schemas/AuditEntityType"
+        entity_id:
+          type: string
+          title: Entity Id
+        actor_user_id:
+          anyOf:
+          - type: string
+            format: uuid
           - type: 'null'
-        bio:
-          type:
-          - string
-          - 'null'
-          maxLength: 500
-        quiz_status:
-          $ref: '#/components/schemas/QuizStatus'
-        profile_status:
-          $ref: '#/components/schemas/ProfileStatus'
-        recommendation_mode:
-          $ref: '#/components/schemas/RecommendationMode'
-        search_preferences:
-          $ref: '#/components/schemas/SearchPreferences'
-        avatar:
-          $ref: '#/components/schemas/AvatarResponse'
-        lifestyle_tags:
-          type: array
-          items:
-            $ref: '#/components/schemas/LifestyleTag'
-        profile_completion_percent:
-          type: integer
-          minimum: 0
-          maximum: 100
-        can_open_feed:
-          type: boolean
-    UserPatch:
-      type: object
-      properties:
-        display_name:
+          title: Actor User Id
+        created_at:
           type: string
-          maxLength: 80
-        birth_date:
-          type: string
-          format: date
-        city:
-          type: string
-        gender:
-          $ref: '#/components/schemas/Gender'
-        bio:
-          type: string
-          maxLength: 500
-        search_preferences:
-          $ref: '#/components/schemas/SearchPreferences'
-    TokenPairWithUser:
-      allOf:
-      - $ref: '#/components/schemas/TokenPair'
-      - type: object
-        required:
-        - user
-        properties:
-          user:
-            $ref: '#/components/schemas/UserModel'
-    AvatarPresignRequest:
+          format: date-time
+          title: Created At
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
       type: object
       required:
-      - filename
-      - content_type
+      - event_id
+      - event_type
+      - entity_type
+      - entity_id
+      - created_at
+      - payload
+      title: AuditEvent
+    AuditEventsResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/AuditEvent"
+          type: array
+          title: Items
+      type: object
+      title: AuditEventsResponse
+    AvatarConfirmRequest:
+      properties:
+        object_key:
+          type: string
+          maxLength: 1024
+          minLength: 1
+          title: Object Key
+      type: object
+      required:
+      - object_key
+      title: AvatarConfirmRequest
+    AvatarPresignRequest:
       properties:
         filename:
           type: string
+          maxLength: 255
+          minLength: 1
+          title: Filename
         content_type:
           type: string
           enum:
           - image/jpeg
           - image/png
           - image/webp
-    AvatarPresignResponse:
+          title: Content Type
       type: object
       required:
-      - upload_url
-      - file_key
-      - expires_at
+      - filename
+      - content_type
+      title: AvatarPresignRequest
+    AvatarPresignResponse:
       properties:
+        object_key:
+          type: string
+          minLength: 1
+          title: Object Key
         upload_url:
           type: string
-          format: uri
-        file_key:
+          minLength: 1
+          title: Upload Url
+        public_url:
           type: string
-        expires_at:
-          type: string
-          format: date-time
-        max_size_mb:
+          minLength: 1
+          title: Public Url
+        expires_in:
           type: integer
-          default: 10
-    AvatarConfirmRequest:
+          exclusiveMinimum: 0.0
+          title: Expires In
       type: object
       required:
-      - file_key
+      - object_key
+      - upload_url
+      - public_url
+      - expires_in
+      title: AvatarPresignResponse
+    BlockReasonCode:
+      type: string
+      enum:
+      - unwanted_contact
+      - harassment
+      - spam
+      - other
+      title: BlockReasonCode
+    BlockRequest:
       properties:
-        file_key:
-          type: string
-    OnboardingStep:
-      type: object
-      required:
-      - step_key
-      - title
-      - step_type
-      - required_for_feed
-      properties:
-        step_key:
-          type: string
-        title:
-          type: string
-        description:
-          type: string
-        step_type:
-          type: string
-          enum:
-          - single_select
-          - multi_select
-          - range
-        required_for_feed:
-          type: boolean
-        options:
-          type: array
-          items:
-            type: object
-            required:
-            - value
-            - label
-            properties:
-              value:
-                type: string
-              label:
-                type: string
-              weight:
-                type:
-                - number
-                - 'null'
-    NextAction:
-      type: object
-      required:
-      - type
-      - title
-      properties:
-        type:
-          type: string
-          enum:
-          - upload_avatar
-          - complete_required_fields
-          - start_quiz
-          - resume_quiz
-          - open_feed
-          - wait_for_moderation
-        title:
-          type: string
-        description:
-          type:
-          - string
-          - 'null'
-        cta_label:
-          type:
-          - string
-          - 'null'
-    OnboardingStateResponse:
-      type: object
-      required:
-      - quiz_status
-      - profile_status
-      - recommendation_mode
-      - feed_unlocked
-      properties:
-        quiz_status:
-          $ref: '#/components/schemas/QuizStatus'
-        profile_status:
-          $ref: '#/components/schemas/ProfileStatus'
-        recommendation_mode:
-          $ref: '#/components/schemas/RecommendationMode'
-        feed_unlocked:
-          type: boolean
-        current_step_key:
-          type:
-          - string
-          - 'null'
-        completed_steps:
-          type: array
-          items:
-            type: string
-        missing_required_fields:
-          type: array
-          items:
-            type: string
-        next_action:
-          oneOf:
-          - $ref: '#/components/schemas/NextAction'
-          - type: 'null'
-    OnboardingConfigResponse:
-      type: object
-      required:
-      - quiz_optional
-      - steps
-      properties:
-        quiz_optional:
-          type: boolean
-          default: true
-        steps:
-          type: array
-          items:
-            $ref: '#/components/schemas/OnboardingStep'
-    OnboardingAnswersRequest:
-      type: object
-      required:
-      - step_key
-      - answers
-      properties:
-        step_key:
-          type: string
-        answers:
-          type: array
-          items:
-            type: string
-    OnboardingAnswersResponse:
-      type: object
-      required:
-      - quiz_status
-      - recommendation_mode
-      properties:
-        quiz_status:
-          $ref: '#/components/schemas/QuizStatus'
-        recommendation_mode:
-          $ref: '#/components/schemas/RecommendationMode'
-        next_step_key:
-          type:
-          - string
-          - 'null'
-        completed:
-          type: boolean
-    CompatibilityReasonPreview:
-      type: object
-      required:
-      - code
-      - text
-      properties:
-        code:
-          type: string
-        text:
-          type: string
-    CompatibilityPreview:
-      type: object
-      required:
-      - score
-      - preview
-      - reason_codes
-      - details_available
-      properties:
-        score:
-          type: number
-          minimum: 0
-          maximum: 1
-        preview:
-          type: string
-        reason_codes:
-          type: array
-          items:
-            type: string
-        details_available:
-          type: boolean
-    FeedCardActions:
-      type: object
-      required:
-      - can_like
-      - can_pass
-      - can_hide
-      - can_block
-      - can_report
-      properties:
-        can_like:
-          type: boolean
-        can_pass:
-          type: boolean
-        can_hide:
-          type: boolean
-        can_block:
-          type: boolean
-        can_report:
-          type: boolean
-    FeedCandidate:
-      type: object
-      required:
-      - user_id
-      - display_name
-      properties:
-        user_id:
+        target_user_id:
           type: string
           format: uuid
-        display_name:
-          type: string
-        age:
-          type:
-          - integer
-          - 'null'
-        city:
-          type:
-          - string
-          - 'null'
-        bio:
-          type:
-          - string
-          - 'null'
-        avatar_url:
-          type:
-          - string
-          - 'null'
-          format: uri
-        profile_completion_badge:
-          type:
-          - string
-          - 'null'
-    FeedCard:
+          title: Target User Id
+        source_context:
+          "$ref": "#/components/schemas/SafetySourceContext"
+        reason_code:
+          "$ref": "#/components/schemas/BlockReasonCode"
       type: object
       required:
-      - serve_item_id
-      - candidate
-      - compatibility
-      - actions
+      - target_user_id
+      - source_context
+      - reason_code
+      title: BlockRequest
+    BlockResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          default: blocked
+        removed_from_future_feed:
+          type: boolean
+          title: Removed From Future Feed
+        conversation_closed:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Conversation Closed
+        match_closed:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Match Closed
+      type: object
+      required:
+      - removed_from_future_feed
+      title: BlockResponse
+    CityRef:
+      properties:
+        id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Id
+        name:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Name
+      type: object
+      required:
+      - id
+      - name
+      title: CityRef
+    CloseMatchReasonCode:
+      type: string
+      enum:
+      - not_interested
+      - conversation_finished
+      - other
+      title: CloseMatchReasonCode
+    CloseMatchRequest:
+      properties:
+        reason_code:
+          "$ref": "#/components/schemas/CloseMatchReasonCode"
+      type: object
+      required:
+      - reason_code
+      title: CloseMatchRequest
+    CloseMatchResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          default: closed
+        removed_from_future_feed:
+          type: boolean
+          title: Removed From Future Feed
+      type: object
+      required:
+      - removed_from_future_feed
+      title: CloseMatchResponse
+    CompatibilityCategoryScore:
+      properties:
+        category_key:
+          type: string
+          title: Category Key
+        label:
+          type: string
+          title: Label
+        score_percent:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Score Percent
+      type: object
+      required:
+      - category_key
+      - label
+      - score_percent
+      title: CompatibilityCategoryScore
+    CompatibilityExplanationResponse:
       properties:
         serve_item_id:
           type: string
           format: uuid
-        candidate:
-          $ref: '#/components/schemas/FeedCandidate'
-        compatibility:
-          $ref: '#/components/schemas/CompatibilityPreview'
-        actions:
-          $ref: '#/components/schemas/FeedCardActions'
-    FeedEmptyState:
+          title: Serve Item Id
+        candidate_user_id:
+          type: string
+          format: uuid
+          title: Candidate User Id
+        privacy_level:
+          type: string
+          title: Privacy Level
+          default: safe_aggregate
+        reasons:
+          items:
+            "$ref": "#/components/schemas/CompatibilityReason"
+          type: array
+          title: Reasons
+        disclaimer:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Disclaimer
       type: object
       required:
-      - code
-      - title
+      - serve_item_id
+      - candidate_user_id
+      title: CompatibilityExplanationResponse
+    CompatibilityPreview:
+      properties:
+        score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Score
+        score_percent:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Score Percent
+        preview:
+          type: string
+          title: Preview
+        reason_codes:
+          items:
+            type: string
+          type: array
+          title: Reason Codes
+        reason_signals:
+          items:
+            "$ref": "#/components/schemas/CompatibilityReasonSignal"
+          type: array
+          title: Reason Signals
+        category_breakdown:
+          items:
+            "$ref": "#/components/schemas/CompatibilityCategoryScore"
+          type: array
+          title: Category Breakdown
+      type: object
+      required:
+      - score
+      - score_percent
+      - preview
+      title: CompatibilityPreview
+    CompatibilityReason:
       properties:
         code:
           type: string
-          enum:
-          - no_more_candidates_today
-          - candidate_pool_low
-          - safety_filtered_all
-          - try_again_tomorrow
+          title: Code
         title:
           type: string
-        description:
-          type:
-          - string
-          - 'null'
-    FeedResponse:
-      type: object
-      required:
-      - feed_state
-      - profile_status
-      - quiz_status
-      - recommendation_mode
-      - decision_mode
-      - cards
-      properties:
-        feed_state:
-          $ref: '#/components/schemas/FeedState'
-        profile_status:
-          $ref: '#/components/schemas/ProfileStatus'
-        quiz_status:
-          $ref: '#/components/schemas/QuizStatus'
-        recommendation_mode:
-          $ref: '#/components/schemas/RecommendationMode'
-        decision_mode:
-          $ref: '#/components/schemas/DecisionMode'
-        batch_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        generated_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        expires_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        lock_reason:
-          type:
-          - string
-          - 'null'
-          enum:
-          - null
-          - avatar_required
-          - avatar_pending
-          - required_fields_missing
-          - blocked
-        next_action:
-          oneOf:
-          - $ref: '#/components/schemas/NextAction'
-          - type: 'null'
-        cards:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeedCard'
-        empty_state:
-          oneOf:
-          - $ref: '#/components/schemas/FeedEmptyState'
-          - type: 'null'
-        warnings:
-          type: array
-          items:
-            type: string
-    CompatibilityReason:
+          title: Title
+        text:
+          type: string
+          title: Text
+        confidence:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
       type: object
       required:
       - code
       - title
       - text
       - confidence
+      title: CompatibilityReason
+    CompatibilityReasonSignal:
       properties:
         code:
           type: string
-        title:
+          title: Code
+        label:
           type: string
-        text:
+          title: Label
+        strength:
           type: string
+          title: Strength
         confidence:
           type: number
-          minimum: 0
-          maximum: 1
-    CompatibilityExplanationResponse:
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
       type: object
       required:
-      - serve_item_id
-      - candidate_user_id
-      - privacy_level
-      - reasons
-      properties:
-        serve_item_id:
-          type: string
-          format: uuid
-        candidate_user_id:
-          type: string
-          format: uuid
-        privacy_level:
-          type: string
-          enum:
-          - safe_aggregate
-        reasons:
-          type: array
-          items:
-            $ref: '#/components/schemas/CompatibilityReason'
-        disclaimer:
-          type: string
-    FeedReactionRequest:
-      type: object
-      required:
-      - action
-      properties:
-        action:
-          $ref: '#/components/schemas/FeedAction'
-        opened_explanation:
-          type: boolean
-          default: false
-        opened_profile:
-          type: boolean
-          default: false
-        dwell_time_ms:
-          type: integer
-          minimum: 0
-    MatchLink:
-      type: object
-      required:
-      - match_id
-      - conversation_id
-      properties:
-        match_id:
-          type: string
-          format: uuid
-        conversation_id:
-          type: string
-          format: uuid
-    FeedReactionResponse:
-      type: object
-      required:
-      - result
-      properties:
-        result:
-          type: string
-          enum:
-          - liked
-          - passed
-          - hidden
-          - matched
-        match:
-          oneOf:
-          - $ref: '#/components/schemas/MatchLink'
-          - type: 'null'
-        next_card_hint:
-          type:
-          - string
-          - 'null'
-    MatchListItem:
-      type: object
-      required:
-      - match_id
-      - candidate_user_id
-      - display_name
-      - status
-      properties:
-        match_id:
-          type: string
-          format: uuid
-        candidate_user_id:
-          type: string
-          format: uuid
-        display_name:
-          type: string
-        avatar_url:
-          type:
-          - string
-          - 'null'
-          format: uri
-        conversation_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        status:
-          $ref: '#/components/schemas/MatchStatus'
-        last_message_preview:
-          type:
-          - string
-          - 'null'
-        last_message_at:
-          type:
-          - string
-          - 'null'
-          format: date-time
-        unread_count:
-          type: integer
-          minimum: 0
-    MatchListResponse:
-      type: object
-      required:
-      - items
+      - code
+      - label
+      - strength
+      - confidence
+      title: CompatibilityReasonSignal
+    ConversationMessagesResponse:
       properties:
         items:
-          type: array
           items:
-            $ref: '#/components/schemas/MatchListItem'
-    CloseMatchRequest:
+            "$ref": "#/components/schemas/MessageResponse"
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
       type: object
-      required:
-      - reason_code
-      properties:
-        reason_code:
-          type: string
-          enum:
-          - not_interested
-          - conversation_finished
-          - other
-    CloseMatchResponse:
-      type: object
-      required:
-      - status
-      - removed_from_future_feed
-      properties:
-        status:
-          type: string
-          enum:
-          - closed
-        removed_from_future_feed:
-          type: boolean
+      title: ConversationMessagesResponse
     ConversationPeer:
-      type: object
-      required:
-      - user_id
-      - display_name
       properties:
         user_id:
           type: string
           format: uuid
+          title: User Id
         display_name:
           type: string
+          title: Display Name
         avatar_url:
-          type:
-          - string
-          - 'null'
-          format: uri
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+      type: object
+      required:
+      - user_id
+      - display_name
+      title: ConversationPeer
     ConversationResponse:
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
+        match_id:
+          type: string
+          format: uuid
+          title: Match Id
+        status:
+          "$ref": "#/components/schemas/ConversationStatus"
+        peer:
+          "$ref": "#/components/schemas/ConversationPeer"
+        safety_actions:
+          "$ref": "#/components/schemas/ConversationSafetyActions"
       type: object
       required:
       - conversation_id
@@ -1702,28 +1680,684 @@ components:
       - status
       - peer
       - safety_actions
+      title: ConversationResponse
+    ConversationSafetyActions:
       properties:
-        conversation_id:
+        can_block:
+          type: boolean
+          title: Can Block
+        can_report:
+          type: boolean
+          title: Can Report
+      type: object
+      required:
+      - can_block
+      - can_report
+      title: ConversationSafetyActions
+    ConversationStatus:
+      type: string
+      enum:
+      - active
+      - closed_by_user
+      - closed_by_block
+      - closed_by_report
+      title: ConversationStatus
+    CursorPage_UserModel_:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/UserModel"
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+      type: object
+      required:
+      - items
+      title: CursorPage[UserModel]
+    FeedAction:
+      type: string
+      enum:
+      - like
+      - pass
+      - hide
+      title: FeedAction
+    FeedCandidate:
+      properties:
+        user_id:
           type: string
           format: uuid
+          title: User Id
+        display_name:
+          type: string
+          title: Display Name
+        age:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Age
+        city:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: City
+        bio:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bio
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+      type: object
+      required:
+      - user_id
+      - display_name
+      title: FeedCandidate
+    FeedCard:
+      properties:
+        serve_item_id:
+          type: string
+          format: uuid
+          title: Serve Item Id
+        candidate:
+          "$ref": "#/components/schemas/FeedCandidate"
+        compatibility:
+          "$ref": "#/components/schemas/CompatibilityPreview"
+        actions:
+          "$ref": "#/components/schemas/FeedCardActions"
+      type: object
+      required:
+      - serve_item_id
+      - candidate
+      - compatibility
+      - actions
+      title: FeedCard
+    FeedCardActions:
+      properties:
+        can_like:
+          type: boolean
+          title: Can Like
+        can_pass:
+          type: boolean
+          title: Can Pass
+        can_hide:
+          type: boolean
+          title: Can Hide
+        can_block:
+          type: boolean
+          title: Can Block
+        can_report:
+          type: boolean
+          title: Can Report
+      type: object
+      required:
+      - can_like
+      - can_pass
+      - can_hide
+      - can_block
+      - can_report
+      title: FeedCardActions
+    FeedEmptyState:
+      properties:
+        code:
+          "$ref": "#/components/schemas/FeedEmptyStateCode"
+        title:
+          type: string
+          title: Title
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+      type: object
+      required:
+      - code
+      - title
+      title: FeedEmptyState
+    FeedEmptyStateCode:
+      type: string
+      enum:
+      - no_more_candidates_today
+      - candidate_pool_low
+      - safety_filtered_all
+      - try_again_tomorrow
+      title: FeedEmptyStateCode
+    FeedLockReason:
+      type: string
+      enum:
+      - required_fields_missing
+      - avatar_required
+      - avatar_pending
+      - blocked
+      title: FeedLockReason
+    FeedReactionRequest:
+      properties:
+        action:
+          "$ref": "#/components/schemas/FeedAction"
+        opened_explanation:
+          type: boolean
+          title: Opened Explanation
+          default: false
+        opened_profile:
+          type: boolean
+          title: Opened Profile
+          default: false
+        dwell_time_ms:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Dwell Time Ms
+      type: object
+      required:
+      - action
+      title: FeedReactionRequest
+    FeedReactionResponse:
+      properties:
+        result:
+          "$ref": "#/components/schemas/FeedReactionResult"
+        match:
+          anyOf:
+          - "$ref": "#/components/schemas/MatchLink"
+          - type: 'null'
+        next_card_hint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Card Hint
+      type: object
+      required:
+      - result
+      title: FeedReactionResponse
+    FeedReactionResult:
+      type: string
+      enum:
+      - liked
+      - passed
+      - hidden
+      - matched
+      title: FeedReactionResult
+    FeedResponse:
+      properties:
+        feed_state:
+          "$ref": "#/components/schemas/FeedState"
+        profile_status:
+          "$ref": "#/components/schemas/ProfileStatus"
+        batch_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Batch Id
+        generated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Generated At
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        lock_reason:
+          anyOf:
+          - "$ref": "#/components/schemas/FeedLockReason"
+          - type: 'null'
+        cards:
+          items:
+            "$ref": "#/components/schemas/FeedCard"
+          type: array
+          title: Cards
+        empty_state:
+          anyOf:
+          - "$ref": "#/components/schemas/FeedEmptyState"
+          - type: 'null'
+        warnings:
+          items:
+            type: string
+          type: array
+          title: Warnings
+      type: object
+      required:
+      - feed_state
+      - profile_status
+      title: FeedResponse
+    FeedState:
+      type: string
+      enum:
+      - locked
+      - ready
+      - exhausted
+      - degraded
+      title: FeedState
+    FeedTestMatchResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          default: armed
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - message
+      title: FeedTestMatchResponse
+    FunnelConversionRates:
+      properties:
+        like_rate:
+          type: number
+          minimum: 0.0
+          title: Like Rate
+          default: 0
+        match_rate_from_likes:
+          type: number
+          minimum: 0.0
+          title: Match Rate From Likes
+          default: 0
+        first_message_rate_from_matches:
+          type: number
+          minimum: 0.0
+          title: First Message Rate From Matches
+          default: 0
+        first_reply_rate_from_first_messages:
+          type: number
+          minimum: 0.0
+          title: First Reply Rate From First Messages
+          default: 0
+        negative_outcome_rate_from_matches:
+          type: number
+          minimum: 0.0
+          title: Negative Outcome Rate From Matches
+          default: 0
+      type: object
+      title: FunnelConversionRates
+    FunnelCounts:
+      properties:
+        feed_served:
+          type: integer
+          minimum: 0.0
+          title: Feed Served
+          default: 0
+        feed_explanation_opened:
+          type: integer
+          minimum: 0.0
+          title: Feed Explanation Opened
+          default: 0
+        feed_like:
+          type: integer
+          minimum: 0.0
+          title: Feed Like
+          default: 0
+        feed_pass:
+          type: integer
+          minimum: 0.0
+          title: Feed Pass
+          default: 0
+        feed_hide:
+          type: integer
+          minimum: 0.0
+          title: Feed Hide
+          default: 0
+        match_created:
+          type: integer
+          minimum: 0.0
+          title: Match Created
+          default: 0
+        chat_first_message_sent:
+          type: integer
+          minimum: 0.0
+          title: Chat First Message Sent
+          default: 0
+        chat_first_reply_received:
+          type: integer
+          minimum: 0.0
+          title: Chat First Reply Received
+          default: 0
+        match_closed:
+          type: integer
+          minimum: 0.0
+          title: Match Closed
+          default: 0
+        user_blocked:
+          type: integer
+          minimum: 0.0
+          title: User Blocked
+          default: 0
+        user_reported:
+          type: integer
+          minimum: 0.0
+          title: User Reported
+          default: 0
+      type: object
+      title: FunnelCounts
+    FunnelDailyRow:
+      properties:
+        day:
+          type: string
+          format: date
+          title: Day
+        user_source:
+          "$ref": "#/components/schemas/FunnelUserSource"
+        decision_mode:
+          "$ref": "#/components/schemas/FunnelDecisionMode"
+        counts:
+          "$ref": "#/components/schemas/FunnelCounts"
+        conversions:
+          "$ref": "#/components/schemas/FunnelConversionRates"
+      type: object
+      required:
+      - day
+      - user_source
+      - decision_mode
+      - counts
+      - conversions
+      title: FunnelDailyRow
+    FunnelDecisionMode:
+      type: string
+      enum:
+      - model
+      - fallback
+      - unknown
+      title: FunnelDecisionMode
+    FunnelSegmentSummary:
+      properties:
+        user_source:
+          anyOf:
+          - "$ref": "#/components/schemas/FunnelUserSource"
+          - type: 'null'
+        decision_mode:
+          anyOf:
+          - "$ref": "#/components/schemas/FunnelDecisionMode"
+          - type: 'null'
+        counts:
+          "$ref": "#/components/schemas/FunnelCounts"
+        conversions:
+          "$ref": "#/components/schemas/FunnelConversionRates"
+      type: object
+      required:
+      - counts
+      - conversions
+      title: FunnelSegmentSummary
+    FunnelSummary:
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+        totals:
+          "$ref": "#/components/schemas/FunnelCounts"
+        conversions:
+          "$ref": "#/components/schemas/FunnelConversionRates"
+        by_user_source:
+          items:
+            "$ref": "#/components/schemas/FunnelSegmentSummary"
+          type: array
+          title: By User Source
+        by_decision_mode:
+          items:
+            "$ref": "#/components/schemas/FunnelSegmentSummary"
+          type: array
+          title: By Decision Mode
+        by_segment:
+          items:
+            "$ref": "#/components/schemas/FunnelSegmentSummary"
+          type: array
+          title: By Segment
+      type: object
+      required:
+      - generated_at
+      - totals
+      - conversions
+      - by_user_source
+      - by_decision_mode
+      - by_segment
+      title: FunnelSummary
+    FunnelUserSource:
+      type: string
+      enum:
+      - dataset
+      - cold_start
+      title: FunnelUserSource
+    Gender:
+      type: string
+      enum:
+      - male
+      - female
+      - other
+      title: Gender
+    Goal:
+      type: string
+      enum:
+      - serious_relationship
+      - new_friends
+      - casual_dates
+      title: Goal
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            "$ref": "#/components/schemas/ValidationError"
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    Icebreaker:
+      properties:
+        icebreaker_id:
+          type: string
+          title: Icebreaker Id
+        text:
+          type: string
+          title: Text
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+      type: object
+      required:
+      - icebreaker_id
+      - text
+      title: Icebreaker
+    IcebreakersResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/Icebreaker"
+          type: array
+          title: Items
+      type: object
+      title: IcebreakersResponse
+    LanguageModel:
+      properties:
+        code:
+          type: string
+          maxLength: 2
+          minLength: 2
+          title: Code
+        name_ru:
+          type: string
+          title: Name Ru
+        name_en:
+          type: string
+          title: Name En
+      type: object
+      required:
+      - code
+      - name_ru
+      - name_en
+      title: LanguageModel
+    MarkNotificationSeenResponse:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+        seen_at:
+          type: string
+          format: date-time
+          title: Seen At
+      type: object
+      required:
+      - notification_id
+      - seen_at
+      title: MarkNotificationSeenResponse
+    MatchLink:
+      properties:
         match_id:
           type: string
           format: uuid
+          title: Match Id
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
+      type: object
+      required:
+      - match_id
+      - conversation_id
+      title: MatchLink
+    MatchListItem:
+      properties:
+        match_id:
+          type: string
+          format: uuid
+          title: Match Id
+        candidate_user_id:
+          type: string
+          format: uuid
+          title: Candidate User Id
+        display_name:
+          type: string
+          title: Display Name
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+        conversation_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Conversation Id
         status:
-          $ref: '#/components/schemas/ConversationStatus'
+          "$ref": "#/components/schemas/MatchStatus"
+        last_message_preview:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Message Preview
+        last_message_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Last Message At
+        unread_count:
+          type: integer
+          minimum: 0.0
+          title: Unread Count
+          default: 0
+      type: object
+      required:
+      - match_id
+      - candidate_user_id
+      - display_name
+      - status
+      title: MatchListItem
+    MatchListResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/MatchListItem"
+          type: array
+          title: Items
+      type: object
+      title: MatchListResponse
+    MatchNotificationItem:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+        match_id:
+          type: string
+          format: uuid
+          title: Match Id
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
         peer:
-          $ref: '#/components/schemas/ConversationPeer'
-        safety_actions:
-          type: object
-          required:
-          - can_block
-          - can_report
-          properties:
-            can_block:
-              type: boolean
-            can_report:
-              type: boolean
+          "$ref": "#/components/schemas/NotificationPeer"
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        seen_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Seen At
+      type: object
+      required:
+      - notification_id
+      - match_id
+      - conversation_id
+      - peer
+      - created_at
+      title: MatchNotificationItem
+    MatchNotificationsResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/MatchNotificationItem"
+          type: array
+          title: Items
+        unseen_count:
+          type: integer
+          minimum: 0.0
+          title: Unseen Count
+          default: 0
+      type: object
+      title: MatchNotificationsResponse
+    MatchStatus:
+      type: string
+      enum:
+      - active
+      - closed
+      - blocked
+      title: MatchStatus
     MessageResponse:
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          title: Message Id
+        sender_user_id:
+          type: string
+          format: uuid
+          title: Sender User Id
+        text:
+          type: string
+          title: Text
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        status:
+          "$ref": "#/components/schemas/MessageStatus"
       type: object
       required:
       - message_id
@@ -1731,304 +2365,859 @@ components:
       - text
       - created_at
       - status
+      title: MessageResponse
+    MessageStatus:
+      type: string
+      enum:
+      - sent
+      - delivered
+      - read
+      title: MessageStatus
+    MlConnectionStatusModel:
       properties:
-        message_id:
+        configured:
+          type: boolean
+          title: Configured
+        provider:
+          type: string
+          title: Provider
+        base_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Base Url
+        reachable:
+          type: boolean
+          title: Reachable
+        healthy:
+          type: boolean
+          title: Healthy
+        fallback_active:
+          type: boolean
+          title: Fallback Active
+        ml_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ml Status
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detail
+      type: object
+      required:
+      - configured
+      - provider
+      - reachable
+      - healthy
+      - fallback_active
+      title: MlConnectionStatusModel
+    NotificationPeer:
+      properties:
+        user_id:
           type: string
           format: uuid
-        sender_user_id:
+          title: User Id
+        display_name:
           type: string
-          format: uuid
-        text:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        status:
-          $ref: '#/components/schemas/MessageStatus'
-    ConversationMessagesResponse:
+          title: Display Name
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
       type: object
       required:
-      - items
+      - user_id
+      - display_name
+      title: NotificationPeer
+    OnboardingAnswersRequest:
       properties:
-        items:
-          type: array
+        step_key:
+          type: string
+          title: Step Key
+        answers:
           items:
-            $ref: '#/components/schemas/MessageResponse'
-        next_cursor:
-          type:
-          - string
-          - 'null'
-    SendMessageRequest:
-      type: object
-      required:
-      - text
-      properties:
-        text:
-          type: string
-          maxLength: 2000
-    Icebreaker:
-      type: object
-      required:
-      - icebreaker_id
-      - text
-      properties:
-        icebreaker_id:
-          type: string
-        text:
-          type: string
-        reason:
-          type:
-          - string
-          - 'null'
-    IcebreakersResponse:
-      type: object
-      required:
-      - items
-      properties:
-        items:
+            type: string
           type: array
-          items:
-            $ref: '#/components/schemas/Icebreaker'
-    BlockRequest:
+          title: Answers
+        import_transactions:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Import Transactions
       type: object
       required:
-      - target_user_id
-      - source_context
-      - reason_code
+      - step_key
+      title: OnboardingAnswersRequest
+    OnboardingAnswersResponse:
+      properties:
+        quiz_started:
+          type: boolean
+          title: Quiz Started
+          default: false
+        skipped:
+          type: boolean
+          title: Skipped
+          default: false
+        completed:
+          type: boolean
+          title: Completed
+          default: false
+        should_show:
+          type: boolean
+          title: Should Show
+          default: true
+        current_step_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Step Key
+        required_profile_step_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Required Profile Step Key
+        missing_required_fields:
+          items:
+            type: string
+          type: array
+          title: Missing Required Fields
+        completed_step_keys:
+          items:
+            type: string
+          type: array
+          title: Completed Step Keys
+        answers_by_step:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+          title: Answers By Step
+        step_key:
+          type: string
+          title: Step Key
+        saved:
+          type: boolean
+          title: Saved
+          default: true
+      type: object
+      required:
+      - step_key
+      title: OnboardingAnswersResponse
+    OnboardingConfigResponse:
+      properties:
+        steps:
+          items:
+            "$ref": "#/components/schemas/OnboardingStep"
+          type: array
+          title: Steps
+      type: object
+      title: OnboardingConfigResponse
+    OnboardingStateResponse:
+      properties:
+        quiz_started:
+          type: boolean
+          title: Quiz Started
+          default: false
+        skipped:
+          type: boolean
+          title: Skipped
+          default: false
+        completed:
+          type: boolean
+          title: Completed
+          default: false
+        should_show:
+          type: boolean
+          title: Should Show
+          default: true
+        current_step_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Step Key
+        required_profile_step_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Required Profile Step Key
+        missing_required_fields:
+          items:
+            type: string
+          type: array
+          title: Missing Required Fields
+        completed_step_keys:
+          items:
+            type: string
+          type: array
+          title: Completed Step Keys
+        answers_by_step:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+          title: Answers By Step
+      type: object
+      title: OnboardingStateResponse
+    OnboardingStep:
+      properties:
+        step_key:
+          type: string
+          title: Step Key
+        title:
+          type: string
+          title: Title
+        subtitle:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subtitle
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        step_type:
+          "$ref": "#/components/schemas/OnboardingStepType"
+        optional:
+          type: boolean
+          title: Optional
+          default: true
+        multi_select:
+          type: boolean
+          title: Multi Select
+          default: false
+        required_for_feed:
+          type: boolean
+          title: Required For Feed
+          default: false
+        min_answers:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Min Answers
+        max_answers:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max Answers
+        range_min:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Range Min
+        range_max:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Range Max
+        range_min_label:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Range Min Label
+        range_max_label:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Range Max Label
+        import_transactions_enabled:
+          type: boolean
+          title: Import Transactions Enabled
+          default: false
+        import_transactions_default:
+          type: boolean
+          title: Import Transactions Default
+          default: true
+        import_transactions_value:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Import Transactions Value
+        options:
+          items:
+            "$ref": "#/components/schemas/OnboardingStepOption"
+          type: array
+          title: Options
+      type: object
+      required:
+      - step_key
+      - title
+      - step_type
+      title: OnboardingStep
+    OnboardingStepOption:
+      properties:
+        value:
+          type: string
+          title: Value
+        label:
+          type: string
+          title: Label
+        weight:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Weight
+      type: object
+      required:
+      - value
+      - label
+      title: OnboardingStepOption
+    OnboardingStepType:
+      type: string
+      enum:
+      - single_select
+      - multi_select
+      - range
+      title: OnboardingStepType
+    ProfileStatus:
+      type: string
+      enum:
+      - required_fields_missing
+      - avatar_required
+      - avatar_pending
+      - ready
+      - blocked
+      title: ProfileStatus
+    RealtimeConnectionResponse:
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+        ws_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ws Url
+        token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Token
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        channels:
+          items:
+            type: string
+          type: array
+          title: Channels
+      type: object
+      required:
+      - enabled
+      title: RealtimeConnectionResponse
+    RealtimeSubscriptionResponse:
+      properties:
+        enabled:
+          type: boolean
+          title: Enabled
+        channel:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channel
+        token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Token
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+      type: object
+      required:
+      - enabled
+      title: RealtimeSubscriptionResponse
+    RegistrationsGraph:
+      properties:
+        day:
+          type: string
+          format: date
+          title: Day
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - day
+      - count
+      title: RegistrationsGraph
+    ReportCategory:
+      type: string
+      enum:
+      - harassment
+      - spam
+      - fake_profile
+      - inappropriate_content
+      - other
+      title: ReportCategory
+    ReportRequest:
       properties:
         target_user_id:
           type: string
           format: uuid
+          title: Target User Id
         source_context:
-          $ref: '#/components/schemas/SafetySourceContext'
-        reason_code:
-          type: string
-          enum:
-          - unwanted_contact
-          - harassment
-          - spam
-          - other
-    BlockResponse:
-      type: object
-      required:
-      - status
-      - removed_from_future_feed
-      properties:
-        status:
-          type: string
-          enum:
-          - blocked
-        removed_from_future_feed:
+          "$ref": "#/components/schemas/SafetySourceContext"
+        category:
+          "$ref": "#/components/schemas/ReportCategory"
+        description:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Description
+        related_message_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Related Message Id
+        also_block:
           type: boolean
-        conversation_closed:
-          type: boolean
-        match_closed:
-          type: boolean
-    ReportRequest:
+          title: Also Block
+          default: false
       type: object
       required:
       - target_user_id
       - source_context
       - category
-      properties:
-        target_user_id:
-          type: string
-          format: uuid
-        source_context:
-          $ref: '#/components/schemas/SafetySourceContext'
-        category:
-          type: string
-          enum:
-          - harassment
-          - spam
-          - fake_profile
-          - inappropriate_content
-          - other
-        description:
-          type:
-          - string
-          - 'null'
-          maxLength: 1000
-        related_message_id:
-          type:
-          - string
-          - 'null'
-          format: uuid
-        also_block:
-          type: boolean
-          default: false
+      title: ReportRequest
     ReportResponse:
-      type: object
-      required:
-      - report_id
-      - status
-      - also_block_applied
       properties:
         report_id:
           type: string
           format: uuid
+          title: Report Id
         status:
           type: string
-          enum:
-          - accepted
+          title: Status
+          default: accepted
         also_block_applied:
           type: boolean
-    AuditEvent:
+          title: Also Block Applied
       type: object
       required:
-      - event_id
-      - event_type
-      - entity_type
-      - created_at
+      - report_id
+      - also_block_applied
+      title: ReportResponse
+    SafetySourceContext:
+      type: string
+      enum:
+      - feed
+      - match_list
+      - conversation
+      - profile
+      title: SafetySourceContext
+    SearchPreferences:
       properties:
-        event_id:
+        looking_for_genders:
+          anyOf:
+          - items:
+              "$ref": "#/components/schemas/Gender"
+            type: array
+          - type: 'null'
+          title: Looking For Genders
+        age_range:
+          anyOf:
+          - "$ref": "#/components/schemas/AgeRange"
+          - type: 'null'
+        distance_km:
+          anyOf:
+          - type: integer
+            maximum: 300.0
+            minimum: 1.0
+          - type: 'null'
+          title: Distance Km
+        goal:
+          anyOf:
+          - "$ref": "#/components/schemas/Goal"
+          - type: 'null'
+      type: object
+      title: SearchPreferences
+    SendMessageRequest:
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+          minLength: 1
+          title: Text
+      type: object
+      required:
+      - text
+      title: SendMessageRequest
+    TokenPair:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        expires_in:
+          type: integer
+          minimum: 1.0
+          title: Expires In
+          default: 900
+      type: object
+      required:
+      - access_token
+      title: TokenPair
+    UserLogin:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          description: User e-mail
+        password:
+          type: string
+          title: Password
+          description: User password
+      type: object
+      required:
+      - email
+      - password
+      title: UserLogin
+    UserModel:
+      properties:
+        id:
           type: string
           format: uuid
-        event_type:
+          title: Id
+        email:
           type: string
-        entity_type:
+          format: email
+          title: Email
+          description: User e-mail
+        first_name:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: First Name
+        last_name:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Last Name
+        avatar_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Key
+          description: Storage key of the avatar object
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+          description: Public URL of the avatar object
+        avatar_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Status
+        avatar_rejection_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Rejection Reason
+        birth_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Birth Date
+        bio:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Bio
+        city:
+          anyOf:
+          - "$ref": "#/components/schemas/CityRef"
+          - type: 'null'
+        gender:
+          anyOf:
+          - "$ref": "#/components/schemas/Gender"
+          - type: 'null'
+        looking_for_genders:
+          items:
+            "$ref": "#/components/schemas/Gender"
+          type: array
+          title: Looking For Genders
+        age_range:
+          anyOf:
+          - "$ref": "#/components/schemas/AgeRange"
+          - type: 'null'
+        distance_km:
+          anyOf:
+          - type: integer
+            maximum: 300.0
+            minimum: 1.0
+          - type: 'null'
+          title: Distance Km
+        goal:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Goal
+        interests:
+          items:
+            type: string
+          type: array
+          title: Interests
+        import_transactions:
+          type: boolean
+          title: Import Transactions
+          default: true
+        quiz_started:
+          type: boolean
+          title: Quiz Started
+          default: false
+        is_onboarded:
+          type: boolean
+          title: Is Onboarded
+        onboarding_status:
           type: string
-        entity_id:
-          type:
-          - string
-          - 'null'
-        payload:
-          type: object
-          additionalProperties: true
+          title: Onboarding Status
+        has_min_profile:
+          type: boolean
+          title: Has Min Profile
+        missing_required_fields:
+          items:
+            type: string
+          type: array
+          title: Missing Required Fields
+        required_profile_step_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Required Profile Step Key
+        has_approved_photo:
+          type: boolean
+          title: Has Approved Photo
+        profile_status:
+          type: string
+          title: Profile Status
+        banned:
+          type: boolean
+          title: Banned
+        role_slugs:
+          items:
+            type: string
+          type: array
+          title: Role Slugs
+          description: User's roles.
         created_at:
           type: string
           format: date-time
-    AuditEventsResponse:
-      type: object
-      required:
-      - items
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/AuditEvent'
-    InsightCard:
-      type: object
-      required:
-      - code
-      - title
-      properties:
-        code:
-          type: string
-        title:
-          type: string
-        description:
-          type: string
-        strength:
-          $ref: '#/components/schemas/InsightStrength'
-    UserInsightsResponse:
-      type: object
-      required:
-      - profile_completion_percent
-      - cards
-      properties:
-        profile_completion_percent:
-          type: integer
-          minimum: 0
-          maximum: 100
-        cards:
-          type: array
-          items:
-            $ref: '#/components/schemas/InsightCard'
-        privacy_note:
-          type: string
-    LanguageModel:
-      type: object
-      required:
-      - code
-      - name
-      properties:
-        code:
-          type: string
-        name:
-          type: string
-    UserRolesUpdate:
-      type: object
-      required:
-      - roles
-      properties:
-        roles:
-          type: array
-          items:
-            type: string
-    CursorPage_UserModel_:
-      type: object
-      required:
-      - items
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/UserModel'
-        next_cursor:
-          type:
-          - string
-          - 'null'
-    UserStatsSummary:
-      type: object
-      properties:
-        total_users:
-          type: integer
-        active_today:
-          type: integer
-        profile_ready_users:
-          type: integer
-        successful_communication_rate:
-          type: number
-    RegistrationsGraph:
-      type: object
-      properties:
-        points:
-          type: array
-          items:
-            type: object
-            properties:
-              date:
-                type: string
-                format: date
-              registrations:
-                type: integer
-              activations:
-                type: integer
-    BackendHealthResponse:
-      type: object
-      required:
-      - status
-      - timestamp
-      properties:
-        status:
-          type: string
-          enum:
-          - ok
-          - degraded
-        timestamp:
+          title: Created At
+        updated_at:
           type: string
           format: date-time
-        version:
-          type: string
-        dependencies:
-          type: object
-          additionalProperties:
-            type: string
-    PingResponse:
+          title: Updated At
       type: object
+      required:
+      - created_at
+      - updated_at
+      - id
+      - email
+      - is_onboarded
+      - onboarding_status
+      - has_min_profile
+      - has_approved_photo
+      - profile_status
+      - banned
+      title: UserModel
+    UserPatch:
       properties:
-        status:
-          type: string
-          default: ok
-    ReadyResponse:
+        first_name:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: First Name
+        last_name:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          title: Last Name
+        birth_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Birth Date
+        bio:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Bio
+        city_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: City Id
+        city:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: City
+        gender:
+          anyOf:
+          - "$ref": "#/components/schemas/Gender"
+          - type: 'null'
+        looking_for_genders:
+          anyOf:
+          - items:
+              "$ref": "#/components/schemas/Gender"
+            type: array
+            maxItems: 3
+          - type: 'null'
+          title: Looking For Genders
+        age_range:
+          anyOf:
+          - "$ref": "#/components/schemas/AgeRange"
+          - type: 'null'
+        distance_km:
+          anyOf:
+          - type: integer
+            maximum: 300.0
+            minimum: 1.0
+          - type: 'null'
+          title: Distance Km
+        goal:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Goal
+        interests:
+          anyOf:
+          - items:
+              type: string
+            type: array
+            maxItems: 15
+          - type: 'null'
+          title: Interests
+        import_transactions:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Import Transactions
+        search_preferences:
+          anyOf:
+          - "$ref": "#/components/schemas/SearchPreferences"
+          - type: 'null'
       type: object
+      title: UserPatch
+    UserRegister:
       properties:
-        status:
+        email:
           type: string
-          enum:
-          - ready
-        checks:
-          type: object
-          additionalProperties:
+          format: email
+          title: Email
+          description: User e-mail
+        password:
+          type: string
+          title: Password
+          description: User password
+      type: object
+      required:
+      - email
+      - password
+      title: UserRegister
+    UserRolesUpdate:
+      properties:
+        roles:
+          items:
             type: string
+          type: array
+          title: Roles
+          description: Role slugs to assign
+      type: object
+      title: UserRolesUpdate
+    UserStatsSummary:
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+          title: Generated At
+        total_users:
+          type: integer
+          minimum: 0.0
+          title: Total Users
+        onboarded_users:
+          type: integer
+          minimum: 0.0
+          title: Onboarded Users
+        banned_users:
+          type: integer
+          minimum: 0.0
+          title: Banned Users
+        registered_last_24h:
+          type: integer
+          minimum: 0.0
+          title: Registered Last 24H
+      type: object
+      required:
+      - generated_at
+      - total_users
+      - onboarded_users
+      - banned_users
+      - registered_last_24h
+      title: UserStatsSummary
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      description: Access token must be passed as Bearer to authorize request
+      scheme: bearer
