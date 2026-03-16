@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as Sentry from "@sentry/react";
 
 import type {
   MatchProfile,
@@ -150,7 +151,12 @@ function getExplanationText(
 
 export function useDiscoveryPage() {
   const navigate = useNavigate();
-  const { profiles, isLoading: isFeedLoading, notifyVisible, removeProfile } = useFeed();
+  const {
+    profiles,
+    isLoading: isFeedLoading,
+    notifyVisible,
+    removeProfile,
+  } = useFeed();
   const feedReactionMutation = useFeedReaction();
   const blockUserMutation = useBlockUser();
   const reportUserMutation = useReportUser();
@@ -160,7 +166,6 @@ export function useDiscoveryPage() {
 
   const baseCurrentProfile = profiles[0] ?? null;
 
-  // Notify feed when running low so it prefetches
   useEffect(() => {
     notifyVisible(profiles.length);
   }, [profiles.length, notifyVisible]);
@@ -227,8 +232,8 @@ export function useDiscoveryPage() {
       setShowReport(false);
       setExitX(-1000);
       dismissCurrentProfile();
-    } catch {
-      // handled in safety mutation hook
+    } catch (e) {
+      Sentry.captureException(e);
     }
   };
 
@@ -247,8 +252,8 @@ export function useDiscoveryPage() {
       setShowReport(false);
       setExitX(-1000);
       dismissCurrentProfile();
-    } catch {
-      // handled in safety mutation hook
+    } catch (e) {
+      Sentry.captureException(e);
     }
   };
 
@@ -279,8 +284,8 @@ export function useDiscoveryPage() {
           };
           navigate("/match", { state });
         }
-      } catch {
-        // reaction failed silently — card already dismissed
+      } catch (e) {
+        Sentry.captureException(e);
       }
     }
   };
@@ -294,7 +299,10 @@ export function useDiscoveryPage() {
     setExitX(-1000);
     dismissCurrentProfile();
 
-    if (passedProfile.source === "feed" && typeof passedProfile.id === "string") {
+    if (
+      passedProfile.source === "feed" &&
+      typeof passedProfile.id === "string"
+    ) {
       try {
         await feedReactionMutation.mutateAsync({
           serveItemId: passedProfile.id,
@@ -304,7 +312,7 @@ export function useDiscoveryPage() {
           dwellTimeMs,
         });
       } catch {
-        // reaction failed silently — card already dismissed
+        // card already dismissed
       }
     }
   };
@@ -313,7 +321,8 @@ export function useDiscoveryPage() {
     currentProfile,
     nextProfiles: profiles.slice(1, 3),
     isFeedLoading,
-    isSafetyPending: blockUserMutation.isPending || reportUserMutation.isPending,
+    isSafetyPending:
+      blockUserMutation.isPending || reportUserMutation.isPending,
     exitX,
     showReport,
     openReport: () => setShowReport(true),

@@ -120,8 +120,6 @@ export function usePhotoUpload() {
       setProgress(100);
       setUploadState("done");
 
-      // Let the green checkmark animation play, then update the cache
-      // so the route guard picks up the change and navigates away.
       await new Promise((r) => setTimeout(r, DONE_ANIMATION_MS));
       queryClient.setQueryData<User>(PROFILE_KEY, updatedProfile);
       await queryClient.invalidateQueries({ queryKey: ONBOARDING_STATE_KEY });
