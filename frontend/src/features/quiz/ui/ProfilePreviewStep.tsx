@@ -27,7 +27,6 @@ function buildPreviewProfile(
   birthDate: string | null,
   cityName: string | null,
   image: string | null,
-  bio: string,
   tags: string[],
 ): MatchProfile {
   return {
@@ -36,7 +35,7 @@ function buildPreviewProfile(
     name: fullName,
     age: birthDate ? getAge(birthDate) : null,
     image,
-    bio,
+    bio: "",
     matchScore: 0,
     categoryBreakdown: [],
     tags,
@@ -93,13 +92,53 @@ export function ProfilePreviewStep() {
       profile.birthDate,
       profile.city?.name ?? null,
       profile.profilePicUrl,
-      bioDraft,
       tags,
     );
-  }, [bioDraft, profile, tags]);
+  }, [profile, tags]);
   const hasBioChanges = bioDraft.trim() !== (profile?.bio ?? "").trim();
   const isPhotoPending = isDefaultPending || isUploadPending;
   const canContinue = Boolean(profile?.hasApprovedPhoto) && !isPhotoPending;
+  const customBioContent = (
+    <div
+      className={[
+        "rounded-[1.35rem] border px-4 py-4 shadow-sm",
+        isMobile
+          ? "border-white/12 bg-white/10 backdrop-blur-md"
+          : "border-border/60 bg-background/70",
+      ].join(" ")}
+    >
+      <div
+        className={[
+          "flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em]",
+          isMobile ? "text-primary" : "text-primary/80",
+        ].join(" ")}
+      >
+        <PencilLine className="size-4" />
+        {t("profile.preview_bio_label")}
+      </div>
+      <p
+        className={[
+          "mt-2 text-sm leading-5",
+          isMobile ? "text-white/72" : "text-muted-foreground",
+        ].join(" ")}
+      >
+        {t("profile.preview_bio_hint")}
+      </p>
+      <textarea
+        value={bioDraft}
+        onChange={(event) => setBioDraft(event.target.value)}
+        placeholder={t("profile.tell_about_yourself")}
+        rows={isMobile ? 4 : 5}
+        maxLength={500}
+        className={[
+          "mt-4 w-full resize-none rounded-[1.1rem] border px-4 py-4 text-sm leading-6 outline-none transition-all",
+          isMobile
+            ? "min-h-24 border-white/12 bg-black/22 text-white placeholder:text-white/42 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+            : "min-h-28 border-border/60 bg-card text-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/15",
+        ].join(" ")}
+      />
+    </div>
+  );
 
   if (isLoading || !profile || !previewProfile) {
     return (
@@ -190,6 +229,7 @@ export function ProfilePreviewStep() {
                   showMatchScore={false}
                   showReportButton={false}
                   showActions={false}
+                  customBioContent={customBioContent}
                 />
               </div>
 
@@ -200,9 +240,14 @@ export function ProfilePreviewStep() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -12 }}
-                    className="pointer-events-none absolute inset-0 flex items-center justify-center px-6"
+                    className={[
+                      "pointer-events-none absolute z-20",
+                      isMobile
+                        ? "left-4 right-4 top-[16%]"
+                        : "left-6 top-1/2 w-[calc(45%-3rem)] -translate-y-1/2",
+                    ].join(" ")}
                   >
-                    <div className="pointer-events-auto w-full max-w-sm rounded-[1.8rem] border border-white/15 bg-black/60 p-5 text-center text-white shadow-xl backdrop-blur-xl">
+                    <div className="pointer-events-auto w-full rounded-[1.8rem] border border-white/15 bg-black/60 p-5 text-center text-white shadow-xl backdrop-blur-xl">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
                         {t("profile.preview_photo_label")}
                       </p>
@@ -285,24 +330,6 @@ export function ProfilePreviewStep() {
                   </Button>
                 </div>
               ) : null}
-
-              <div className="rounded-[1.75rem] border border-border/60 bg-card/92 p-4 shadow-lg shadow-primary/5">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary/80">
-                  <PencilLine className="size-4" />
-                  {t("profile.preview_bio_label")}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {t("profile.preview_bio_hint")}
-                </p>
-                <textarea
-                  value={bioDraft}
-                  onChange={(event) => setBioDraft(event.target.value)}
-                  placeholder={t("profile.tell_about_yourself")}
-                  rows={4}
-                  maxLength={500}
-                  className="mt-4 min-h-26 w-full resize-none rounded-[1.4rem] border border-border/60 bg-card px-4 py-4 text-sm leading-6 outline-none transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
-                />
-              </div>
 
               <div className="rounded-[1.8rem] border border-border/60 bg-card/92 p-4 shadow-lg shadow-primary/5">
                 <div className="rounded-[1.4rem] border border-border/60 bg-background/60 px-4 py-3 text-sm leading-6 text-foreground/80">

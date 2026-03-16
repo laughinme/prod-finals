@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Heart,
   Info,
@@ -45,6 +45,7 @@ interface MatchProfileMobileCardProps {
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileMobileCard({
@@ -54,6 +55,7 @@ export function MatchProfileMobileCard({
   isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
+  customBioContent,
 }: MatchProfileMobileCardProps) {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
@@ -153,7 +155,9 @@ export function MatchProfileMobileCard({
               <h2 className="text-[34px] font-bold leading-[0.96] tracking-[-0.04em] text-white drop-shadow-md">
                 {title}
               </h2>
-              {profile.bio ? (
+              {customBioContent ? (
+                <div>{customBioContent}</div>
+              ) : profile.bio ? (
                 <p className="max-w-[18rem] text-[15px] leading-[1.35] text-white/80">
                   {profile.bio}
                 </p>

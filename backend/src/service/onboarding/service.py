@@ -229,6 +229,7 @@ class OnboardingService(BaseDatingService):
         steps = get_quiz_steps()
         step_keys = [step.step_key for step in steps]
         workflow_step_keys = [*step_keys, PROFILE_PREVIEW_STEP_KEY]
+        pre_preview_step_keys = list(step_keys)
         record_step_keys = {
             record.step_key
             for record in records
@@ -241,6 +242,11 @@ class OnboardingService(BaseDatingService):
             if step_key in record_step_keys
         ]
         required_profile_step_key = user.required_profile_step_key
+        if (
+            required_profile_step_key == PROFILE_PREVIEW_STEP_KEY
+            and any(step_key not in completed_step_keys for step_key in pre_preview_step_keys)
+        ):
+            required_profile_step_key = None
         missing_required_fields = list(user.missing_required_fields)
         completed = len(completed_step_keys) == len(workflow_step_keys) and required_profile_step_key is None
         should_show = required_profile_step_key is not None or (not user.onboarding_skipped and not completed)

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { MatchProfile } from "../model";
 import { MatchProfileDesktopCard } from "./MatchProfileDesktopCard";
 import { MatchProfileMobileCard } from "./MatchProfileMobileCard";
@@ -13,6 +14,7 @@ export interface MatchProfileCardProps {
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileCard({
@@ -26,6 +28,7 @@ export function MatchProfileCard({
   showMatchScore = true,
   showReportButton = true,
   showActions = true,
+  customBioContent,
 }: MatchProfileCardProps) {
   if (isMobile) {
     return (
@@ -39,6 +42,7 @@ export function MatchProfileCard({
         showMatchScore={showMatchScore}
         showReportButton={showReportButton}
         showActions={showActions}
+        customBioContent={customBioContent}
       />
     );
   }
@@ -51,6 +55,7 @@ export function MatchProfileCard({
       isPreparingTestMatch={isPreparingTestMatch}
       showMatchScore={showMatchScore}
       showReportButton={showReportButton}
+      customBioContent={customBioContent}
     />
   );
 }

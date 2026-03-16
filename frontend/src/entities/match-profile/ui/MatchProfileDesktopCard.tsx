@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +39,7 @@ interface MatchProfileDesktopCardProps {
   isPreparingTestMatch?: boolean;
   showMatchScore?: boolean;
   showReportButton?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileDesktopCard({
@@ -48,6 +49,7 @@ export function MatchProfileDesktopCard({
   isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
+  customBioContent,
 }: MatchProfileDesktopCardProps) {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
@@ -340,7 +342,9 @@ export function MatchProfileDesktopCard({
                 ) : null}
               </AnimatePresence>
 
-              {profile.bio ? (
+              {customBioContent ? (
+                <div>{customBioContent}</div>
+              ) : profile.bio ? (
                 <div>
                   <p className="text-lg leading-relaxed text-foreground/80">
                     {profile.bio}
