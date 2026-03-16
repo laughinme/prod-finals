@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
+  BadgeXIcon,
   MessageCircle,
+  MessageCircleWarningIcon,
   MoreVertical,
   Search,
   Send,
@@ -13,6 +15,12 @@ import { useChatPage } from "@/pages/Chat/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import {
+  IconForbid,
+  IconForbid2Filled,
+  IconReport,
+  IconXFilled,
+} from "@tabler/icons-react";
 
 const mobileSlide = {
   sidebar: {
@@ -274,7 +282,7 @@ export default function ChatPage() {
                     disabled={isClosingMatch}
                     onClick={() => void handleCloseMatch()}
                   >
-                    <MessageCircle className="size-4" />
+                    <IconXFilled className="size-5" />
                     {t("chat.close_match")}
                   </button>
                 )}
@@ -284,7 +292,7 @@ export default function ChatPage() {
                     disabled={isBlockingUser}
                     onClick={() => void handleBlockUser()}
                   >
-                    <MessageCircle className="size-4" />
+                    <BadgeXIcon className="size-5" />
                     {t("chat.block_user")}
                   </button>
                 ) : null}
@@ -294,7 +302,7 @@ export default function ChatPage() {
                     disabled={isReportingUser}
                     onClick={() => void handleReportUser()}
                   >
-                    <MessageCircle className="size-4" />
+                    <MessageCircleWarningIcon className="size-5" />
                     {t("chat.report_user")}
                   </button>
                 ) : null}
