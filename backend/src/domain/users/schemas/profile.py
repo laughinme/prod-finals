@@ -54,7 +54,7 @@ class UserPatch(BaseModel):
     city_id: str | None = Field(None, max_length=64)
     city: str | None = Field(None, max_length=128)
     gender: Gender | None = None
-    looking_for_genders: list[Gender] | None = Field(None, min_length=1, max_length=3)
+    looking_for_genders: list[Gender] | None = Field(None, max_length=3)
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None

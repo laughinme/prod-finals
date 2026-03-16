@@ -31,5 +31,5 @@ async def update_profile(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
 ) -> UserModel:
-    await svc.patch_user(payload, user)
-    return await svc.serialize_user(user)
+    updated_user = await svc.patch_user(payload, user)
+    return await svc.serialize_user(updated_user)

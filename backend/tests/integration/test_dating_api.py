@@ -319,8 +319,8 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert me_a.json()["looking_for_genders"] == ["male"]
     assert me_a.json()["age_range"] == {"min": 24, "max": 36}
     assert me_a.json()["quiz_started"] is True
-    assert me_a.json()["profile_status"] == "active"
-    assert me_b.json()["profile_status"] == "active"
+    assert me_a.json()["profile_status"] == "ready"
+    assert me_b.json()["profile_status"] == "ready"
     assert me_a.json()["is_onboarded"] is True
 
     feed_a = await client.get("/api/v1/feed", headers=auth_header(access_a))
@@ -507,7 +507,7 @@ async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, fa
     assert answer.json()["step_key"] == "match_preferences"
     assert answer.json()["saved"] is True
     assert answer.json()["quiz_started"] is True
-    assert answer.json()["current_step_key"] == "interests"
+    assert answer.json()["current_step_key"] == "photo_upload"
 
     me = await client.get("/api/v1/users/me", headers=auth_header(access))
     assert me.status_code == 200
@@ -535,6 +535,65 @@ async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, fake
     assert refreshed_state.json()["skipped"] is True
     assert refreshed_state.json()["should_show"] is True
     assert refreshed_state.json()["current_step_key"] == "photo_upload"
+
+
+@pytest.mark.asyncio
+async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncClient, faker: Faker):
+    _, access_token = await _register_user(client, faker, "profileprefs")
+
+    await _complete_profile(
+        client,
+        access_token,
+        display_name="Profile Source",
+        birth_date="1996-05-12",
+        city_id="msk",
+        gender="female",
+    )
+    await _answer_onboarding_filters(
+        client,
+        access_token,
+        genders=["male"],
+        age_min=24,
+        age_max=36,
+        import_transactions=False,
+    )
+    preview = await client.post(
+        "/api/v1/onboarding/answers",
+        json={"step_key": "profile_preview", "answers": ["confirmed"]},
+        headers=auth_header(access_token),
+    )
+    assert preview.status_code == 200
+
+    patch = await client.patch(
+        "/api/v1/users/me",
+        json={
+            "looking_for_genders": [],
+            "age_range": None,
+            "interests": [],
+            "import_transactions": True,
+        },
+        headers=auth_header(access_token),
+    )
+    assert patch.status_code == 200
+    assert patch.json()["looking_for_genders"] == []
+    assert patch.json()["age_range"] is None
+    assert patch.json()["interests"] == []
+    assert patch.json()["import_transactions"] is True
+
+    state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    assert state.status_code == 200
+    assert state.json()["answers_by_step"]["match_preferences"] == []
+    assert state.json()["answers_by_step"]["interests"] == []
+    assert set(state.json()["completed_step_keys"]) == {
+        "match_preferences",
+        "interests",
+        "profile_preview",
+    }
+
+    config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_token))
+    assert config.status_code == 200
+    steps = {step["step_key"]: step for step in config.json()["steps"]}
+    assert steps["interests"]["import_transactions_value"] is True
 
 
 @pytest.mark.asyncio

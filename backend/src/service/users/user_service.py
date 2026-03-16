@@ -69,6 +69,9 @@ class UserService:
 
     async def serialize_user(self, user: User) -> UserModel:
         import_transactions = await self._get_import_transactions_value(user.id)
+        city = user.city
+        if city is None and user.city_id and self.city_repo is not None:
+            city = await self.city_repo.get_by_id(user.city_id)
         return UserModel(
             id=user.id,
             email=user.email,
@@ -79,7 +82,7 @@ class UserService:
             avatar_status=self._build_legacy_avatar_status(user),
             avatar_rejection_reason=user.avatar_rejection_reason,
             birth_date=user.birth_date,
-            city={"id": user.city.id, "name": user.city.name} if user.city else None,
+            city={"id": city.id, "name": city.name} if city else None,
             gender=user.gender,
             bio=user.bio,
             looking_for_genders=list(user.looking_for_genders or []),
@@ -102,10 +105,11 @@ class UserService:
             updated_at=user.updated_at,
         )
 
-    async def patch_user(self, payload: UserPatch, user: User):
-        data = payload.model_dump(exclude_none=True)
+    async def patch_user(self, payload: UserPatch, user: User) -> User:
+        data = payload.model_dump(exclude_unset=True)
         should_reset_feed_batch = False
         should_sync_ml_preferences = False
+        should_sync_preferences_answers = False
         import_transactions = data.pop("import_transactions", None)
 
         if "city_id" in data:
@@ -129,20 +133,26 @@ class UserService:
         search_preferences = data.pop("search_preferences", None)
         if search_preferences is not None:
             prefs = search_preferences
-            if prefs.get("looking_for_genders") is not None:
+            if "looking_for_genders" in prefs:
                 user.looking_for_genders = [
                     value.value if hasattr(value, "value") else value
-                    for value in prefs["looking_for_genders"]
+                    for value in (prefs["looking_for_genders"] or [])
                 ]
                 should_reset_feed_batch = True
-            if prefs.get("age_range") is not None:
-                user.age_range_min = prefs["age_range"]["min"]
-                user.age_range_max = prefs["age_range"]["max"]
+                should_sync_preferences_answers = True
+            if "age_range" in prefs:
+                if prefs["age_range"] is None:
+                    user.age_range_min = None
+                    user.age_range_max = None
+                else:
+                    user.age_range_min = prefs["age_range"]["min"]
+                    user.age_range_max = prefs["age_range"]["max"]
                 should_reset_feed_batch = True
-            if prefs.get("distance_km") is not None:
+                should_sync_preferences_answers = True
+            if "distance_km" in prefs:
                 user.distance_km = prefs["distance_km"]
                 should_reset_feed_batch = True
-            if prefs.get("goal") is not None:
+            if "goal" in prefs:
                 user.goal = self._normalize_goal(prefs["goal"])
                 should_reset_feed_batch = True
 
@@ -161,15 +171,21 @@ class UserService:
         if "looking_for_genders" in data:
             user.looking_for_genders = [
                 value.value if hasattr(value, "value") else value
-                for value in data.pop("looking_for_genders")
+                for value in (data.pop("looking_for_genders") or [])
             ]
             should_reset_feed_batch = True
+            should_sync_preferences_answers = True
 
         if "age_range" in data:
             age_range = data.pop("age_range")
-            user.age_range_min = age_range["min"]
-            user.age_range_max = age_range["max"]
+            if age_range is None:
+                user.age_range_min = None
+                user.age_range_max = None
+            else:
+                user.age_range_min = age_range["min"]
+                user.age_range_max = age_range["max"]
             should_reset_feed_batch = True
+            should_sync_preferences_answers = True
 
         if "distance_km" in data:
             user.distance_km = data.pop("distance_km")
@@ -183,20 +199,22 @@ class UserService:
             user.interests = list(data.pop("interests") or [])
             should_reset_feed_batch = True
             should_sync_ml_preferences = True
+            should_sync_preferences_answers = True
 
         if import_transactions is not None:
             should_sync_ml_preferences = True
-            if self.matchmaking_repo is not None:
-                await self.matchmaking_repo.upsert_quiz_answer(
-                    user_id=user.id,
-                    step_key="import_transactions",
-                    answers=[str(bool(import_transactions)).lower()],
-                )
+            should_reset_feed_batch = True
+            should_sync_preferences_answers = True
 
         for field, value in data.items():
             setattr(user, field, value)
 
         user.is_onboarded = user.can_open_feed
+        if should_sync_preferences_answers:
+            await self._sync_preferences_quiz_answers(
+                user=user,
+                import_transactions=import_transactions,
+            )
         if should_reset_feed_batch and self.matchmaking_repo is not None:
             await self.matchmaking_repo.reset_batch_for_date(
                 user_id=user.id,
@@ -204,19 +222,64 @@ class UserService:
             )
             
         await self.uow.commit()
-            
-        await self.uow.session.refresh(user)
+
+        refreshed_user = await self.user_repo.get_by_id(user.id)
+        if refreshed_user is None:
+            return user
 
         if should_sync_ml_preferences and self.ml_facade is not None:
             await self.ml_facade.sync_profile_preferences(
-                user_id=user.id,
-                ml_user_id=user.service_user_id,
-                favorite_categories=list(user.interests or []),
+                user_id=refreshed_user.id,
+                ml_user_id=refreshed_user.service_user_id,
+                favorite_categories=list(refreshed_user.interests or []),
                 import_transactions=(
                     bool(import_transactions)
                     if import_transactions is not None
-                    else await self._get_import_transactions_value(user.id)
+                    else await self._get_import_transactions_value(refreshed_user.id)
                 ),
+            )
+        return refreshed_user
+
+    async def _sync_preferences_quiz_answers(
+        self,
+        *,
+        user: User,
+        import_transactions: bool | None,
+    ) -> None:
+        if self.matchmaking_repo is None:
+            return
+
+        match_preferences_answers: list[str] = [
+            *[
+                f"gender:{gender}"
+                for gender in list(user.looking_for_genders or [])
+                if gender
+            ],
+        ]
+        if user.age_range_min is not None and user.age_range_max is not None:
+            match_preferences_answers.extend(
+                [
+                    f"age_min:{user.age_range_min}",
+                    f"age_max:{user.age_range_max}",
+                ]
+            )
+
+        await self.matchmaking_repo.upsert_quiz_answer(
+            user_id=user.id,
+            step_key="match_preferences",
+            answers=match_preferences_answers,
+        )
+        await self.matchmaking_repo.upsert_quiz_answer(
+            user_id=user.id,
+            step_key="interests",
+            answers=list(user.interests or []),
+        )
+
+        if import_transactions is not None:
+            await self.matchmaking_repo.upsert_quiz_answer(
+                user_id=user.id,
+                step_key="import_transactions",
+                answers=[str(bool(import_transactions)).lower()],
             )
 
     async def create_avatar_presign(

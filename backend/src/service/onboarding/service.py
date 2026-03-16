@@ -241,8 +241,17 @@ class OnboardingService(BaseDatingService):
         steps = get_quiz_steps()
         step_keys = [step.step_key for step in steps]
         workflow_step_keys = [*step_keys, PROFILE_PREVIEW_STEP_KEY]
+        record_step_keys = {
+            record.step_key
+            for record in records
+            if record.step_key in workflow_step_keys
+        }
         answers_by_step = self._build_answers_by_step(user, records, workflow_step_keys)
-        completed_step_keys = [step_key for step_key in workflow_step_keys if step_key in answers_by_step]
+        completed_step_keys = [
+            step_key
+            for step_key in workflow_step_keys
+            if step_key in record_step_keys
+        ]
         required_profile_step_key = user.required_profile_step_key
         missing_required_fields = list(user.missing_required_fields)
         completed = len(completed_step_keys) == len(workflow_step_keys) and required_profile_step_key is None
@@ -282,22 +291,21 @@ class OnboardingService(BaseDatingService):
             if record.step_key in step_keys
         }
 
-        if "match_preferences" not in answers_by_step:
-            inferred_match_preferences: list[str] = []
-            inferred_match_preferences.extend(
-                f"gender:{gender}"
-                for gender in list(user.looking_for_genders or [])
-                if gender
-            )
-            if user.age_range_min is not None:
-                inferred_match_preferences.append(f"age_min:{user.age_range_min}")
-            if user.age_range_max is not None:
-                inferred_match_preferences.append(f"age_max:{user.age_range_max}")
-            if inferred_match_preferences:
-                answers_by_step["match_preferences"] = inferred_match_preferences
+        inferred_match_preferences: list[str] = []
+        inferred_match_preferences.extend(
+            f"gender:{gender}"
+            for gender in list(user.looking_for_genders or [])
+            if gender
+        )
+        if user.age_range_min is not None:
+            inferred_match_preferences.append(f"age_min:{user.age_range_min}")
+        if user.age_range_max is not None:
+            inferred_match_preferences.append(f"age_max:{user.age_range_max}")
+        if inferred_match_preferences or "match_preferences" in answers_by_step:
+            answers_by_step["match_preferences"] = inferred_match_preferences
 
-        if "interests" not in answers_by_step and user.interests:
-            answers_by_step["interests"] = list(user.interests)
+        if user.interests or "interests" in answers_by_step:
+            answers_by_step["interests"] = list(user.interests or [])
 
         return answers_by_step
 
