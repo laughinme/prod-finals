@@ -137,20 +137,23 @@ class User(TimestampMixin, Base):
             missing.append("birth_date")
         if self.gender is None:
             missing.append("gender")
-        if not self.has_approved_photo:
-            missing.append("avatar")
         return missing
 
     @property
     def has_min_profile(self) -> bool:
-        return not any(
-            field in {"first_name", "birth_date", "gender"}
-            for field in self.missing_required_fields
-        )
+        return len(self.missing_required_fields) == 0
 
     @property
     def has_approved_photo(self) -> bool:
         return bool(self.avatar_key and self.avatar_moderation_status == AvatarModerationStatus.APPROVED.value)
+
+    @property
+    def can_like_profiles(self) -> bool:
+        return self.has_min_profile and self.has_approved_photo and not self.banned
+
+    @property
+    def can_be_shown_in_feed(self) -> bool:
+        return self.has_min_profile and self.has_approved_photo and not self.banned
 
     @property
     def profile_status(self) -> str:
@@ -160,16 +163,14 @@ class User(TimestampMixin, Base):
             return ProfileStatus.REQUIRED_FIELDS_MISSING.value
         if self.avatar_moderation_status == AvatarModerationStatus.PENDING.value:
             return ProfileStatus.AVATAR_PENDING.value
-        if self.avatar_moderation_status in {
-            AvatarModerationStatus.MISSING.value,
-            AvatarModerationStatus.REJECTED.value,
-        }:
-            return ProfileStatus.AVATAR_REQUIRED.value
         return ProfileStatus.READY.value
 
     @property
     def can_open_feed(self) -> bool:
-        return self.profile_status == ProfileStatus.READY.value
+        return self.profile_status in {
+            ProfileStatus.READY.value,
+            ProfileStatus.AVATAR_PENDING.value,
+        }
 
     @property
     def profile_completion_percent(self) -> int:
@@ -194,16 +195,13 @@ class User(TimestampMixin, Base):
             return "profile_required"
         if self.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return "photo_pending"
-        if self.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
-            return "photo_required"
+        if not self.has_approved_photo:
+            return "photo_recommended"
         return "ready_for_feed"
 
     @property
     def required_profile_step_key(self) -> str | None:
-        missing = set(self.missing_required_fields)
-        if "avatar" in missing:
-            return "photo_upload"
-        if missing:
+        if self.missing_required_fields:
             return "profile_basics"
         return None
 

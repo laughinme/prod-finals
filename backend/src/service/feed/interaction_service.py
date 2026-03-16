@@ -84,6 +84,13 @@ class InteractionService(BaseDatingService):
         serve_item_id,
         payload: FeedReactionRequest,
     ) -> FeedReactionResponse:
+        if payload.action == FeedAction.LIKE and not user.can_like_profiles:
+            raise ForbiddenError(
+                "Photo is required before you can like profiles",
+                error_code="PHOTO_REQUIRED_TO_LIKE",
+                details={"reason": "photo_required_to_like"},
+            )
+
         item = await self.matchmaking_repo.get_recommendation_item_for_user(
             serve_item_id=serve_item_id,
             owner_user_id=user.id,

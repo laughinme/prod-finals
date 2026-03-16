@@ -15,4 +15,5 @@ class MockIdentityService:
         user.first_name = user.first_name or profile.first_name
         user.last_name = user.last_name or profile.last_name
         user.bio = user.bio or profile.bio
+        user.city_id = user.city_id or "msk"
         user.is_dataset_user = False

@@ -111,6 +111,15 @@ class OnboardingAnswersResponse(OnboardingProgress):
     saved: bool = True
 
 
+class OnboardingEstimateRequest(BaseModel):
+    answers_by_step: dict[str, list[str]] = Field(default_factory=dict)
+    import_transactions: bool | None = None
+
+
+class OnboardingEstimateResponse(BaseModel):
+    estimated_count: int = Field(default=0, ge=0)
+
+
 class FeedCandidate(BaseModel):
     user_id: UUID
     display_name: str

@@ -41,24 +41,24 @@ class UserModel(TimestampModel):
     missing_required_fields: list[str] = Field(default_factory=list)
     required_profile_step_key: str | None = None
     has_approved_photo: bool
+    can_like_profiles: bool = False
+    can_be_shown_in_feed: bool = False
     profile_status: str
     banned: bool
     role_slugs: list[str] = Field(default_factory=list, description="User's roles.")
 
 
 class UserPatch(BaseModel):
-    first_name: str | None = Field(None, max_length=80)
-    last_name: str | None = Field(None, max_length=80)
-    birth_date: date | None = None
+    model_config = ConfigDict(extra="forbid")
+
     bio: str | None = Field(None, max_length=500)
     city_id: str | None = Field(None, max_length=64)
     city: str | None = Field(None, max_length=128)
-    gender: Gender | None = None
-    looking_for_genders: list[Gender] | None = Field(None, max_length=3)
+    looking_for_genders: list[Gender] | None = None
     age_range: AgeRange | None = None
     distance_km: int | None = Field(None, ge=1, le=300)
     goal: str | None = None
-    interests: list[str] | None = Field(None, max_length=15)
+    interests: list[str] | None = None
     import_transactions: bool | None = None
     search_preferences: SearchPreferences | None = None
 

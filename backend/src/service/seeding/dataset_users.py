@@ -7,15 +7,9 @@ from database.relational_db import RolesInterface, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
 from domain.dating.category_catalog import CategoryDefinition, pick_category_keys
 from service.mock_identity import MockIdentityRegistry
+from service.avatar_assets import load_dataset_avatar_asset
 
 from .base import SeedContext
-
-
-SEED_AVATAR_BYTES = (
-    b"\x89PNG\r\n\x1a\n"
-    b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
-    b"\x00\x00\x00\x0bIDATx\x9cc``\x00\x00\x00\x02\x00\x01\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82"
-)
 
 
 class DatasetUsersSeedTask:
@@ -47,6 +41,8 @@ class DatasetUsersSeedTask:
         if limit:
             profiles = profiles[:limit]
 
+        avatar_asset = load_dataset_avatar_asset()
+
         for profile in profiles:
             user = await user_repo.get_by_service_user_id(profile.service_user_id)
             if user is None:
@@ -68,6 +64,7 @@ class DatasetUsersSeedTask:
             user.birth_date = profile.birth_date
             user.gender = profile.gender
             user.bio = profile.bio
+            user.city_id = "msk"
             user.is_dataset_user = True
             user.quiz_started = False
             user.looking_for_genders = []
@@ -83,15 +80,14 @@ class DatasetUsersSeedTask:
             user.avatar_status = "approved"
             user.avatar_rejection_reason = None
 
-            if not user.avatar_key:
-                user.avatar_key = f"avatars/{user.id}/seed.png"
+            user.avatar_key = f"avatars/{user.id}/{avatar_asset.filename}"
 
             await asyncio.to_thread(
                 context.storage.put_object_bytes,
                 bucket=context.settings.STORAGE_PUBLIC_BUCKET,
                 key=user.avatar_key,
-                payload=SEED_AVATAR_BYTES,
-                content_type="image/png",
+                payload=avatar_asset.payload,
+                content_type=avatar_asset.content_type,
             )
 
             user.is_onboarded = user.can_open_feed

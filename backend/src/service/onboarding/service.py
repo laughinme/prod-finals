@@ -4,9 +4,12 @@ from core.errors import BadRequestError
 from database.relational_db import User
 from domain.dating import (
     AuditEntityType,
+    FeedCandidateContext,
     OnboardingAnswersRequest,
     OnboardingAnswersResponse,
     OnboardingConfigResponse,
+    OnboardingEstimateRequest,
+    OnboardingEstimateResponse,
     OnboardingProgress,
     OnboardingStateResponse,
 )
@@ -18,8 +21,7 @@ from service.matchmaking import BaseDatingService
 
 IMPORT_TRANSACTIONS_STEP_KEY = "import_transactions"
 PROFILE_PREVIEW_STEP_KEY = "profile_preview"
-PHOTO_UPLOAD_STEP_KEY = "photo_upload"
-PROFILE_BASICS_STEP_KEY = "profile_basics"
+PUBLIC_MATCH_GENDERS = {"male", "female"}
 
 
 class OnboardingService(BaseDatingService):
@@ -38,6 +40,22 @@ class OnboardingService(BaseDatingService):
     async def get_state(self, user: User) -> OnboardingStateResponse:
         records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
         return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
+
+    async def estimate(self, user: User, payload: OnboardingEstimateRequest) -> OnboardingEstimateResponse:
+        answers_by_step = {key: list(value or []) for key, value in (payload.answers_by_step or {}).items()}
+        requester = await self._build_estimate_context(user=user, answers_by_step=answers_by_step)
+        excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+        total = 0
+        for candidate in await self.matchmaking_repo.list_feed_candidates(requester_id=user.id):
+            if candidate.id in excluded_ids or not candidate.can_be_shown_in_feed:
+                continue
+            candidate_context = await self._build_feed_context(candidate)
+            if self._candidate_passes_filters(
+                requester_context=requester,
+                candidate_context=candidate_context,
+            ):
+                total += 1
+        return OnboardingEstimateResponse(estimated_count=total)
 
     async def save_answers(self, user: User, payload: OnboardingAnswersRequest) -> OnboardingAnswersResponse:
         step = get_step(payload.step_key)
@@ -85,7 +103,7 @@ class OnboardingService(BaseDatingService):
         await self.uow.commit()
         await self.uow.session.refresh(user)
 
-        if payload.step_key == "interests" and normalized_answers:
+        if payload.step_key == "interests_and_bank_signal" and normalized_answers:
             await self._sync_onboarding_with_ml(
                 user=user,
                 favorite_categories=normalized_answers,
@@ -117,8 +135,8 @@ class OnboardingService(BaseDatingService):
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
         if step.step_key == PROFILE_PREVIEW_STEP_KEY:
             return self._validate_profile_preview(step, answers)
-        if step.step_key == "match_preferences":
-            return self._validate_match_preferences(step, answers)
+        if step.step_key == "goal_and_audience":
+            return self._validate_goal_and_audience(step, answers)
 
         normalized = [answer.strip() for answer in answers if answer and answer.strip()]
         if not normalized and step.optional:
@@ -157,83 +175,49 @@ class OnboardingService(BaseDatingService):
             raise BadRequestError("Profile preview requires explicit confirmation")
         return normalized
 
-    def _validate_match_preferences(self, step, answers: list[str]) -> list[str]:
+    def _validate_goal_and_audience(self, step, answers: list[str]) -> list[str]:
         normalized = [answer.strip() for answer in answers if answer and answer.strip()]
         if not normalized:
             return []
 
-        genders: list[str] = []
-        age_min: int | None = None
-        age_max: int | None = None
-        allowed_genders = {option.value for option in step.options}
+        allowed_values = {option.value for option in step.options}
+        if any(answer not in allowed_values for answer in normalized):
+            raise BadRequestError("Unknown value passed for goal and audience step")
 
-        for answer in normalized:
-            if answer.startswith("gender:"):
-                gender = answer.split(":", 1)[1]
-                if gender not in allowed_genders:
-                    raise BadRequestError("Unknown gender passed for match preferences")
-                genders.append(gender)
-                continue
-            if answer.startswith("age_min:"):
-                try:
-                    age_min = int(answer.split(":", 1)[1])
-                except ValueError as exc:
-                    raise BadRequestError("Age minimum must be an integer") from exc
-                continue
-            if answer.startswith("age_max:"):
-                try:
-                    age_max = int(answer.split(":", 1)[1])
-                except ValueError as exc:
-                    raise BadRequestError("Age maximum must be an integer") from exc
-                continue
-            raise BadRequestError("Unknown value passed for match preferences")
+        goals = [answer for answer in normalized if answer.startswith("goal:")]
+        audiences = [answer for answer in normalized if answer.startswith("audience:")]
+        goals = list(dict.fromkeys(goals))
+        audiences = list(dict.fromkeys(audiences))
 
-        genders = list(dict.fromkeys(genders))
-        if len(genders) > (step.max_answers or len(step.options)):
-            raise BadRequestError("Too many genders selected")
+        if len(goals) > 1:
+            raise BadRequestError("Only one goal can be selected")
+        if "audience:anyone" in audiences and len(audiences) > 1:
+            raise BadRequestError("Audience 'anyone' cannot be combined with explicit genders")
 
-        if age_min is None or age_max is None:
-            raise BadRequestError("Age range is required for match preferences")
-        if step.range_min is not None and age_min < step.range_min:
-            raise BadRequestError("Range lower bound is too small")
-        if step.range_max is not None and age_max > step.range_max:
-            raise BadRequestError("Range upper bound is too large")
-        if age_min > age_max:
-            raise BadRequestError("Range lower bound must be less than or equal to upper bound")
-
-        return [
-            *[f"gender:{gender}" for gender in genders],
-            f"age_min:{age_min}",
-            f"age_max:{age_max}",
-        ]
+        return [*goals, *audiences]
 
     def _apply_quiz_answer_to_user(self, user: User, step_key: str, answers: list[str]) -> None:
-        if step_key == "match_preferences":
+        if step_key == "goal_and_audience":
             if not answers:
+                user.goal = None
                 user.looking_for_genders = []
-                user.age_range_min = None
-                user.age_range_max = None
                 return
-            genders = [
+            goals = [
                 answer.split(":", 1)[1]
                 for answer in answers
-                if answer.startswith("gender:")
+                if answer.startswith("goal:")
             ]
-            age_min = next(
-                int(answer.split(":", 1)[1])
+            audiences = [
+                answer.split(":", 1)[1]
                 for answer in answers
-                if answer.startswith("age_min:")
-            )
-            age_max = next(
-                int(answer.split(":", 1)[1])
-                for answer in answers
-                if answer.startswith("age_max:")
-            )
-            user.looking_for_genders = genders
-            user.age_range_min = age_min
-            user.age_range_max = age_max
+                if answer.startswith("audience:")
+            ]
+            user.goal = goals[0] if goals else None
+            user.looking_for_genders = [] if "anyone" in audiences else [
+                gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS
+            ]
             return
-        if step_key == "interests":
+        if step_key == "interests_and_bank_signal":
             user.interests = list(answers or [])
             return
 
@@ -291,21 +275,25 @@ class OnboardingService(BaseDatingService):
             if record.step_key in step_keys
         }
 
-        inferred_match_preferences: list[str] = []
-        inferred_match_preferences.extend(
-            f"gender:{gender}"
+        inferred_goal_and_audience: list[str] = []
+        if user.goal:
+            inferred_goal_and_audience.append(f"goal:{user.goal}")
+        inferred_goal_and_audience.extend(
+            f"audience:{gender}"
             for gender in list(user.looking_for_genders or [])
-            if gender
+            if gender in PUBLIC_MATCH_GENDERS
         )
-        if user.age_range_min is not None:
-            inferred_match_preferences.append(f"age_min:{user.age_range_min}")
-        if user.age_range_max is not None:
-            inferred_match_preferences.append(f"age_max:{user.age_range_max}")
-        if inferred_match_preferences or "match_preferences" in answers_by_step:
-            answers_by_step["match_preferences"] = inferred_match_preferences
+        if not user.looking_for_genders:
+            inferred_goal_and_audience = [
+                answer for answer in inferred_goal_and_audience
+                if not answer.startswith("audience:")
+            ]
+            inferred_goal_and_audience.append("audience:anyone")
+        if inferred_goal_and_audience or "goal_and_audience" in answers_by_step:
+            answers_by_step["goal_and_audience"] = inferred_goal_and_audience
 
-        if user.interests or "interests" in answers_by_step:
-            answers_by_step["interests"] = list(user.interests or [])
+        if user.interests or "interests_and_bank_signal" in answers_by_step:
+            answers_by_step["interests_and_bank_signal"] = list(user.interests or [])
 
         return answers_by_step
 
@@ -348,3 +336,55 @@ class OnboardingService(BaseDatingService):
             favorite_categories=categories[:15],
             import_transactions=import_transactions,
         )
+
+    async def _build_estimate_context(
+        self,
+        *,
+        user: User,
+        answers_by_step: dict[str, list[str]],
+    ) -> FeedCandidateContext:
+        context = await self._build_feed_context(user)
+        step_answers = list(answers_by_step.get("goal_and_audience", []))
+        if step_answers:
+            goals = [
+                answer.split(":", 1)[1]
+                for answer in step_answers
+                if answer.startswith("goal:")
+            ]
+            audiences = [
+                answer.split(":", 1)[1]
+                for answer in step_answers
+                if answer.startswith("audience:")
+            ]
+            context.search_preferences["goal"] = goals[0] if goals else None
+            context.search_preferences["looking_for_genders"] = [] if "anyone" in audiences else [
+                gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS
+            ]
+
+        interests = answers_by_step.get("interests_and_bank_signal")
+        if interests is not None:
+            context.interests = list(interests or [])
+        return context
+
+    def _candidate_passes_filters(
+        self,
+        *,
+        requester_context: FeedCandidateContext,
+        candidate_context: FeedCandidateContext,
+    ) -> bool:
+        requester_prefs = requester_context.search_preferences
+        candidate_prefs = candidate_context.search_preferences
+
+        if (
+            requester_prefs.get("looking_for_genders")
+            and candidate_context.gender is not None
+            and candidate_context.gender not in requester_prefs["looking_for_genders"]
+        ):
+            return False
+        if (
+            candidate_prefs.get("looking_for_genders")
+            and requester_context.gender is not None
+            and requester_context.gender not in candidate_prefs["looking_for_genders"]
+        ):
+            return False
+        return True

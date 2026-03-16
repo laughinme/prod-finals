@@ -42,6 +42,19 @@ async def confirm_avatar_upload(
     return await svc.serialize_user(user)
 
 
+@router.post(
+    path="/me/avatar/default",
+    response_model=UserModel,
+    summary="Attach the default demo avatar to profile",
+)
+async def set_default_avatar(
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[UserService, Depends(get_user_service)],
+) -> UserModel:
+    updated_user = await svc.set_default_avatar(user=user)
+    return await svc.serialize_user(updated_user)
+
+
 @router.delete(
     path="/me/avatar",
     response_model=UserModel,

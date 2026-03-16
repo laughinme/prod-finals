@@ -90,11 +90,7 @@ async def _complete_profile(
     patch = await client.patch(
         "/api/v1/users/me",
         json={
-            "first_name": display_name.split()[0],
-            "last_name": " ".join(display_name.split()[1:]) or None,
-            "birth_date": birth_date,
             "city_id": city_id,
-            "gender": gender,
             "bio": f"{display_name} bio",
         },
         headers=auth_header(access_token),
@@ -117,15 +113,15 @@ async def _answer_onboarding_filters(
     import_transactions: bool = True,
 ) -> None:
     interests = interests or [item.key for item in load_category_definitions()[:3]]
+    audience_answers = [f"audience:{gender}" for gender in genders] if genders else ["audience:anyone"]
     responses = [
         await client.post(
             "/api/v1/onboarding/answers",
             json={
-                "step_key": "match_preferences",
+                "step_key": "goal_and_audience",
                 "answers": [
-                    *[f"gender:{gender}" for gender in genders],
-                    f"age_min:{age_min}",
-                    f"age_max:{age_max}",
+                    "goal:serious_relationship",
+                    *audience_answers,
                 ],
             },
             headers=auth_header(access_token),
@@ -133,7 +129,7 @@ async def _answer_onboarding_filters(
         await client.post(
             "/api/v1/onboarding/answers",
             json={
-                "step_key": "interests",
+                "step_key": "interests_and_bank_signal",
                 "answers": interests,
                 "import_transactions": import_transactions,
             },
@@ -179,55 +175,55 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     _, access_b = await _register_user(client, faker, "bob")
     _, access_c = await _register_user(client, faker, "charlie")
 
-    locked_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
-    assert locked_feed.status_code == 200
-    assert locked_feed.json()["feed_state"] == "locked"
-    assert locked_feed.json()["lock_reason"] == "avatar_required"
+    initial_feed = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert initial_feed.status_code == 200
+    assert initial_feed.json()["feed_state"] in {"ready", "exhausted", "degraded"}
+    assert initial_feed.json()["lock_reason"] is None
 
     onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
     assert onboarding_config.status_code == 200
     steps = {step["step_key"]: step for step in onboarding_config.json()["steps"]}
-    assert set(steps) == {"match_preferences", "interests"}
-    assert steps["match_preferences"]["required_for_feed"] is False
-    assert steps["match_preferences"]["step_type"] == "multi_select"
-    assert steps["interests"]["min_answers"] == 3
-    assert steps["interests"]["import_transactions_enabled"] is True
-    assert steps["interests"]["import_transactions_default"] is True
-    assert steps["interests"]["import_transactions_value"] is True
+    assert set(steps) == {"goal_and_audience", "interests_and_bank_signal"}
+    assert steps["goal_and_audience"]["required_for_feed"] is False
+    assert steps["goal_and_audience"]["step_type"] == "multi_select"
+    assert steps["interests_and_bank_signal"]["min_answers"] == 3
+    assert steps["interests_and_bank_signal"]["import_transactions_enabled"] is True
+    assert steps["interests_and_bank_signal"]["import_transactions_default"] is True
+    assert steps["interests_and_bank_signal"]["import_transactions_value"] is True
 
     onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
     assert onboarding_state.status_code == 200
     assert onboarding_state.json()["should_show"] is True
-    assert onboarding_state.json()["current_step_key"] == "photo_upload"
+    assert onboarding_state.json()["current_step_key"] == "goal_and_audience"
     assert onboarding_state.json()["completed_step_keys"] == []
-    assert onboarding_state.json()["missing_required_fields"] == ["avatar"]
+    assert onboarding_state.json()["missing_required_fields"] == []
 
     await _upload_avatar(client, access_a)
 
     onboarding_state_after_photo = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
     assert onboarding_state_after_photo.status_code == 200
-    assert onboarding_state_after_photo.json()["current_step_key"] == "match_preferences"
+    assert onboarding_state_after_photo.json()["current_step_key"] == "goal_and_audience"
     assert onboarding_state_after_photo.json()["missing_required_fields"] == []
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
         json={
-            "step_key": "match_preferences",
-            "answers": ["gender:male", "age_min:24", "age_max:36"],
+            "step_key": "goal_and_audience",
+            "answers": ["goal:serious_relationship", "audience:male"],
         },
         headers=auth_header(access_a),
     )
     assert answer.status_code == 200
-    assert answer.json()["step_key"] == "match_preferences"
+    assert answer.json()["step_key"] == "goal_and_audience"
     assert answer.json()["quiz_started"] is True
-    assert answer.json()["current_step_key"] == "interests"
-    assert answer.json()["completed_step_keys"] == ["match_preferences"]
+    assert answer.json()["current_step_key"] == "interests_and_bank_signal"
+    assert answer.json()["completed_step_keys"] == ["goal_and_audience"]
     assert answer.json()["should_show"] is True
 
     interests_answer = await client.post(
         "/api/v1/onboarding/answers",
         json={
-            "step_key": "interests",
+            "step_key": "interests_and_bank_signal",
             "answers": [item.key for item in load_category_definitions()[:3]],
             "import_transactions": False,
         },
@@ -257,7 +253,7 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     )
     assert updated_onboarding_config.status_code == 200
     updated_steps = {step["step_key"]: step for step in updated_onboarding_config.json()["steps"]}
-    assert updated_steps["interests"]["import_transactions_value"] is False
+    assert updated_steps["interests_and_bank_signal"]["import_transactions_value"] is False
 
     completed_onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
     assert completed_onboarding_state.status_code == 200
@@ -317,7 +313,6 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert me_a.status_code == 200
     assert me_b.status_code == 200
     assert me_a.json()["looking_for_genders"] == ["male"]
-    assert me_a.json()["age_range"] == {"min": 24, "max": 36}
     assert me_a.json()["quiz_started"] is True
     assert me_a.json()["profile_status"] == "ready"
     assert me_b.json()["profile_status"] == "ready"
@@ -552,19 +547,14 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
 async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, faker: Faker):
     _, access = await _register_user(client, faker, "equalage")
 
-    answer = await client.post(
-        "/api/v1/onboarding/answers",
+    patch = await client.patch(
+        "/api/v1/users/me",
         json={
-            "step_key": "match_preferences",
-            "answers": ["gender:male", "age_min:18", "age_max:18"],
+            "age_range": {"min": 18, "max": 18},
         },
         headers=auth_header(access),
     )
-    assert answer.status_code == 200
-    assert answer.json()["step_key"] == "match_preferences"
-    assert answer.json()["saved"] is True
-    assert answer.json()["quiz_started"] is True
-    assert answer.json()["current_step_key"] == "photo_upload"
+    assert patch.status_code == 200
 
     me = await client.get("/api/v1/users/me", headers=auth_header(access))
     assert me.status_code == 200
@@ -578,20 +568,20 @@ async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, fake
     initial_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
     assert initial_state.status_code == 200
     assert initial_state.json()["should_show"] is True
-    assert initial_state.json()["current_step_key"] == "photo_upload"
+    assert initial_state.json()["current_step_key"] == "goal_and_audience"
 
     skip_response = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_token))
     assert skip_response.status_code == 200
     assert skip_response.json()["quiz_started"] is True
     assert skip_response.json()["skipped"] is True
-    assert skip_response.json()["should_show"] is True
-    assert skip_response.json()["current_step_key"] == "photo_upload"
+    assert skip_response.json()["should_show"] is False
+    assert skip_response.json()["current_step_key"] is None
 
     refreshed_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
     assert refreshed_state.status_code == 200
     assert refreshed_state.json()["skipped"] is True
-    assert refreshed_state.json()["should_show"] is True
-    assert refreshed_state.json()["current_step_key"] == "photo_upload"
+    assert refreshed_state.json()["should_show"] is False
+    assert refreshed_state.json()["current_step_key"] is None
 
 
 @pytest.mark.asyncio
@@ -614,12 +604,6 @@ async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncC
         age_max=36,
         import_transactions=False,
     )
-    preview = await client.post(
-        "/api/v1/onboarding/answers",
-        json={"step_key": "profile_preview", "answers": ["confirmed"]},
-        headers=auth_header(access_token),
-    )
-    assert preview.status_code == 200
 
     patch = await client.patch(
         "/api/v1/users/me",
@@ -639,18 +623,18 @@ async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncC
 
     state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
     assert state.status_code == 200
-    assert state.json()["answers_by_step"]["match_preferences"] == []
-    assert state.json()["answers_by_step"]["interests"] == []
+    assert state.json()["answers_by_step"]["goal_and_audience"] == ["goal:serious_relationship", "audience:anyone"]
+    assert state.json()["answers_by_step"]["interests_and_bank_signal"] == []
     assert set(state.json()["completed_step_keys"]) == {
-        "match_preferences",
-        "interests",
+        "goal_and_audience",
+        "interests_and_bank_signal",
         "profile_preview",
     }
 
     config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_token))
     assert config.status_code == 200
     steps = {step["step_key"]: step for step in config.json()["steps"]}
-    assert steps["interests"]["import_transactions_value"] is True
+    assert steps["interests_and_bank_signal"]["import_transactions_value"] is True
 
 
 @pytest.mark.asyncio

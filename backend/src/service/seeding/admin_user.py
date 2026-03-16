@@ -46,6 +46,7 @@ class AdminUserSeedTask:
         user.birth_date = profile.birth_date
         user.gender = profile.gender
         user.bio = profile.bio
+        user.city_id = "msk"
         user.is_dataset_user = False
         user.is_onboarded = False
         user.quiz_started = False

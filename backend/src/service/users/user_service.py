@@ -25,6 +25,7 @@ from domain.users.schemas.profile import UserPatch
 from domain.users.schemas.profile import UserModel
 from service.media import ALLOWED_AVATAR_CONTENT_TYPES, MediaStorageService
 from service.matchmaking.ml_facade import MlFacade
+from service.avatar_assets import load_default_avatar_asset
 from .exceptions import (
     AvatarObjectNotFoundError,
     AvatarTooLargeError,
@@ -35,6 +36,8 @@ from .exceptions import (
     UnknownRolesError,
     UnsupportedAvatarContentTypeError,
 )
+
+PUBLIC_MATCH_GENDERS = {"male", "female"}
 
 
 class UserService:
@@ -83,9 +86,12 @@ class UserService:
             avatar_rejection_reason=user.avatar_rejection_reason,
             birth_date=user.birth_date,
             city={"id": city.id, "name": city.name} if city else None,
-            gender=user.gender,
+            gender=user.gender if user.gender in PUBLIC_MATCH_GENDERS else None,
             bio=user.bio,
-            looking_for_genders=list(user.looking_for_genders or []),
+            looking_for_genders=[
+                gender for gender in list(user.looking_for_genders or [])
+                if gender in PUBLIC_MATCH_GENDERS
+            ],
             age_range=AgeRange(**user.age_range) if user.age_range else None,
             distance_km=user.distance_km,
             goal=self._build_legacy_goal(user.goal),
@@ -98,6 +104,8 @@ class UserService:
             missing_required_fields=list(user.missing_required_fields),
             required_profile_step_key=user.required_profile_step_key,
             has_approved_photo=user.has_approved_photo,
+            can_like_profiles=user.can_like_profiles,
+            can_be_shown_in_feed=user.can_be_shown_in_feed,
             profile_status=user.profile_status,
             banned=user.banned,
             role_slugs=user.role_slugs,
@@ -120,6 +128,7 @@ class UserService:
                 raise CityNotFoundError()
             user.city_id = city.id
             data.pop("city_id")
+            should_reset_feed_batch = True
 
         if "city" in data:
             if self.city_repo is None:
@@ -129,6 +138,7 @@ class UserService:
                 raise CityNotFoundError()
             user.city_id = city.id
             data.pop("city")
+            should_reset_feed_batch = True
 
         search_preferences = data.pop("search_preferences", None)
         if search_preferences is not None:
@@ -137,6 +147,7 @@ class UserService:
                 user.looking_for_genders = [
                     value.value if hasattr(value, "value") else value
                     for value in (prefs["looking_for_genders"] or [])
+                    if (value.value if hasattr(value, "value") else value) in PUBLIC_MATCH_GENDERS
                 ]
                 should_reset_feed_batch = True
                 should_sync_preferences_answers = True
@@ -155,23 +166,13 @@ class UserService:
             if "goal" in prefs:
                 user.goal = self._normalize_goal(prefs["goal"])
                 should_reset_feed_batch = True
-
-        if "first_name" in data:
-            value = data.pop("first_name")
-            user.first_name = value.strip() or None if isinstance(value, str) else value
-
-        if "last_name" in data:
-            value = data.pop("last_name")
-            user.last_name = value.strip() or None if isinstance(value, str) else value
-
-        if "gender" in data:
-            gender = data.pop("gender")
-            user.gender = gender.value if hasattr(gender, "value") else gender
+                should_sync_preferences_answers = True
 
         if "looking_for_genders" in data:
             user.looking_for_genders = [
                 value.value if hasattr(value, "value") else value
                 for value in (data.pop("looking_for_genders") or [])
+                if (value.value if hasattr(value, "value") else value) in PUBLIC_MATCH_GENDERS
             ]
             should_reset_feed_batch = True
             should_sync_preferences_answers = True
@@ -194,6 +195,7 @@ class UserService:
         if "goal" in data:
             user.goal = self._normalize_goal(data.pop("goal"))
             should_reset_feed_batch = True
+            should_sync_preferences_answers = True
 
         if "interests" in data:
             user.interests = list(data.pop("interests") or [])
@@ -249,29 +251,27 @@ class UserService:
         if self.matchmaking_repo is None:
             return
 
-        match_preferences_answers: list[str] = [
-            *[
-                f"gender:{gender}"
-                for gender in list(user.looking_for_genders or [])
-                if gender
-            ],
+        goal_and_audience_answers: list[str] = []
+        if user.goal:
+            goal_and_audience_answers.append(f"goal:{user.goal}")
+        audiences = [
+            gender
+            for gender in list(user.looking_for_genders or [])
+            if gender in PUBLIC_MATCH_GENDERS
         ]
-        if user.age_range_min is not None and user.age_range_max is not None:
-            match_preferences_answers.extend(
-                [
-                    f"age_min:{user.age_range_min}",
-                    f"age_max:{user.age_range_max}",
-                ]
-            )
+        if audiences:
+            goal_and_audience_answers.extend(f"audience:{gender}" for gender in audiences)
+        else:
+            goal_and_audience_answers.append("audience:anyone")
 
         await self.matchmaking_repo.upsert_quiz_answer(
             user_id=user.id,
-            step_key="match_preferences",
-            answers=match_preferences_answers,
+            step_key="goal_and_audience",
+            answers=goal_and_audience_answers,
         )
         await self.matchmaking_repo.upsert_quiz_answer(
             user_id=user.id,
-            step_key="interests",
+            step_key="interests_and_bank_signal",
             answers=list(user.interests or []),
         )
 
@@ -347,6 +347,20 @@ class UserService:
             )
         return self._build_avatar_response(user)
 
+    async def set_default_avatar(self, *, user: User) -> User:
+        asset = load_default_avatar_asset()
+        object_key = f"avatars/{user.id}/{asset.filename}"
+        await asyncio.to_thread(
+            self.media_storage.put_object_bytes,
+            bucket=self.settings.STORAGE_PUBLIC_BUCKET,
+            key=object_key,
+            payload=asset.payload,
+            content_type=asset.content_type,
+        )
+        await self.confirm_avatar_upload(user=user, file_key=object_key)
+        refreshed_user = await self.user_repo.get_by_id(user.id)
+        return refreshed_user or user
+
     async def remove_avatar(self, *, user: User) -> None:
         if not user.avatar_key:
             return
@@ -354,7 +368,7 @@ class UserService:
         avatar_key = user.avatar_key
         user.avatar_key = None
         user.avatar_status = AvatarModerationStatus.MISSING.value
-        user.is_onboarded = False
+        user.is_onboarded = user.can_open_feed
         await self.uow.commit()
         await self.uow.session.refresh(user)
 

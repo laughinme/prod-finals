@@ -74,7 +74,7 @@ class FeedService(BaseDatingService):
                 cards=[],
             )
 
-        cards = await self._build_cards(pending_items[:limit])
+        cards = await self._build_cards(user=user, items=pending_items[:limit])
         if not cards:
             return FeedResponse(
                 feed_state=FeedState.EXHAUSTED,
@@ -157,7 +157,7 @@ class FeedService(BaseDatingService):
             candidate
             for candidate in await self.matchmaking_repo.list_feed_candidates(requester_id=user.id)
             if candidate.id not in excluded_ids
-            and candidate.can_open_feed
+            and candidate.can_be_shown_in_feed
             and self._candidate_passes_filters(
                 requester_context=requester_context,
                 candidate_context=await self._build_feed_context(candidate),
@@ -255,21 +255,25 @@ class FeedService(BaseDatingService):
         ):
             return False
 
-        if requester_prefs.age_range is not None:
+        requester_age_range = requester_prefs.age_range
+        if requester_age_range is None and requester_age is not None:
+            requester_age_range = type("AgeRangeProxy", (), {
+                "min": max(18, requester_age - 5),
+                "max": min(99, requester_age + 5),
+            })()
+
+        if requester_age_range is not None:
             if candidate_age is not None and not (
-                requester_prefs.age_range.min <= candidate_age <= requester_prefs.age_range.max
+                requester_age_range.min <= candidate_age <= requester_age_range.max
             ):
                 return False
         if candidate_prefs.age_range is not None and requester_age is not None:
             if not (candidate_prefs.age_range.min <= requester_age <= candidate_prefs.age_range.max):
                 return False
 
-        if requester_prefs.goal and candidate_prefs.goal and requester_prefs.goal != candidate_prefs.goal:
-            return False
-
         return True
 
-    async def _build_cards(self, items: list[RecommendationItem]) -> list[FeedCard]:
+    async def _build_cards(self, *, user: User, items: list[RecommendationItem]) -> list[FeedCard]:
         users_by_id = {
             item.id: item
             for item in await self.user_repo.list_by_ids([item.target_user_id for item in items])
@@ -305,7 +309,7 @@ class FeedService(BaseDatingService):
                         category_breakdown=item.category_breakdown,
                     ),
                     actions=FeedCardActions(
-                        can_like=True,
+                        can_like=user.can_like_profiles,
                         can_pass=True,
                         can_hide=True,
                         can_block=True,

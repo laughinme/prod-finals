@@ -16,6 +16,17 @@ class CategoryDefinition:
     sort_order: int
 
 
+_CURATED_LABELS: tuple[str, ...] = (
+    "Рестораны",
+    "Развлечения",
+    "Фаст Фуд",
+    "Одежда/Обувь",
+    "Транспорт",
+    "Супермаркеты",
+)
+_CURATED_LABEL_RANK = {label: index for index, label in enumerate(_CURATED_LABELS)}
+
+
 def _catalog_source_path() -> Path:
     local_path = Path(__file__).with_name("categories.json")
     repo_path = Path(__file__).resolve().parents[4] / "docs" / "categories.json"
@@ -41,7 +52,7 @@ def load_category_definitions() -> tuple[CategoryDefinition, ...]:
 
     for index, hit in enumerate(hits, start=1):
         label = str(hit.get("value", "")).strip()
-        if not label:
+        if not label or label not in _CURATED_LABEL_RANK:
             continue
         key = _normalize_category_key(label)
         if key in seen_keys:
@@ -52,10 +63,11 @@ def load_category_definitions() -> tuple[CategoryDefinition, ...]:
                 key=key,
                 label=label,
                 source_count=int(hit.get("count", 0) or 0),
-                sort_order=index,
+                sort_order=_CURATED_LABEL_RANK[label],
             )
         )
 
+    definitions.sort(key=lambda item: item.sort_order)
     return tuple(definitions)
 
 
@@ -77,4 +89,3 @@ def pick_category_keys(seed_key: str, *, min_items: int = 3, max_items: int = 5)
         reverse=True,
     )
     return [item.key for item in scored[:target_count]]
-
