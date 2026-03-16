@@ -16,7 +16,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchAny, PointStruct
 import numpy as np
 
-
+import logging
 from .schemas import (
     AckResponse,
     AckStatus,
@@ -38,7 +38,7 @@ from .schemas import (
     SwipeFeedbackRequest,
 )
 
-
+logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class RuntimeSettings:
     sample_user_count: int
@@ -104,7 +104,6 @@ def _string_to_uuid(string: str) -> str:
 
 
 def _normalize_user_id(user_id: str | int) -> str:
-    """Normalize user IDs to ensure string representation for Qdrant hashing."""
     return str(user_id).strip().lower()
 
 
@@ -511,9 +510,6 @@ class MlRuntime:
         strategy: str,
         trace_seed: int,
     ) -> list[RecommendationCandidate]:
-        """
-        Ищет рекомендации через Qdrant, используя обновленные векторы (с дообучением).
-        """
         try:
                                           
             user_id_str = _string_to_uuid(_normalize_user_id(request_user_id))
@@ -664,9 +660,6 @@ class MlRuntime:
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
 
     def _update_user_vector_on_swipe(self, actor_user_id: str | int, target_user_id: str | int, action: str, trace_id: UUID) -> None:
-        """
-        Обновляет вектор актора: если лайк - приближает к таргету, если пас - отдаляет.
-        """
         try:
             actor_id = _string_to_uuid(str(actor_user_id))
             target_id = _string_to_uuid(str(target_user_id))

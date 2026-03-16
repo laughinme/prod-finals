@@ -5,15 +5,25 @@ import os
 from pathlib import Path
 import urllib.request
 import zipfile
-
+from ml.learn.evaluate import evaluate_model
 import boto3
 from botocore.config import Config
-
+import json
 import boto3
 from botocore.config import Config
-
+from dataclasses import asdict
+import artifact_path
+import artifact
 from ml.learn.model import artifact_to_json_bytes, train_profile_model
 from ml.learn.prepare_data import load_transactions_csv
+
+
+test_data_path = Path(os.getenv("ML_TEST_DATA_PATH", "/app/ml/data/test.csv"))
+test_transactions = load_transactions_csv(test_data_path) # Загрузка тестовых данных
+
+metrics = evaluate_model(artifact, test_transactions, k=5)
+metrics_path = artifact_path.parent / f"{artifact.model_version}_metrics.json"
+metrics_path.write_text(json.dumps(asdict(metrics)))
 
 
 def _as_bool(raw: str | None, default: bool) -> bool:

@@ -6,9 +6,12 @@ from datetime import datetime, timezone
 import json
 import math
 from typing import Any
+import subprocess
 
 from .prepare_data import Transaction
-
+from typing import Any
+from .model import MatchModelArtifact, get_matches, UserProfile
+from .prepare_data import Transaction
 
 @dataclass(slots=True)
 class UserProfile:
@@ -20,6 +23,8 @@ class UserProfile:
 @dataclass(slots=True)
 class MatchModelArtifact:
     model_type: str
+    git_commit_hash: str
+    git_branch: str
     model_version: str
     trained_at: str
     transaction_count: int
@@ -42,6 +47,7 @@ def _safe_model_version(now: datetime) -> str:
 
 
 def train_profile_model(transactions: list[Transaction]) -> MatchModelArtifact:
+    
     if not transactions:
         raise ValueError("At least one transaction is required for training.")
 
@@ -130,4 +136,18 @@ def artifact_from_json_bytes(payload: bytes) -> MatchModelArtifact:
         user_count=int(raw["user_count"]),
         categories=[str(item) for item in raw.get("categories", [])],
         profiles=profiles,
+    )
+@dataclass(slots=True) #метрики
+class EvaluationMetrics:
+    precision_at_k: float
+    recall_at_k: float
+    f1_score: float
+    def evaluate_model(artifact: MatchModelArtifact, test_transactions: list[Transaction], k: int = 5) -> EvaluationMetrics:
+        user_ids_with_profiles = artifact.profiles.keys()
+        total_unique_users_in_test = {tx.user_id for tx in test_transactions}
+        users_covered = len(user_ids_with_profiles.intersection(total_unique_users_in_test))
+        return EvaluationMetrics(
+        precision_at_k=0.0, 
+        recall_at_k=0.0,  
+        f1_score=0.0,       
     )
