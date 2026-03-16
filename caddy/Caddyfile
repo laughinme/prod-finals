@@ -15,7 +15,10 @@
         reverse_proxy ml-service:8080
     }
 
-    handle /qdrant/* {
+    @qdrant_root path /qdrant
+    redir @qdrant_root /qdrant/dashboard 308
+
+    handle_path /qdrant/* {
         reverse_proxy qdrant:6333
     }
     handle /openapi.json {

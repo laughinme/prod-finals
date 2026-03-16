@@ -1,17 +1,131 @@
 services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-ml-service
+    env_file:
+      - ./deploy/.env
+    depends_on:
+      - qdrant
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      QDRANT_URL: http://qdrant:6333
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-change-me-ml-token}
+      ML_SAMPLE_USER_COUNT: ${ML_SAMPLE_USER_COUNT:-120}
+      ML_SAMPLE_TX_PER_USER: ${ML_SAMPLE_TX_PER_USER:-20}
+      ML_SAMPLE_SEED: ${ML_SAMPLE_SEED:-42}
+      ML_FEATURES_VERSION: ${ML_FEATURES_VERSION:-features_v1}
+      ML_MODEL_ARTIFACT_PATH: ${ML_MODEL_ARTIFACT_PATH:-/app/ml/artifacts/model.json}
+      ML_TRAIN_ON_START: ${ML_TRAIN_ON_START:-false}
+      ML_TRAIN_REQUIRED: ${ML_TRAIN_REQUIRED:-false}
+      ML_TRAIN_DATA_URL: ${ML_TRAIN_DATA_URL:-}
+      ML_TRAIN_DATA_PATH: ${ML_TRAIN_DATA_PATH:-/app/ml/data/train.csv}
+      ML_TRAIN_ARCHIVE_MEMBER: ${ML_TRAIN_ARCHIVE_MEMBER:-}
+      ML_TRAIN_DOWNLOAD_TIMEOUT_SEC: ${ML_TRAIN_DOWNLOAD_TIMEOUT_SEC:-120}
+      ML_MODEL_UPLOAD_REQUIRED: ${ML_MODEL_UPLOAD_REQUIRED:-false}
+      ML_MODEL_S3_ENDPOINT: ${ML_MODEL_S3_ENDPOINT:-}
+      ML_MODEL_S3_REGION: ${ML_MODEL_S3_REGION:-}
+      ML_MODEL_S3_ACCESS_KEY: ${ML_MODEL_S3_ACCESS_KEY:-}
+      ML_MODEL_S3_SECRET_KEY: ${ML_MODEL_S3_SECRET_KEY:-}
+      ML_MODEL_S3_BUCKET: ${ML_MODEL_S3_BUCKET:-}
+      ML_MODEL_S3_PREFIX: ${ML_MODEL_S3_PREFIX:-ml-models}
+      ML_MODEL_S3_KEY: ${ML_MODEL_S3_KEY:-}
+      ML_MODEL_S3_SECURE: ${ML_MODEL_S3_SECURE:-}
+      ML_MODEL_S3_FORCE_PATH_STYLE: ${ML_MODEL_S3_FORCE_PATH_STYLE:-true}
+      STORAGE_ENDPOINT_INTERNAL: ${STORAGE_ENDPOINT_INTERNAL:-http://minio:9000}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-change-me}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-change-me}
+      STORAGE_PRIVATE_BUCKET: ${STORAGE_PRIVATE_BUCKET:-media-private}
+    volumes:
+      - ml_artifacts:/app/ml/artifacts
+      - ml_data:/app/ml/data
+    healthcheck:
+      test: >-
+        python -c 'import os, urllib.request; req = urllib.request.Request("http://127.0.0.1:8080/v1/health", headers={"X-Service-Token": os.environ.get("ML_SERVICE_TOKEN", "change-me-ml-token")}); urllib.request.urlopen(req, timeout=5)'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-backend
+    env_file:
+      - ./deploy/.env
+    environment:
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-true}
+      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml-service:8080}
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:-change-me-ml-token}
+    depends_on:
+      ml-service:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      centrifugo:
+        condition: service_started
+    healthcheck:
+      test: >-
+        python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/api/health", timeout=5)'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-caddy
+    environment:
+      SITE_URL: ${SITE_URL:-https://app.example.com}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      centrifugo:
+        condition: service_started
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
   db:
     image: postgres:17-alpine
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-db
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: templatepg
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-chupapis}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -19,9 +133,7 @@ services:
 
   redis:
     image: redis:8-alpine
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-redis
-    ports:
-      - "6379:6379"
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-redis
     volumes:
       - redis_data:/data
     healthcheck:
@@ -31,16 +143,24 @@ services:
       retries: 5
     restart: unless-stopped
 
+  centrifugo:
+    image: centrifugo/centrifugo:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-centrifugo
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET:-change-me-centrifugo-token-secret}
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-https://team-26-prod-5df88b.pages.prodcontest.ru}
+      CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:-change-me-centrifugo-api-key}
+      CENTRIFUGO_ADMIN_ENABLED: "false"
+      CENTRIFUGO_ENGINE_TYPE: memory
+    restart: unless-stopped
+
   minio:
     image: minio/minio
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-minio
+    container_name: ${COMPOSE_PROJECT_NAME:-chupapis}-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-change-me}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-change-me}
     volumes:
       - minio_data:/data
     restart: unless-stopped
@@ -54,165 +174,21 @@ services:
       - /bin/sh
       - -ec
       - |
-        until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done
-        mc mb --ignore-existing local/media-public
-        mc mb --ignore-existing local/media-private
-        mc anonymous set download local/media-public
-        echo "MinIO buckets are ready"
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do sleep 1; done
+        mc mb --ignore-existing local/${STORAGE_PUBLIC_BUCKET:-media-public}
+        mc mb --ignore-existing local/${STORAGE_PRIVATE_BUCKET:-media-private}
+        mc anonymous set download local/${STORAGE_PUBLIC_BUCKET:-media-public}
+        echo 'MinIO buckets are ready'
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-change-me}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-change-me}
+      STORAGE_PUBLIC_BUCKET: ${STORAGE_PUBLIC_BUCKET:-media-public}
+      STORAGE_PRIVATE_BUCKET: ${STORAGE_PRIVATE_BUCKET:-media-private}
     restart: "no"
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-qdrant
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
-
-  ml-service:
-    build:
-      context: .
-      dockerfile: ml/Dockerfile
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-ml-service
-    environment:
-      API_HOST: 0.0.0.0
-      API_PORT: 8080
-      QDRANT_URL: http://qdrant:6333
-      ML_SERVICE_TOKEN: dev-ml-token
-      ML_SAMPLE_USER_COUNT: 120
-      ML_SAMPLE_TX_PER_USER: 20
-      ML_SAMPLE_SEED: 42
-      ML_FEATURES_VERSION: features_v1
-      ML_MODEL_ARTIFACT_PATH: /app/ml/artifacts/model.json
-      ML_TRAIN_ON_START: "false"
-      ML_TRAIN_REQUIRED: "false"
-      ML_TRAIN_DATA_PATH: /app/ml/data/train.csv
-      STORAGE_ENDPOINT_INTERNAL: http://minio:9000
-      STORAGE_REGION: us-east-1
-      STORAGE_ACCESS_KEY: minioadmin
-      STORAGE_SECRET_KEY: minioadmin
-      STORAGE_PRIVATE_BUCKET: media-private
-    ports:
-      - "8081:8080"
-    volumes:
-      - ml_artifacts:/app/ml/artifacts
-      - ml_data:/app/ml/data
-    depends_on:
-      qdrant:
-        condition: service_started
-      minio:
-        condition: service_started
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - import urllib.request; req=urllib.request.Request("http://127.0.0.1:8080/v1/health", headers={"X-Service-Token":"dev-ml-token"}); urllib.request.urlopen(req, timeout=5)
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  centrifugo:
-    image: centrifugo/centrifugo:latest
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-centrifugo
-    environment:
-      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: dev-centrifugo-token-secret-change-me
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: ${CENTRIFUGO_ALLOWED_ORIGINS:-http://localhost http://127.0.0.1 https://0cec-121-127-46-154.ngrok-free.app}
-      CENTRIFUGO_HTTP_API_KEY: dev-centrifugo-api-key-change-me
-      CENTRIFUGO_ADMIN_ENABLED: "false"
-      CENTRIFUGO_ENGINE_TYPE: memory
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-backend
-    environment:
-      APP_STAGE: dev
-      DEBUG: "true"
-      API_HOST: 0.0.0.0
-      API_PORT: 8080
-      SITE_URL: ${SITE_URL:-https://0cec-121-127-46-154.ngrok-free.app}
-      MAX_PHOTO_SIZE: 5
-      DATABASE_URL: postgresql+asyncpg://postgres:secret@db:5432/templatepg
-      REDIS_URL: redis://redis:6379/0
-      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml-service:8080}
-      ML_SERVICE_TOKEN: dev-ml-token
-      STORAGE_ENDPOINT_INTERNAL: http://minio:9000
-      STORAGE_ENDPOINT_PUBLIC: ${STORAGE_ENDPOINT_PUBLIC:-http://localhost:9000}
-      STORAGE_REGION: us-east-1
-      STORAGE_ACCESS_KEY: minioadmin
-      STORAGE_SECRET_KEY: minioadmin
-      STORAGE_PUBLIC_BUCKET: media-public
-      STORAGE_PRIVATE_BUCKET: media-private
-      STORAGE_PRESIGN_EXPIRES_SEC: 600
-      STORAGE_USE_PATH_STYLE: "true"
-      STORAGE_AUTO_CREATE_BUCKETS: "true"
-      JWT_SECRET: dev-jwt-secret-for-local-please-change-123
-      JWT_ALGO: HS256
-      CSRF_HMAC_KEY: dev-csrf-hmac-for-local-please-change-123
-      COOKIE_SECURE: "false"
-      COOKIE_SAMESITE: lax
-      COOKIE_DOMAIN: ""
-      COOKIE_PATH: /
-      CORS_ALLOW_ORIGINS: http://localhost,http://localhost:80
-      CORS_ALLOW_ORIGIN_REGEX: ""
-      NOTIFICATIONS_PROVIDER: noop
-      DEV_SEED_ENABLED: "false"
-      MOCK_USER_SEED_ENABLED: ${MOCK_USER_SEED_ENABLED:-true}
-      MOCK_USER_SEED_LIMIT: ${MOCK_USER_SEED_LIMIT:-0}
-      MOCK_USER_SEED_PASSWORD: ${MOCK_USER_SEED_PASSWORD:-DemoPass123!}
-      CENTRIFUGO_ENABLED: "true"
-      CENTRIFUGO_API_URL: http://centrifugo:8000/api/publish
-      CENTRIFUGO_WS_URL: ${CENTRIFUGO_WS_URL:-https://0cec-121-127-46-154.ngrok-free.app}
-      CENTRIFUGO_API_KEY: dev-centrifugo-api-key-change-me
-      CENTRIFUGO_TOKEN_HMAC_SECRET: dev-centrifugo-token-secret-change-me
-      CENTRIFUGO_TOKEN_TTL_SEC: 900
-      SCHEDULER_ENABLED: "true"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_started
-      minio-init:
-        condition: service_completed_successfully
-      qdrant:
-        condition: service_started
-      ml-service:
-        condition: service_healthy
-      centrifugo:
-        condition: service_started
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-
-  nginx:
-    build:
-      context: .
-      dockerfile: nginx/Dockerfile
-      args:
-        VITE_API_BASE_URL: ""
-    container_name: ${COMPOSE_PROJECT_NAME:-monolith-template}-nginx
-    depends_on:
-      backend:
-        condition: service_started
-      minio:
-        condition: service_started
-      centrifugo:
-        condition: service_started
-    ports:
-      - "80:80"
-    restart: unless-stopped
-
 volumes:
+  caddy_config:
+  caddy_data:
   postgres_data:
   redis_data:
   minio_data:

@@ -162,8 +162,8 @@ async def _fetch_ml_ranks(
         "strategy": strategy,
         "context": {
             "request_ts": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-            "client": "script",
-            "decision_policy": "pair_probe",
+            "client": "web",
+            "decision_policy": "daily_batch",
         },
     }
     response = await client.post(
@@ -171,7 +171,9 @@ async def _fetch_ml_ranks(
         headers={"X-Service-Token": ml_service_token},
         json=payload,
     )
-    response.raise_for_status()
+    if response.status_code >= 400:
+        preview = response.text[:500].replace("\n", " ")
+        raise RuntimeError(f"ML recommendations failed with status={response.status_code}: {preview}")
 
     body = response.json()
     candidates = body.get("candidates") or []
@@ -208,6 +210,7 @@ async def _run(args: argparse.Namespace) -> int:
     top_pairs = pairs[: max(args.scan_top_pairs, 1)]
 
     rank_cache: dict[str, dict[str, int]] = {}
+    failed_requests = 0
 
     async with httpx.AsyncClient(timeout=30.0) as ml_client:
         for similarity, left_id, right_id in top_pairs:
@@ -215,23 +218,33 @@ async def _run(args: argparse.Namespace) -> int:
                 continue
 
             if left_id not in rank_cache:
-                rank_cache[left_id] = await _fetch_ml_ranks(
-                    client=ml_client,
-                    ml_service_url=ml_service_url,
-                    ml_service_token=ml_service_token,
-                    request_user_id=left_id,
-                    limit=args.limit,
-                    strategy=args.strategy,
-                )
+                try:
+                    rank_cache[left_id] = await _fetch_ml_ranks(
+                        client=ml_client,
+                        ml_service_url=ml_service_url,
+                        ml_service_token=ml_service_token,
+                        request_user_id=left_id,
+                        limit=args.limit,
+                        strategy=args.strategy,
+                    )
+                except Exception as exc:
+                    failed_requests += 1
+                    print(f"skip_user={left_id} reason={exc}")
+                    continue
             if right_id not in rank_cache:
-                rank_cache[right_id] = await _fetch_ml_ranks(
-                    client=ml_client,
-                    ml_service_url=ml_service_url,
-                    ml_service_token=ml_service_token,
-                    request_user_id=right_id,
-                    limit=args.limit,
-                    strategy=args.strategy,
-                )
+                try:
+                    rank_cache[right_id] = await _fetch_ml_ranks(
+                        client=ml_client,
+                        ml_service_url=ml_service_url,
+                        ml_service_token=ml_service_token,
+                        request_user_id=right_id,
+                        limit=args.limit,
+                        strategy=args.strategy,
+                    )
+                except Exception as exc:
+                    failed_requests += 1
+                    print(f"skip_user={right_id} reason={exc}")
+                    continue
 
             left_rank = rank_cache[left_id].get(right_id)
             right_rank = rank_cache[right_id].get(left_id)
@@ -255,6 +268,7 @@ async def _run(args: argparse.Namespace) -> int:
     print("reciprocal_pair_found=false")
     print(f"checked_pairs={len(top_pairs)}")
     print(f"checked_limit={args.limit}")
+    print(f"failed_ml_requests={failed_requests}")
     print("Try a larger --limit or --scan-top-pairs.")
     return 1
 
