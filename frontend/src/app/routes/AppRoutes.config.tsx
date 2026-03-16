@@ -130,6 +130,27 @@ export const RequireIncompleteQuiz = () => {
   return <Navigate to="/discovery" replace />;
 };
 
+export const RequireProfileAccess = () => {
+  const { isPending } = useProfile();
+  const { data: onboardingState, isPending: isOnboardingStatePending } =
+    useOnboardingState();
+
+  if (isPending || isOnboardingStatePending) {
+    return <MatchmakingLoadingState />;
+  }
+
+  const currentStepKey = onboardingState?.currentStepKey ?? null;
+  if (currentStepKey === "profile_basics") {
+    return <Outlet />;
+  }
+
+  if (onboardingState?.shouldShow) {
+    return <Navigate to="/quiz" replace />;
+  }
+
+  return <Outlet />;
+};
+
 export const routes: RouteObject[] = [
   {
     path: "/",
@@ -162,7 +183,10 @@ export const routes: RouteObject[] = [
               { path: "matches", element: <MatchesPage /> },
             ],
           },
-          { path: "profile", element: <ProfilePage /> },
+          {
+            element: <RequireProfileAccess />,
+            children: [{ path: "profile", element: <ProfilePage /> }],
+          },
         ],
       },
     ],

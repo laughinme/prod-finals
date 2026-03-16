@@ -27,6 +27,12 @@ export default function DiscoveryPage() {
     };
   }, [isMobile]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setIsDemoPanelVisible(true);
+    }
+  }, [isMobile]);
+
   const {
     currentProfile,
     nextProfiles,
