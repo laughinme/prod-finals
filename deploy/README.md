@@ -117,6 +117,23 @@ docker compose --env-file deploy/.env -f docker-compose.prod.yml exec backend sh
 docker compose --env-file deploy/.env -f docker-compose.prod.yml exec -T backend python -m scripts.sync_ml_profiles --delete-orphans
 ```
 
+ Full dataset reset and reload
+
+For fast re-bootstrap of users + Qdrant + ML checks, use:
+
+```bash
+cd /opt/chupapis
+bash deploy/reset_reload_users.sh --yes
+```
+
+Useful options:
+
+- `--seed-limit 600` (default)
+- `--skip-train` (if artifact already exists)
+- `--skip-pair-check` (skip reciprocal pair probe)
+
+The script also prints two closest users that mutually appear in ML recommendations.
+
 What to look for first:
 
 - `DATABASE_URL` or `REDIS_URL` pointing to `localhost` instead of `db` / `redis`.
