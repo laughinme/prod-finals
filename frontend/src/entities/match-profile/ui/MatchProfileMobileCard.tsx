@@ -63,10 +63,11 @@ export function MatchProfileMobileCard({
   const primaryLocation = getPrimaryLocation(profile.location);
   const interestLabels = getInterestLabels(profile);
   const hasDetails = Boolean(primaryLocation || profile.explanation);
+  const mobileViewportWidth = "calc(100vw - 1rem)";
   const cardFrameStyle: CSSProperties = {
-    width: "min(100%, 400px, calc((100dvh - 5rem) * 0.5333333333))",
+    width: `min(${mobileViewportWidth}, 420px)`,
+    height: `min(calc(100dvh - 5rem), calc(${mobileViewportWidth} * 1.72))`,
     maxHeight: "calc(100dvh - 5rem)",
-    aspectRatio: "400 / 750",
   };
   const interestsSummary = interestLabels.length
     ? t("discovery.compatibility_interests_summary", {
@@ -134,7 +135,9 @@ export function MatchProfileMobileCard({
 
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pt-24 pb-6">
           <div className="flex flex-col gap-6">
-            <div className="space-y-3">
+            <div className="relative isolate space-y-3">
+              <div className="pointer-events-none absolute -inset-x-5 -inset-y-5 -z-10 rounded-[38px] bg-gradient-to-b from-black/24 via-black/48 to-black/72 blur-[34px]" />
+
               {profile.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
                   {profile.tags.map((tag, idx) => (
