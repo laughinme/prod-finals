@@ -1,6 +1,6 @@
-import { type ComponentProps, type SubmitEvent } from "react";
+import { type ComponentProps, type SubmitEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { HeartHandshake } from "lucide-react";
+import { Eye, EyeOff, HeartHandshake } from "lucide-react";
 
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -48,6 +48,7 @@ export function LoginForm({
   ...props
 }: LoginFormProps) {
   const { t } = useTranslation();
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -102,16 +103,40 @@ export function LoginForm({
                 >
                   {t("auth.password")}
                 </FieldLabel>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => onPasswordChange(event.target.value)}
-                  disabled={disabled}
-                  className="border-input bg-background text-foreground placeholder:text-muted-foreground"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => onPasswordChange(event.target.value)}
+                    disabled={disabled}
+                    className="border-input bg-background pr-10 text-foreground placeholder:text-muted-foreground"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    disabled={disabled}
+                    aria-pressed={showPassword}
+                    aria-label={
+                      showPassword
+                        ? t("auth.hide_password", {
+                            defaultValue: "Hide password",
+                          })
+                        : t("auth.show_password", {
+                            defaultValue: "Show password",
+                          })
+                    }
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="size-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
               </Field>
               <Field>
                 <Button
