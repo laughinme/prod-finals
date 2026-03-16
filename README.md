@@ -15,16 +15,8 @@
 - ML OpenAPI (локально): <http://localhost:8081/openapi.json>
 - ML API спецификация в репо: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
 - Публичный API контракт (backend): [`docs/public-api-final.yaml`](docs/public-api-final.yaml)
-
-## Что решает продукт
-
-Классические анкеты дают много случайных совпадений.  
-T-Match уменьшает шум за счет:
-
-1. ранжирования кандидатов по ML-сигналам и категориям интересов/трат;
-2. безопасных объяснений совместимости (без раскрытия чувствительных данных);
-3. контроля жизненного цикла контакта (match -> чат -> block/report);
-4. запрета нежелательного повторного показа после pass/block.
+- Демо юзер login: mock-user-0003@example.com Password: DemoPass123!
+- Демо админ login: admin@example.com Password: DemoPass123!
 
 ## E2E пользовательский путь
 
@@ -39,7 +31,7 @@ T-Match уменьшает шум за счет:
 
 - `frontend` — React + Vite.
 - `backend` — FastAPI, Postgres, Redis, бизнес-правила контактов/безопасности.
-- `ml` — FastAPI ML-сервис, ранжирование и explanations.
+- `ml` — FastAPI ML-сервис, ранжирование и explanations, Catboost.
 - `qdrant` — векторное хранилище user profiles.
 - `minio` — хранение медиа.
 - `centrifugo` — realtime канал для событий.
@@ -83,22 +75,12 @@ docker compose up -d
 bash deploy/manual-train-ml.sh "<dataset_url_or_zip_url>"
 ```
 
-## Тестовые учетные записи
-
-Если включен mock seed (`MOCK_USER_SEED_ENABLED=true`), доступны:
-
-- admin: `admin@example.com`
-- users: `mock-user-0001@example.com`, `mock-user-0550@example.com`, ...
-- пароль: значение `MOCK_USER_SEED_PASSWORD` (по умолчанию `DemoPass123!`).
-
 ## Материалы для секции ML
 
 - EDA: [`ml/EDA.md`](ml/EDA.md)
 - Пайплайн обучения: [`ml/scripts/train_model.py`](ml/scripts/train_model.py), [`deploy/manual-train-ml.sh`](deploy/manual-train-ml.sh)
 - Код рантайма ML: [`ml/service/runtime.py`](ml/service/runtime.py)
 - Контракт ML API: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
-
-## Что отправлять в форме (готовый список)
 
 ### Бэкенд
 
