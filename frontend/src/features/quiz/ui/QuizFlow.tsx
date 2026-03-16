@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import * as Sentry from "@sentry/react";
 
 import type { Question } from "@/entities/quiz";
@@ -20,7 +20,7 @@ import { QuizControls } from "./components/QuizControls";
 import { QuizHeader } from "./components/QuizHeader";
 import { QuizProgress } from "./components/QuizProgress";
 import { QuizQuestionContent } from "./components/QuizQuestionContent";
-import type { MatchPreferencesState } from "./types";
+import type { GoalAudienceState } from "./types";
 
 export function QuizFlow() {
   const { t } = useTranslation();
@@ -82,28 +82,19 @@ export function QuizFlow() {
     return answers[question.stepKey] || [];
   }, [answers, question]);
 
-  const currentMatchPreferences = useMemo<MatchPreferencesState | null>(() => {
-    if (!question || question.stepKey !== "match_preferences") {
+  const currentGoalAudience = useMemo<GoalAudienceState | null>(() => {
+    if (!question || question.stepKey !== "goal_and_audience") {
       return null;
     }
 
-    const defaultAgeMin = question.rangeMin ?? 18;
-    const defaultAgeMax = question.rangeMax ?? 99;
-    const genders = currentAnswer
-      .filter((item) => item.startsWith("gender:"))
+    const goal =
+      currentAnswer.find((item) => item.startsWith("goal:"))?.split(":", 2)[1] ??
+      null;
+    const audience = currentAnswer
+      .filter((item) => item.startsWith("audience:"))
       .map((item) => item.split(":", 2)[1]);
-    const ageMin = Number(
-      currentAnswer
-        .find((item) => item.startsWith("age_min:"))
-        ?.split(":", 2)[1] ?? defaultAgeMin,
-    );
-    const ageMax = Number(
-      currentAnswer
-        .find((item) => item.startsWith("age_max:"))
-        ?.split(":", 2)[1] ?? defaultAgeMax,
-    );
 
-    return { genders, ageMin, ageMax };
+    return { goal, audience: audience.length > 0 ? audience : ["anyone"] };
   }, [currentAnswer, question]);
 
   const currentImportTransactions = useMemo(() => {
@@ -117,6 +108,18 @@ export function QuizFlow() {
       true
     );
   }, [importTransactions, question]);
+
+  const estimateCount = useMemo(() => {
+    const baseByStep = [124, 67, 24];
+    const base = baseByStep[currentIndex] ?? 18;
+    if (!question) {
+      return base;
+    }
+
+    const selectedAnswers = answers[question.stepKey]?.length ?? 0;
+    const importBonus = importTransactions[question.stepKey] === false ? 4 : 0;
+    return Math.max(18, base - selectedAnswers * 7 - importBonus);
+  }, [answers, currentIndex, importTransactions, question]);
 
   useEffect(() => {
     if (!question?.importTransactionsEnabled) return;
@@ -170,10 +173,6 @@ export function QuizFlow() {
     return <Navigate to="/" replace />;
   }
 
-  if (onboardingState?.currentStepKey === "photo_upload") {
-    return <Navigate to="/photo-upload" replace />;
-  }
-
   if (onboardingState?.currentStepKey === "profile_basics") {
     return <Navigate to="/profile" replace />;
   }
@@ -199,13 +198,12 @@ export function QuizFlow() {
     }));
   };
 
-  const updateMatchPreferencesAnswer = (nextState: MatchPreferencesState) => {
-    if (!question || question.stepKey !== "match_preferences") return;
+  const updateGoalAudienceAnswer = (nextState: GoalAudienceState) => {
+    if (!question || question.stepKey !== "goal_and_audience") return;
 
     handleAnswerChange([
-      ...nextState.genders.map((gender) => `gender:${gender}`),
-      `age_min:${nextState.ageMin}`,
-      `age_max:${nextState.ageMax}`,
+      ...(nextState.goal ? [`goal:${nextState.goal}`] : []),
+      ...nextState.audience.map((audience) => `audience:${audience}`),
     ]);
   };
 
@@ -213,21 +211,6 @@ export function QuizFlow() {
     if (!question) return;
 
     let finalAnswers = currentAnswer;
-
-    if (question.stepType === "range") {
-      const isOptionalEmpty = question.optional && finalAnswers.length === 0;
-      const needsDefaultRange = finalAnswers.length < 2 && !isOptionalEmpty;
-
-      if (needsDefaultRange) {
-        const min = question.rangeMin ?? 18;
-        const max = question.rangeMax ?? 99;
-        finalAnswers = [String(min), String(max)];
-      }
-
-      if (finalAnswers.length >= 2 && finalAnswers[0] === finalAnswers[1]) {
-        finalAnswers = [finalAnswers[0], finalAnswers[1] + " "];
-      }
-    }
 
     try {
       const nextState = await answerMutation.mutateAsync({
@@ -276,6 +259,8 @@ export function QuizFlow() {
     const count = currentAnswer.length;
     if (question.optional && count === 0) return true;
 
+    if (question.stepKey === "goal_and_audience") return true;
+
     if (question.stepType === "single_select") return count === 1;
 
     if (question.stepType === "multi_select") {
@@ -313,7 +298,7 @@ export function QuizFlow() {
             >
               <QuizHeader
                 title={question!.title}
-                description={question!.description}
+                description={question!.subtitle ?? question!.description}
                 currentStep={currentIndex + 1}
                 totalSteps={steps.length}
                 onSkipAll={handleSkipAll}
@@ -321,6 +306,28 @@ export function QuizFlow() {
                   answerMutation.isPending || skipMutation.isPending
                 }
               />
+
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-primary/15 bg-linear-to-r from-primary/12 via-primary/6 to-transparent px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                    <Sparkles className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.22em] text-primary/80 uppercase">
+                      {t("quiz.estimate_label")}
+                    </p>
+                    <p className="text-lg font-semibold text-foreground md:text-2xl">
+                      {t("quiz.estimate_found", {
+                        count: estimateCount,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
 
               <div className="min-h-32 md:min-h-50">
                 <QuizQuestionContent
@@ -334,8 +341,8 @@ export function QuizFlow() {
                       [question!.stepKey]: value,
                     }))
                   }
-                  matchPreferencesState={currentMatchPreferences}
-                  onMatchPreferencesChange={updateMatchPreferencesAnswer}
+                  goalAudienceState={currentGoalAudience}
+                  onGoalAudienceChange={updateGoalAudienceAnswer}
                 />
               </div>
             </motion.div>

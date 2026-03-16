@@ -60,9 +60,6 @@ export const RequireMatchmakingReady = () => {
   }
 
   const currentStepKey = onboardingState?.currentStepKey ?? null;
-  if (currentStepKey === "photo_upload") {
-    return <Navigate to="/photo-upload" replace />;
-  }
   if (currentStepKey === "profile_basics") {
     return <Navigate to="/profile" replace />;
   }
@@ -97,9 +94,6 @@ export const RequireIncompleteOnboarding = () => {
   }
 
   const currentStepKey = onboardingState?.currentStepKey ?? null;
-  if (currentStepKey === "photo_upload") {
-    return <Outlet />;
-  }
   if (currentStepKey === "profile_basics") {
     return <Navigate to="/profile" replace />;
   }
@@ -119,9 +113,6 @@ export const RequireIncompleteQuiz = () => {
   }
 
   const currentStepKey = onboardingState?.currentStepKey ?? null;
-  if (currentStepKey === "photo_upload") {
-    return <Navigate to="/photo-upload" replace />;
-  }
   if (currentStepKey === "profile_basics") {
     return <Navigate to="/profile" replace />;
   }
@@ -130,8 +121,8 @@ export const RequireIncompleteQuiz = () => {
   }
 
   if (
-    currentStepKey === "match_preferences" ||
-    currentStepKey === "interests" ||
+    currentStepKey === "goal_and_audience" ||
+    currentStepKey === "interests_and_bank_signal" ||
     currentStepKey === "profile_preview"
   ) {
     return <Outlet />;
@@ -150,13 +141,13 @@ export const routes: RouteObject[] = [
         element: <RequireIncompleteOnboarding />,
         children: [
           { path: "onboarding", element: <OnboardingPage /> },
-          { path: "photo-upload", element: <PhotoUploadPage /> },
         ],
       },
       {
         element: <RequireIncompleteQuiz />,
         children: [{ path: "quiz", element: <QuizPage /> }],
       },
+      { path: "photo-upload", element: <PhotoUploadPage /> },
       { path: "match", element: <MatchPage /> },
       {
         element: <HeaderLayout />,

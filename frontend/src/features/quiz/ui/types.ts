@@ -1,5 +1,4 @@
-export type MatchPreferencesState = {
-  genders: string[];
-  ageMin: number;
-  ageMax: number;
+export type GoalAudienceState = {
+  goal: string | null;
+  audience: string[];
 };

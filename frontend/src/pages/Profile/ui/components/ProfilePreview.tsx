@@ -13,6 +13,11 @@ interface ProfilePreviewProps {
 
 export function ProfilePreview({ profile, isMobile }: ProfilePreviewProps) {
   const { t } = useTranslation();
+  const goalLabel = profile.goal
+    ? t(`profile.goal_${profile.goal}`, {
+        defaultValue: profile.goal,
+      })
+    : null;
 
   const previewProfile = {
     id: profile.email,
@@ -23,9 +28,12 @@ export function ProfilePreview({ profile, isMobile }: ProfilePreviewProps) {
     bio: profile.bio,
     matchScore: 0,
     categoryBreakdown: [],
-    tags: [],
+    tags: [
+      ...(goalLabel ? [goalLabel] : []),
+      ...profile.interests.slice(0, 4),
+    ],
     explanation: "",
-    location: "",
+    location: profile.city?.name ?? "",
     reasonCodes: [],
     detailsAvailable: false,
     actions: null,

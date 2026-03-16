@@ -1,11 +1,11 @@
 import type { Question } from "@/entities/quiz";
 
+import { GoalAudienceQuestion } from "./GoalAudienceQuestion";
 import { InterestTagsQuestion } from "./InterestTagsQuestion";
-import { MatchPreferencesQuestion } from "./MatchPreferencesQuestion";
 import { MultiSelectQuestion } from "./MultiSelectQuestion";
 import { RangeQuestion } from "./RangeQuestion";
 import { SingleSelectQuestion } from "./SingleSelectQuestion";
-import type { MatchPreferencesState } from "../types";
+import type { GoalAudienceState } from "../types";
 
 type QuizQuestionContentProps = {
   question: Question;
@@ -13,8 +13,8 @@ type QuizQuestionContentProps = {
   onAnswerChange: (value: string | string[]) => void;
   currentImportTransactions?: boolean;
   onToggleImportTransactions?: (value: boolean) => void;
-  matchPreferencesState?: MatchPreferencesState | null;
-  onMatchPreferencesChange?: (value: MatchPreferencesState) => void;
+  goalAudienceState?: GoalAudienceState | null;
+  onGoalAudienceChange?: (value: GoalAudienceState) => void;
 };
 
 export function QuizQuestionContent({
@@ -23,20 +23,20 @@ export function QuizQuestionContent({
   onAnswerChange,
   currentImportTransactions,
   onToggleImportTransactions,
-  matchPreferencesState,
-  onMatchPreferencesChange,
+  goalAudienceState,
+  onGoalAudienceChange,
 }: QuizQuestionContentProps) {
-  if (question.stepKey === "match_preferences") {
+  if (question.stepKey === "goal_and_audience") {
     return (
-      <MatchPreferencesQuestion
+      <GoalAudienceQuestion
         question={question}
-        state={matchPreferencesState ?? undefined}
-        onChange={(nextState) => onMatchPreferencesChange?.(nextState)}
+        state={goalAudienceState ?? undefined}
+        onChange={(nextState) => onGoalAudienceChange?.(nextState)}
       />
     );
   }
 
-  if (question.stepKey === "interests") {
+  if (question.stepKey === "interests_and_bank_signal") {
     return (
       <InterestTagsQuestion
         question={question}

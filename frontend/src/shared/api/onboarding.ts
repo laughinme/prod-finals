@@ -3,6 +3,8 @@ import {
   OnboardingAnswersRequestDto,
   OnboardingAnswersResponseDto,
   OnboardingConfigResponseDto,
+  OnboardingEstimateRequestDto,
+  OnboardingEstimateResponseDto,
   OnboardingStateDto,
   OnboardingStepDto,
 } from "./onboarding-dto";
@@ -17,6 +19,7 @@ export interface OnboardingStepOption {
 export interface OnboardingStep {
   stepKey: string;
   title: string;
+  subtitle?: string | null;
   description?: string | null;
   stepType: OnboardingStepType;
   requiredForFeed: boolean;
@@ -60,9 +63,19 @@ export interface OnboardingAnswersResponse extends OnboardingState {
   saved?: boolean;
 }
 
+export interface OnboardingEstimateRequest {
+  answersByStep: Record<string, string[]>;
+  importTransactions?: boolean;
+}
+
+export interface OnboardingEstimateResponse {
+  estimatedCount: number;
+}
+
 const toStep = (dto: OnboardingStepDto): OnboardingStep => ({
   stepKey: dto.step_key,
   title: dto.title,
+  subtitle: dto.subtitle,
   description: dto.description,
   stepType: dto.step_type as OnboardingStepType,
   requiredForFeed: dto.required_for_feed,
@@ -117,6 +130,13 @@ const toAnswersRequestDto = (
   import_transactions: data.importTransactions,
 });
 
+const toEstimateRequestDto = (
+  data: OnboardingEstimateRequest,
+): OnboardingEstimateRequestDto => ({
+  answers_by_step: data.answersByStep,
+  import_transactions: data.importTransactions,
+});
+
 export const getOnboardingConfig =
   async (): Promise<OnboardingConfigResponse> => {
     const response =
@@ -142,4 +162,16 @@ export const postOnboardingAnswers = async (
 export const postOnboardingSkip = async (): Promise<OnboardingState> => {
   const response = await apiProtected.post<OnboardingStateDto>("/onboarding/skip");
   return toOnboardingState(response.data);
+};
+
+export const postOnboardingEstimate = async (
+  data: OnboardingEstimateRequest,
+): Promise<OnboardingEstimateResponse> => {
+  const response = await apiProtected.post<OnboardingEstimateResponseDto>(
+    "/onboarding/estimate",
+    toEstimateRequestDto(data),
+  );
+  return {
+    estimatedCount: response.data.estimated_count,
+  };
 };

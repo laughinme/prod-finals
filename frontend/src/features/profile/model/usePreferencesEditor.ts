@@ -2,15 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getOnboardingConfig } from "@/shared/api/onboarding";
-import { useUpdateProfile } from "@/features/profile";
+import { useUpdateProfile } from "@/features/profile/model/useProfile";
 import type { User } from "@/entities/user/model";
-import type { Question } from "@/entities/quiz";
 import { FEED_REFRESH_EVENT } from "@/features/matchmaking/model/useFeed";
 
-export type MatchPreferencesState = {
-  genders: string[];
-  ageMin: number;
-  ageMax: number;
+const ageFromBirthDate = (birthDate: string | null): number | null => {
+  if (!birthDate) {
+    return null;
+  }
+  const parsed = new Date(birthDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  const diff = Date.now() - parsed.getTime();
+  return Math.max(18, Math.floor(diff / 31557600000));
+};
+
+const defaultAgeRange = (birthDate: string | null) => {
+  const age = ageFromBirthDate(birthDate);
+  if (age === null) {
+    return { min: 18, max: 30 };
+  }
+  return {
+    min: Math.max(18, age - 5),
+    max: Math.min(99, age + 5),
+  };
 };
 
 export function usePreferencesEditor(profile: User) {
@@ -20,171 +36,135 @@ export function usePreferencesEditor(profile: User) {
   });
 
   const { mutateAsync: updateProfile, isPending } = useUpdateProfile();
+  const goalStep = config?.steps.find((step) => step.stepKey === "goal_and_audience");
+  const interestStep = config?.steps.find(
+    (step) => step.stepKey === "interests_and_bank_signal",
+  );
 
-  const [answers, setAnswers] = useState<Record<string, string[]>>({});
-  const [importTransactions, setImportTransactions] = useState<
-    Record<string, boolean>
-  >({});
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const steps = (config?.steps || []) as Question[];
-  const question = steps[currentIndex];
-
-  const currentAnswer = useMemo(() => {
-    if (!question) return [];
-    return answers[question.stepKey] || [];
-  }, [answers, question]);
-
-  const currentMatchPreferences = useMemo<MatchPreferencesState | null>(() => {
-    if (!question || question.stepKey !== "match_preferences") return null;
-    const defaultAgeMin = question.rangeMin ?? 18;
-    const defaultAgeMax = question.rangeMax ?? 99;
-    const genders = currentAnswer
-      .filter((item) => item.startsWith("gender:"))
-      .map((item) => item.split(":", 2)[1]);
-    const ageMin = Number(
-      currentAnswer
-        .find((item) => item.startsWith("age_min:"))
-        ?.split(":", 2)[1] ?? defaultAgeMin,
-    );
-    const ageMax = Number(
-      currentAnswer
-        .find((item) => item.startsWith("age_max:"))
-        ?.split(":", 2)[1] ?? defaultAgeMax,
-    );
-
-    return { genders, ageMin, ageMax };
-  }, [currentAnswer, question]);
-
-  const currentImportTransactions = useMemo(() => {
-    if (!question?.importTransactionsEnabled) return undefined;
-
-    return (
-      importTransactions[question.stepKey] ??
-      question.importTransactionsValue ??
-      question.importTransactionsDefault ??
-      true
-    );
-  }, [importTransactions, question]);
+  const [goal, setGoal] = useState<string | null>(profile.goal ?? null);
+  const [audience, setAudience] = useState<string[]>(
+    profile.lookingForGenders.length > 0 ? [...profile.lookingForGenders] : ["anyone"],
+  );
+  const [ageRange, setAgeRange] = useState(
+    profile.ageRange ?? defaultAgeRange(profile.birthDate),
+  );
+  const [interests, setInterests] = useState<string[]>([...profile.interests]);
+  const [importTransactions, setImportTransactions] = useState(
+    profile.importTransactions,
+  );
 
   useEffect(() => {
-    if (!question?.importTransactionsEnabled) return;
-
-    setImportTransactions((prev) => {
-      if (question.stepKey in prev) return prev;
-
-      return {
-        ...prev,
-        [question.stepKey]:
-          question.importTransactionsValue ??
-          question.importTransactionsDefault ??
-          true,
-      };
-    });
-  }, [question]);
-
-  useEffect(() => {
-    if (!config?.steps?.length) return;
-
-    const nextAnswers: Record<string, string[]> = {};
-    nextAnswers.match_preferences = [
-      ...profile.lookingForGenders.map((gender) => `gender:${gender}`),
-      ...(profile.ageRange
-        ? [`age_min:${profile.ageRange.min}`, `age_max:${profile.ageRange.max}`]
-        : []),
-    ];
-    nextAnswers.interests = [...profile.interests];
-
-    setAnswers(nextAnswers);
-    setImportTransactions({ interests: profile.importTransactions });
+    setGoal(profile.goal ?? null);
+    setAudience(
+      profile.lookingForGenders.length > 0 ? [...profile.lookingForGenders] : ["anyone"],
+    );
+    setAgeRange(profile.ageRange ?? defaultAgeRange(profile.birthDate));
+    setInterests([...profile.interests]);
+    setImportTransactions(profile.importTransactions);
   }, [
-    config?.steps,
     profile.ageRange,
+    profile.birthDate,
+    profile.goal,
     profile.importTransactions,
     profile.interests,
     profile.lookingForGenders,
   ]);
 
-  const handleAnswerChange = (value: string | string[]) => {
-    if (!question) return;
+  const goalOptions = useMemo(
+    () => goalStep?.options.filter((option) => option.value.startsWith("goal:")) ?? [],
+    [goalStep?.options],
+  );
 
-    const finalValue = Array.isArray(value) ? value : [value];
-    setAnswers((prev) => ({ ...prev, [question.stepKey]: finalValue }));
+  const audienceOptions = useMemo(
+    () => goalStep?.options.filter((option) => option.value.startsWith("audience:")) ?? [],
+    [goalStep?.options],
+  );
+
+  const interestOptions = interestStep?.options ?? [];
+
+  const toggleAudience = (value: string) => {
+    if (value === "anyone") {
+      setAudience(["anyone"]);
+      return;
+    }
+    setAudience((prev) => {
+      const normalized = prev.filter((item) => item !== "anyone");
+      const next = normalized.includes(value)
+        ? normalized.filter((item) => item !== value)
+        : [...normalized, value];
+      return next.length > 0 ? next : ["anyone"];
+    });
   };
 
-  const updateMatchPreferencesAnswer = (nextState: MatchPreferencesState) => {
-    if (!question || question.stepKey !== "match_preferences") return;
-
-    handleAnswerChange([
-      ...nextState.genders.map((gender) => `gender:${gender}`),
-      `age_min:${nextState.ageMin}`,
-      `age_max:${nextState.ageMax}`,
-    ]);
+  const toggleInterest = (value: string) => {
+    setInterests((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+      return [...prev, value];
+    });
   };
 
-  const toggleImportTransactions = () => {
-    if (!question?.importTransactionsEnabled) return;
+  const hasChanges = useMemo(() => {
+    const profileAudience =
+      profile.lookingForGenders.length > 0 ? [...profile.lookingForGenders] : ["anyone"];
+    const currentAudience = [...audience].sort().join(",");
+    const previousAudience = [...profileAudience].sort().join(",");
+    const currentInterests = [...interests].sort().join(",");
+    const previousInterests = [...profile.interests].sort().join(",");
+    const previousAgeRange = profile.ageRange ?? defaultAgeRange(profile.birthDate);
 
-    setImportTransactions((prev) => ({
-      ...prev,
-      [question.stepKey]: !currentImportTransactions,
-    }));
-  };
+    return (
+      (goal ?? null) !== (profile.goal ?? null) ||
+      currentAudience !== previousAudience ||
+      currentInterests !== previousInterests ||
+      importTransactions !== profile.importTransactions ||
+      ageRange.min !== previousAgeRange.min ||
+      ageRange.max !== previousAgeRange.max
+    );
+  }, [
+    ageRange.max,
+    ageRange.min,
+    audience,
+    goal,
+    importTransactions,
+    interests,
+    profile.ageRange,
+    profile.birthDate,
+    profile.goal,
+    profile.importTransactions,
+    profile.interests,
+    profile.lookingForGenders,
+  ]);
 
   const handleSave = async () => {
-    if (!question) return;
-
-    const payload =
-      question.stepKey === "match_preferences" && currentMatchPreferences
-        ? (() => {
-            const defaultAgeMin = question.rangeMin ?? 18;
-            const defaultAgeMax = question.rangeMax ?? 99;
-            const shouldClearAgeRange =
-              currentMatchPreferences.genders.length === 0 &&
-              currentMatchPreferences.ageMin === defaultAgeMin &&
-              currentMatchPreferences.ageMax === defaultAgeMax;
-
-            return {
-              lookingForGenders: currentMatchPreferences.genders,
-              ageRange: shouldClearAgeRange
-                ? null
-                : {
-                    min: currentMatchPreferences.ageMin,
-                    max: currentMatchPreferences.ageMax,
-                  },
-            };
-          })()
-        : question.stepKey === "interests"
-          ? {
-              interests: currentAnswer,
-              importTransactions: currentImportTransactions ?? true,
-            }
-          : null;
-
-    if (!payload) return;
-
-    try {
-      await updateProfile(payload);
-      window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
-    } catch {
-      // handled in profile mutation hook
-    }
+    await updateProfile({
+      goal,
+      lookingForGenders: audience.includes("anyone") ? [] : audience,
+      ageRange,
+      interests,
+      importTransactions,
+    });
+    window.dispatchEvent(new Event(FEED_REFRESH_EVENT));
   };
 
   return {
-    currentAnswer,
-    currentImportTransactions,
-    currentIndex,
-    currentMatchPreferences,
-    handleAnswerChange,
-    handleSave,
     isLoading,
     isPending,
-    isSaveDisabled: isPending,
-    question,
-    setCurrentIndex,
-    steps,
-    toggleImportTransactions,
-    updateMatchPreferencesAnswer,
+    hasChanges,
+    goal,
+    setGoal,
+    audience,
+    toggleAudience,
+    ageRange,
+    setAgeRange,
+    interests,
+    toggleInterest,
+    importTransactions,
+    setImportTransactions,
+    goalOptions,
+    audienceOptions,
+    interestOptions,
+    handleSave,
   };
 }

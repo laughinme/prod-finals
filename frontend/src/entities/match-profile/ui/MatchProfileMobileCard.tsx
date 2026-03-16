@@ -36,7 +36,7 @@ function getInterestLabels(profile: MatchProfile): string[] {
 
 interface MatchProfileMobileCardProps {
   profile: MatchProfile;
-  onLike: () => void;
+  onLike: () => void | boolean | Promise<boolean | void>;
   onPass: () => void;
   onOpenReport: () => void;
   onPrepareTestMatch?: () => void;

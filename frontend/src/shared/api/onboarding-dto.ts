@@ -9,6 +9,7 @@ export interface OnboardingStepOptionDto {
 export interface OnboardingStepDto {
   step_key: string;
   title: string;
+  subtitle?: string | null;
   description?: string | null;
   step_type: OnboardingStepTypeDto;
   required_for_feed: boolean;
@@ -50,4 +51,13 @@ export interface OnboardingAnswersRequestDto {
 export interface OnboardingAnswersResponseDto extends OnboardingStateDto {
   step_key: string;
   saved?: boolean;
+}
+
+export interface OnboardingEstimateRequestDto {
+  answers_by_step: Record<string, string[]>;
+  import_transactions?: boolean;
+}
+
+export interface OnboardingEstimateResponseDto {
+  estimated_count: number;
 }

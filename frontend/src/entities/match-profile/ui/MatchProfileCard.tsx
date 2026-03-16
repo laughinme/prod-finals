@@ -5,7 +5,7 @@ import { MatchProfileMobileCard } from "./MatchProfileMobileCard";
 export interface MatchProfileCardProps {
   profile: MatchProfile;
   isMobile: boolean;
-  onLike: () => void;
+  onLike: () => void | boolean | Promise<boolean | void>;
   onPass: () => void;
   onOpenReport: () => void;
   onPrepareTestMatch?: () => void;

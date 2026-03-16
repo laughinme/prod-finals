@@ -18,9 +18,6 @@ export default function HomePage() {
   }
 
   const currentStepKey = onboardingState?.currentStepKey ?? null;
-  if (currentStepKey === "photo_upload") {
-    return <Navigate to="/photo-upload" replace />;
-  }
   if (currentStepKey === "profile_basics") {
     return <Navigate to="/profile" replace />;
   }

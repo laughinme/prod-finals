@@ -25,9 +25,6 @@ export function InterestTagsQuestion({
       onChange(currentAnswer.filter((item) => item !== value));
       return;
     }
-    if (question.maxAnswers && currentAnswer.length >= question.maxAnswers) {
-      return;
-    }
     onChange([...currentAnswer, value]);
   };
 
