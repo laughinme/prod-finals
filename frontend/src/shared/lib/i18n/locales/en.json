@@ -212,16 +212,6 @@
     "estimate_label": "Potential matches already found",
     "estimate_found": "{{count}} people"
   },
-  "photo_upload": {
-    "title": "Add your photo",
-    "add_photo": "Add photo",
-    "uploading": "Uploading...",
-    "done_great": "Great!",
-    "change": "Change",
-    "error_unsupported_type": "Only JPEG, PNG and WebP are supported",
-    "error_too_large": "Maximum file size is 10 MB",
-    "error_failed": "Failed to upload photo. Please try again."
-  },
   "safety": {
     "block_success": "User blocked",
     "block_error": "Failed to block user",

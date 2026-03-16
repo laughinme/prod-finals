@@ -212,16 +212,6 @@
     "estimate_label": "Подходящих людей уже нашли",
     "estimate_found": "{{count}} человек"
   },
-  "photo_upload": {
-    "title": "Добавьте фото",
-    "add_photo": "Добавить фото",
-    "uploading": "Загрузка...",
-    "done_great": "Отлично!",
-    "change": "Изменить",
-    "error_unsupported_type": "Поддерживаются только JPEG, PNG и WebP",
-    "error_too_large": "Максимальный размер файла — 10 МБ",
-    "error_failed": "Не удалось загрузить фото. Попробуйте ещё раз."
-  },
   "safety": {
     "block_success": "Пользователь заблокирован",
     "block_error": "Не удалось заблокировать пользователя",

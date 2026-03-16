@@ -14,7 +14,6 @@ import { useOnboardingState } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding";
-import PhotoUploadPage from "@/pages/PhotoUpload";
 import DiscoveryPage from "@/pages/Discovery";
 import MatchPage from "@/pages/Match";
 import ChatPage from "@/pages/Chat";
@@ -147,7 +146,6 @@ export const routes: RouteObject[] = [
         element: <RequireIncompleteQuiz />,
         children: [{ path: "quiz", element: <QuizPage /> }],
       },
-      { path: "photo-upload", element: <PhotoUploadPage /> },
       { path: "match", element: <MatchPage /> },
       {
         element: <HeaderLayout />,
