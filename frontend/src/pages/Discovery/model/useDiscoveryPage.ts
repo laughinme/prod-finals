@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -9,6 +10,11 @@ import type {
   MatchProfile,
   MatchProfileExplanationReason,
 } from "@/entities/match-profile/model";
+import {
+  getLikeNotificationCard,
+  postLikeNotificationReaction,
+  type LikeNotificationCardDto,
+} from "@/shared/api/likeNotifications";
 import {
   useFeed,
   useFeedExplanation,
@@ -23,6 +29,10 @@ type MatchNavigationState = {
   matchId: string | null;
   conversationId: string | null;
 };
+
+type DiscoveryLocationState = {
+  likeNotificationId?: string | null;
+} | null;
 
 type ReasonStrength = "high" | "medium" | "low";
 
@@ -149,9 +159,41 @@ function getExplanationText(
   return nextText || fallbackText;
 }
 
+function toLikeNotificationProfile(dto: LikeNotificationCardDto): MatchProfile {
+  return {
+    id: dto.notification_id,
+    candidateUserId: dto.candidate.user_id,
+    name: dto.candidate.display_name,
+    age: dto.candidate.age,
+    image: dto.candidate.avatar_url,
+    bio: dto.candidate.bio,
+    matchScore: dto.compatibility.score_percent,
+    categoryBreakdown: dto.compatibility.category_breakdown.map((cat) => ({
+      categoryKey: cat.category_key,
+      label: cat.label,
+      scorePercent: cat.score_percent,
+    })),
+    tags: [],
+    explanation: dto.compatibility.preview,
+    location: dto.candidate.city ?? "",
+    reasonCodes: dto.compatibility.reason_codes,
+    detailsAvailable: false,
+    actions: {
+      canLike: dto.actions.can_like,
+      canPass: dto.actions.can_pass,
+      canHide: dto.actions.can_hide,
+      canBlock: dto.actions.can_block,
+      canReport: dto.actions.can_report,
+    },
+    source: "like_notification",
+  };
+}
+
 export function useDiscoveryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = location.state as DiscoveryLocationState;
   const { data: viewerProfile } = useProfile();
   const {
     profiles,
@@ -169,9 +211,41 @@ export function useDiscoveryPage() {
   const [showPhotoGate, setShowPhotoGate] = useState(false);
   const [exitX, setExitX] = useState<number>(0);
   const [retryLikeAfterPhoto, setRetryLikeAfterPhoto] = useState(false);
+  const [activeLikeNotificationId, setActiveLikeNotificationId] = useState<string | null>(
+    routeState?.likeNotificationId ?? null,
+  );
   const currentProfileSeenAtRef = useRef<number | null>(null);
 
-  const baseCurrentProfile = profiles[0] ?? null;
+  useEffect(() => {
+    if (routeState?.likeNotificationId) {
+      setActiveLikeNotificationId(routeState.likeNotificationId);
+    }
+  }, [routeState?.likeNotificationId]);
+
+  const likeNotificationCardQuery = useQuery({
+    queryKey: ["notifications", "likes", activeLikeNotificationId, "card"],
+    queryFn: async () => {
+      if (!activeLikeNotificationId) {
+        throw new Error("Missing like notification id");
+      }
+      return getLikeNotificationCard(activeLikeNotificationId);
+    },
+    enabled: Boolean(activeLikeNotificationId),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!likeNotificationCardQuery.isError) {
+      return;
+    }
+    setActiveLikeNotificationId(null);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [likeNotificationCardQuery.isError, location.pathname, navigate]);
+
+  const specialLikeProfile = likeNotificationCardQuery.data
+    ? toLikeNotificationProfile(likeNotificationCardQuery.data)
+    : null;
+  const baseCurrentProfile = specialLikeProfile ?? profiles[0] ?? null;
 
   useEffect(() => {
     notifyVisible(profiles.length);
@@ -219,6 +293,12 @@ export function useDiscoveryPage() {
 
   const dismissCurrentProfile = () => {
     if (!currentProfile) {
+      return;
+    }
+
+    if (currentProfile.source === "like_notification") {
+      setActiveLikeNotificationId(null);
+      navigate(location.pathname, { replace: true, state: null });
       return;
     }
 
@@ -288,6 +368,49 @@ export function useDiscoveryPage() {
 
     const likedProfile = currentProfile;
     const dwellTimeMs = getCurrentDwellTimeMs();
+
+    if (
+      likedProfile.source === "like_notification" &&
+      activeLikeNotificationId
+    ) {
+      try {
+        const reaction = await postLikeNotificationReaction(
+          activeLikeNotificationId,
+          {
+            action: "like",
+            openedExplanation: false,
+            openedProfile: false,
+            dwellTimeMs,
+          },
+        );
+        setExitX(1000);
+        dismissCurrentProfile();
+
+        if (reaction?.result === "matched" && reaction.match) {
+          const state: MatchNavigationState = {
+            matchedProfile: likedProfile,
+            matchId: reaction.match.match_id,
+            conversationId: reaction.match.conversation_id,
+          };
+          navigate("/match", { state });
+        }
+        return true;
+      } catch (e) {
+        if (
+          axios.isAxiosError(e) &&
+          typeof e.response?.data === "object" &&
+          e.response?.data &&
+          "error_code" in e.response.data &&
+          e.response.data.error_code === "PHOTO_REQUIRED_TO_LIKE"
+        ) {
+          openPhotoGate();
+          return false;
+        }
+        Sentry.captureException(e);
+        toast.error(t("discovery.like_failed"));
+        return false;
+      }
+    }
 
     if (likedProfile.source === "feed" && typeof likedProfile.id === "string") {
       try {
@@ -374,6 +497,23 @@ export function useDiscoveryPage() {
     dismissCurrentProfile();
 
     if (
+      passedProfile.source === "like_notification" &&
+      activeLikeNotificationId
+    ) {
+      try {
+        await postLikeNotificationReaction(activeLikeNotificationId, {
+          action: "pass",
+          openedExplanation: false,
+          openedProfile: false,
+          dwellTimeMs,
+        });
+      } catch {
+        // special notification card already dismissed
+      }
+      return;
+    }
+
+    if (
       passedProfile.source === "feed" &&
       typeof passedProfile.id === "string"
     ) {
@@ -408,8 +548,8 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
-    nextProfiles: profiles.slice(1, 3),
-    isFeedLoading,
+    nextProfiles: specialLikeProfile ? profiles.slice(0, 2) : profiles.slice(1, 3),
+    isFeedLoading: isFeedLoading || likeNotificationCardQuery.isLoading,
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,
     isPhotoGatePending:

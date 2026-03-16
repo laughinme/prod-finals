@@ -120,7 +120,7 @@ export default function DiscoveryPage() {
               key={`${currentProfile.id}-${isMobile ? "mobile" : "desktop"}`}
               profile={currentProfile}
               isMobile={isMobile}
-              onLike={() => void handleLike()}
+              onLike={handleLike}
               onPass={() => void handlePass()}
               onOpenReport={openReport}
               onPrepareTestMatch={() => void handlePrepareTestMatch()}
