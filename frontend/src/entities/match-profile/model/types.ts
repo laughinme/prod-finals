@@ -59,7 +59,7 @@ export type MatchProfile = {
   reasonCodes: string[];
   detailsAvailable: boolean;
   actions: MatchProfileActions | null;
-  source: "feed" | "like_notification";
+  source: "feed" | "like_notification" | "demo_shortcut";
 };
 
 export type MatchChatMessage = {

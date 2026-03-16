@@ -32,6 +32,24 @@ const DEMO_ACCOUNTS = [
     tone: "from-violet-400 via-fuchsia-400 to-rose-400",
   },
   {
+    key: "dataset_c",
+    email: "mock-user-0003@example.com",
+    icon: Users,
+    tone: "from-teal-400 via-cyan-400 to-blue-400",
+  },
+  {
+    key: "dataset_d",
+    email: "mock-user-0004@example.com",
+    icon: Users,
+    tone: "from-lime-400 via-emerald-400 to-green-500",
+  },
+  {
+    key: "dataset_e",
+    email: "mock-user-0005@example.com",
+    icon: Users,
+    tone: "from-rose-400 via-orange-400 to-amber-400",
+  },
+  {
     key: "admin",
     email: "admin@example.com",
     icon: ShieldCheck,

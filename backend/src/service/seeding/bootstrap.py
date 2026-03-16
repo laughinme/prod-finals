@@ -4,6 +4,7 @@ from domain.dating.category_catalog import load_category_definitions
 from service.mock_identity import get_mock_identity_registry
 
 from .admin_user import AdminUserSeedTask
+from .avatar_backfill import AvatarBackfillSeedTask
 from .base import SeedContext, SeedTask
 from .categories import PreferenceCategoriesSeedTask
 from .dataset_users import DatasetUsersSeedTask
@@ -30,6 +31,7 @@ def build_seeder_registry() -> SeederRegistry:
                 registry=registry,
                 category_definitions=category_definitions,
             ),
+            AvatarBackfillSeedTask(),
         ]
     )
 

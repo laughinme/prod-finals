@@ -8,6 +8,7 @@ from domain.auth.enums import DEFAULT_ROLE
 from domain.dating.category_catalog import CategoryDefinition, pick_category_keys
 from service.mock_identity import MockIdentityRegistry
 from service.avatar_assets import load_dataset_avatar_asset
+from service.demo_accounts import DEMO_DATASET_INDEX_TO_KEY
 
 from .base import SeedContext
 
@@ -66,6 +67,7 @@ class DatasetUsersSeedTask:
             user.bio = profile.bio
             user.city_id = "msk"
             user.is_dataset_user = True
+            user.demo_user_key = DEMO_DATASET_INDEX_TO_KEY.get(profile.dataset_index)
             user.quiz_started = False
             user.looking_for_genders = []
             user.age_range_min = None

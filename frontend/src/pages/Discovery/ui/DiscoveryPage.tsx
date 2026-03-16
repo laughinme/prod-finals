@@ -60,7 +60,12 @@ export default function DiscoveryPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className={["absolute z-40", isMobile ? "left-3 right-3 top-3" : "left-5 top-5"].join(" ")}
+          className={[
+            "absolute z-40",
+            isMobile
+              ? "left-3 right-3 top-3"
+              : "left-5 top-5",
+          ].join(" ")}
         >
           <div className="overflow-hidden rounded-[24px] border border-white/70 bg-white/85 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
             <button
@@ -137,7 +142,10 @@ export default function DiscoveryPage() {
                             <p className="truncate text-sm font-semibold">
                               {shortcut.displayName}
                             </p>
-                            <p className={["truncate text-xs", isActive ? "text-slate-300" : "text-slate-500"].join(" ")}>
+                            <p className={[
+                              "truncate text-xs",
+                              isActive ? "text-slate-300" : "text-slate-500",
+                            ].join(" ")}>
                               {shortcut.isCurrentUser
                                 ? t("discovery.demo_panel_you")
                                 : shortcut.bio || t("discovery.demo_panel_open_card")}

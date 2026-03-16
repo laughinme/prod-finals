@@ -19,17 +19,12 @@ from domain.dating import (
     FeedState,
 )
 
-from service.demo_accounts import DEMO_DATASET_ACCOUNTS
 from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
+from service.demo_accounts import DEMO_DATASET_ACCOUNTS, DEMO_FEED_PAIR_BY_EMAIL
 from service.matchmaking.reason_signals import build_preview_reason_signals
 
 
 logger = logging.getLogger(__name__)
-
-_DEMO_FEED_PAIR_BY_EMAIL: dict[str, str] = {
-    "mock-user-0001@example.com": "mock-user-0002@example.com",
-    "mock-user-0002@example.com": "mock-user-0001@example.com",
-}
 
 
 class FeedService(BaseDatingService):
@@ -336,7 +331,7 @@ class FeedService(BaseDatingService):
         candidates: list[User],
     ):
         normalized_email = (requester_email or "").strip().lower()
-        counterpart_email = _DEMO_FEED_PAIR_BY_EMAIL.get(normalized_email)
+        counterpart_email = DEMO_FEED_PAIR_BY_EMAIL.get(normalized_email)
         if not counterpart_email:
             return ranked_candidates
 

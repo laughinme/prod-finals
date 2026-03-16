@@ -62,6 +62,12 @@
     "demo_account_dataset_a_description": "The first demo account from the dataset. It will see demo B first in the feed.",
     "demo_account_dataset_b_title": "Dataset demo B",
     "demo_account_dataset_b_description": "The second demo account from the dataset. It will see demo A first in the feed.",
+    "demo_account_dataset_c_title": "Dataset demo C",
+    "demo_account_dataset_c_description": "A third dataset account for additional happy-path and notification checks.",
+    "demo_account_dataset_d_title": "Dataset demo D",
+    "demo_account_dataset_d_description": "A fourth dataset account for alternative match combinations.",
+    "demo_account_dataset_e_title": "Dataset demo E",
+    "demo_account_dataset_e_description": "A fifth dataset account kept as a backup happy path for the jury.",
     "demo_account_admin_title": "Admin",
     "demo_account_admin_description": "Fast access to the admin dashboard."
   },
