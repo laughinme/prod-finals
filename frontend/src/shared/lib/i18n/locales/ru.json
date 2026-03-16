@@ -142,6 +142,7 @@
     "pass_profile": "Пропустить профиль",
     "like_profile": "Лайкнуть профиль",
     "like_failed": "Не удалось отправить лайк. Попробуйте еще раз.",
+    "like_notification_title": "Вам поставили лайк",
     "why_matched": "Почему вы подходите?",
     "compatibility_match_title": "Общий мэтч",
     "compatibility_criteria_title": "Критерии совместимости",
@@ -190,6 +191,7 @@
     "report_block": "Пожаловаться / Заблокировать",
     "report_sent": "Жалоба отправлена. Пользователь заблокирован.",
     "send_message_error": "Не удалось отправить сообщение.",
+    "message_notification_title": "Новое сообщение",
     "write_message_placeholder": "Написать сообщение..."
   },
   "quiz": {

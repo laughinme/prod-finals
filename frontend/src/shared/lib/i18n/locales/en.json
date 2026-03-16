@@ -142,6 +142,7 @@
     "pass_profile": "Pass profile",
     "like_profile": "Like profile",
     "like_failed": "Failed to send like. Please try again.",
+    "like_notification_title": "Someone liked you",
     "why_matched": "Why did you match?",
     "compatibility_match_title": "Overall match",
     "compatibility_criteria_title": "Compatibility criteria",
@@ -190,6 +191,7 @@
     "report_block": "Report / Block",
     "report_sent": "Report sent. User blocked.",
     "send_message_error": "Failed to send message.",
+    "message_notification_title": "New message",
     "write_message_placeholder": "Write a message..."
   },
   "quiz": {

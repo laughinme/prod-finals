@@ -29,6 +29,7 @@ export function useChatPage() {
   const [input, setInput] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousConversationIdRef = useRef<string | null>(null);
   const {
     activeConversationId,
     activeMatch,
@@ -85,8 +86,18 @@ export function useChatPage() {
   }, [activeConversationId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    if (!activeConversationId) {
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+  }, [activeConversationId, queryClient]);
+
+  useEffect(() => {
+    const behavior =
+      previousConversationIdRef.current !== activeConversationId ? "auto" : "smooth";
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    previousConversationIdRef.current = activeConversationId;
+  }, [activeConversationId, messages.length]);
 
   const handleSend = () => {
     const trimmedInput = input.trim();

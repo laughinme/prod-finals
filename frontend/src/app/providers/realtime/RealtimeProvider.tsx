@@ -9,37 +9,20 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Centrifuge, UnauthorizedError } from "centrifuge";
+import * as Sentry from "@sentry/react";
 
 import { useAuth } from "@/entities/auth";
-import { MatchNotificationModal } from "./MatchNotificationModal";
-import { MatchNotificationsContext, type MatchNotification } from "./context";
-import {
-  getMatchNotifications,
-  markMatchNotificationSeen,
-  type MatchNotificationItemDto,
-} from "@/shared/api/matchNotifications";
-import { getRealtimeConnectionToken } from "@/shared/api/realtime";
 import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
-import * as Sentry from "@sentry/react";
+import { getLikeNotifications, markLikeNotificationSeen, type LikeNotificationItemDto } from "@/shared/api/likeNotifications";
+import { getMatchNotifications, markMatchNotificationSeen, type MatchNotificationItemDto } from "@/shared/api/matchNotifications";
+import { getMessageNotifications, markMessageNotificationSeen, type MessageNotificationItemDto } from "@/shared/api/messageNotifications";
+import { getRealtimeConnectionToken } from "@/shared/api/realtime";
+import { MatchNotificationModal } from "./MatchNotificationModal";
+import { MatchNotificationsContext, type PersonalNotification } from "./context";
 
 type RealtimeProviderProps = {
   children: ReactNode;
 };
-
-const toMatchNotification = (
-  dto: MatchNotificationItemDto,
-): MatchNotification => ({
-  notificationId: dto.notification_id,
-  matchId: dto.match_id,
-  conversationId: dto.conversation_id,
-  peer: {
-    userId: dto.peer.user_id,
-    displayName: dto.peer.display_name,
-    avatarUrl: dto.peer.avatar_url,
-  },
-  createdAt: dto.created_at,
-  seenAt: dto.seen_at,
-});
 
 type MatchCreatedRealtimePayload = {
   notification_id: string;
@@ -53,17 +36,91 @@ type MatchCreatedRealtimePayload = {
   created_at: string;
 };
 
+type LikeReceivedRealtimePayload = {
+  notification_id: string;
+  liker_user_id: string;
+  peer: {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+  created_at: string;
+};
+
+type MessageReceivedRealtimePayload = {
+  notification_id: string;
+  match_id: string;
+  conversation_id: string;
+  message_id: string;
+  peer: {
+    user_id: string;
+    display_name: string;
+    avatar_url: string | null;
+  };
+  preview_text: string;
+  created_at: string;
+};
+
+const toMatchNotification = (
+  dto: MatchNotificationItemDto,
+): PersonalNotification => ({
+  kind: "match",
+  notificationId: dto.notification_id,
+  matchId: dto.match_id,
+  conversationId: dto.conversation_id,
+  peer: {
+    userId: dto.peer.user_id,
+    displayName: dto.peer.display_name,
+    avatarUrl: dto.peer.avatar_url,
+  },
+  createdAt: dto.created_at,
+  seenAt: dto.seen_at,
+});
+
+const toLikeNotification = (
+  dto: LikeNotificationItemDto,
+): PersonalNotification => ({
+  kind: "like",
+  notificationId: dto.notification_id,
+  likerUserId: dto.liker_user_id,
+  peer: {
+    userId: dto.peer.user_id,
+    displayName: dto.peer.display_name,
+    avatarUrl: dto.peer.avatar_url,
+  },
+  createdAt: dto.created_at,
+  seenAt: dto.seen_at,
+});
+
+const toMessageNotification = (
+  dto: MessageNotificationItemDto,
+): PersonalNotification => ({
+  kind: "message",
+  notificationId: dto.notification_id,
+  matchId: dto.match_id,
+  conversationId: dto.conversation_id,
+  messageId: dto.message_id,
+  peer: {
+    userId: dto.peer.user_id,
+    displayName: dto.peer.display_name,
+    avatarUrl: dto.peer.avatar_url,
+  },
+  previewText: dto.preview_text,
+  createdAt: dto.created_at,
+  seenAt: dto.seen_at,
+});
+
 export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const auth = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const clientRef = useRef<Centrifuge | null>(null);
   const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(false);
-  const [notifications, setNotifications] = useState<MatchNotification[]>([]);
+  const [notifications, setNotifications] = useState<PersonalNotification[]>([]);
 
-  const mergeNotifications = useCallback((items: MatchNotification[]) => {
+  const mergeNotifications = useCallback((items: PersonalNotification[]) => {
     setNotifications((prev) => {
-      const next = new Map<string, MatchNotification>();
+      const next = new Map<string, PersonalNotification>();
       for (const notification of [...items, ...prev]) {
         next.set(notification.notificationId, notification);
       }
@@ -75,87 +132,110 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   const removeNotification = useCallback((notificationId: string) => {
     setNotifications((prev) =>
-      prev.filter(
-        (notification) => notification.notificationId !== notificationId,
-      ),
+      prev.filter((notification) => notification.notificationId !== notificationId),
     );
   }, []);
 
-  const markSeenByNotificationId = useCallback(
-    async (notificationId: string) => {
-      const existing = notifications.find(
-        (notification) => notification.notificationId === notificationId,
-      );
-      if (!existing || existing.seenAt) {
-        removeNotification(notificationId);
+  const markSeenByNotification = useCallback(
+    async (notification: PersonalNotification) => {
+      if (notification.seenAt) {
+        removeNotification(notification.notificationId);
         return;
       }
-      await markMatchNotificationSeen(notificationId);
-      removeNotification(notificationId);
+
+      if (notification.kind === "match") {
+        await markMatchNotificationSeen(notification.notificationId);
+      } else if (notification.kind === "like") {
+        await markLikeNotificationSeen(notification.notificationId);
+      } else {
+        await markMessageNotificationSeen(notification.notificationId);
+      }
+
+      removeNotification(notification.notificationId);
     },
-    [notifications, removeNotification],
+    [removeNotification],
   );
 
   const markMatchAsSeen = useCallback(
     async (matchId: string) => {
       const notification = notifications.find(
-        (item) => item.matchId === matchId,
+        (item) => item.kind === "match" && item.matchId === matchId,
       );
       if (!notification) {
         return;
       }
-      await markSeenByNotificationId(notification.notificationId);
+      await markSeenByNotification(notification);
     },
-    [markSeenByNotificationId, notifications],
+    [markSeenByNotification, notifications],
   );
 
   const currentNotification = notifications[0] ?? null;
-  const unseenMatchIds = useMemo(
-    () =>
-      notifications.filter((item) => !item.seenAt).map((item) => item.matchId),
-    [notifications],
-  );
-  const unseenMatchCount = unseenMatchIds.length;
+  const unseenMatchCount = notifications.filter(
+    (item) => item.kind === "match" && !item.seenAt,
+  ).length;
+  const unseenLikeCount = notifications.filter(
+    (item) => item.kind === "like" && !item.seenAt,
+  ).length;
 
   const dismissCurrentNotification = useCallback(async () => {
     if (!currentNotification) {
       return;
     }
-    await markSeenByNotificationId(currentNotification.notificationId);
+    await markSeenByNotification(currentNotification);
     await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-  }, [currentNotification, markSeenByNotificationId, queryClient]);
+  }, [currentNotification, markSeenByNotification, queryClient]);
 
-  const openCurrentMatch = useCallback(async () => {
+  const openCurrentNotification = useCallback(async () => {
     if (!currentNotification) {
       return;
     }
-    await markSeenByNotificationId(currentNotification.notificationId);
+
+    await markSeenByNotification(currentNotification);
     void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-    navigate("/match", {
-      state: {
-        matchedProfile: {
-          id: currentNotification.peer.userId,
-          candidateUserId: currentNotification.peer.userId,
-          name: currentNotification.peer.displayName,
-          age: null,
-          image: currentNotification.peer.avatarUrl,
-          bio: "",
-          matchScore: 0,
-          categoryBreakdown: [],
-          tags: [],
-          explanation: "",
-          location: "",
-          activity: "",
-          reasonCodes: [],
-          detailsAvailable: false,
-          actions: null,
-          source: "notification",
+
+    if (currentNotification.kind === "match") {
+      navigate("/match", {
+        state: {
+          matchedProfile: {
+            id: currentNotification.peer.userId,
+            candidateUserId: currentNotification.peer.userId,
+            name: currentNotification.peer.displayName,
+            age: null,
+            image: currentNotification.peer.avatarUrl,
+            bio: "",
+            matchScore: 0,
+            categoryBreakdown: [],
+            tags: [],
+            explanation: "",
+            location: "",
+            reasonCodes: [],
+            detailsAvailable: false,
+            actions: null,
+            source: "feed",
+          },
+          matchId: currentNotification.matchId,
+          conversationId: currentNotification.conversationId,
         },
-        matchId: currentNotification.matchId,
-        conversationId: currentNotification.conversationId,
+      });
+      return;
+    }
+
+    if (currentNotification.kind === "message") {
+      navigate(`/chat?match=${currentNotification.matchId}`, {
+        state: {
+          matchId: currentNotification.matchId,
+          conversationId: currentNotification.conversationId,
+        },
+      });
+      return;
+    }
+
+    navigate("/discovery", {
+      state: {
+        likeNotificationId: currentNotification.notificationId,
       },
     });
-  }, [currentNotification, markSeenByNotificationId, navigate, queryClient]);
+  }, [currentNotification, markSeenByNotification, navigate, queryClient]);
 
   useEffect(() => {
     if (!auth?.user) {
@@ -170,9 +250,17 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     const bootstrap = async () => {
       try {
-        const initial = await getMatchNotifications(true, 20);
+        const [matches, likes, messages] = await Promise.all([
+          getMatchNotifications(true, 20),
+          getLikeNotifications(true, 20),
+          getMessageNotifications(true, 20),
+        ]);
         if (!cancelled) {
-          mergeNotifications(initial.items.map(toMatchNotification));
+          mergeNotifications([
+            ...matches.items.map(toMatchNotification),
+            ...likes.items.map(toLikeNotification),
+            ...messages.items.map(toMessageNotification),
+          ]);
         }
       } catch (e) {
         Sentry.captureException(e);
@@ -207,33 +295,83 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
           }
           const event = ctx.data as {
             type?: string;
-            payload?: MatchCreatedRealtimePayload;
+            payload?:
+              | MatchCreatedRealtimePayload
+              | LikeReceivedRealtimePayload
+              | MessageReceivedRealtimePayload;
           };
-          if (event.type !== "match_created" || !event.payload) {
+          if (!event.type || !event.payload) {
             return;
           }
 
-          mergeNotifications([
-            {
-              notificationId: event.payload.notification_id,
-              matchId: event.payload.match_id,
-              conversationId: event.payload.conversation_id,
-              peer: {
-                userId: event.payload.peer.user_id,
-                displayName: event.payload.peer.display_name,
-                avatarUrl: event.payload.peer.avatar_url,
+          if (event.type === "match_created") {
+            const payload = event.payload as MatchCreatedRealtimePayload;
+            mergeNotifications([
+              {
+                kind: "match",
+                notificationId: payload.notification_id,
+                matchId: payload.match_id,
+                conversationId: payload.conversation_id,
+                peer: {
+                  userId: payload.peer.user_id,
+                  displayName: payload.peer.display_name,
+                  avatarUrl: payload.peer.avatar_url,
+                },
+                createdAt: payload.created_at,
+                seenAt: null,
               },
-              createdAt: event.payload.created_at,
-              seenAt: null,
-            },
-          ]);
-          void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+            ]);
+            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+            return;
+          }
+
+          if (event.type === "like_received") {
+            const payload = event.payload as LikeReceivedRealtimePayload;
+            mergeNotifications([
+              {
+                kind: "like",
+                notificationId: payload.notification_id,
+                likerUserId: payload.liker_user_id,
+                peer: {
+                  userId: payload.peer.user_id,
+                  displayName: payload.peer.display_name,
+                  avatarUrl: payload.peer.avatar_url,
+                },
+                createdAt: payload.created_at,
+                seenAt: null,
+              },
+            ]);
+            return;
+          }
+
+          if (event.type === "message_received") {
+            const payload = event.payload as MessageReceivedRealtimePayload;
+            mergeNotifications([
+              {
+                kind: "message",
+                notificationId: payload.notification_id,
+                matchId: payload.match_id,
+                conversationId: payload.conversation_id,
+                messageId: payload.message_id,
+                peer: {
+                  userId: payload.peer.user_id,
+                  displayName: payload.peer.display_name,
+                  avatarUrl: payload.peer.avatar_url,
+                },
+                previewText: payload.preview_text,
+                createdAt: payload.created_at,
+                seenAt: null,
+              },
+            ]);
+            void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+          }
         });
 
         client.connect();
         clientRef.current = client;
         setIsRealtimeEnabled(true);
-      } catch {
+      } catch (e) {
+        Sentry.captureException(e);
         setIsRealtimeEnabled(false);
       }
     };
@@ -251,12 +389,12 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const value = useMemo(
     () => ({
       currentNotification,
+      unseenMatchCount,
+      unseenLikeCount,
       isRealtimeEnabled,
       realtimeClient: clientRef.current,
-      unseenMatchCount,
-      unseenMatchIds,
       dismissCurrentNotification,
-      openCurrentMatch,
+      openCurrentNotification,
       markMatchAsSeen,
     }),
     [
@@ -264,9 +402,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       dismissCurrentNotification,
       isRealtimeEnabled,
       markMatchAsSeen,
-      openCurrentMatch,
+      openCurrentNotification,
+      unseenLikeCount,
       unseenMatchCount,
-      unseenMatchIds,
     ],
   );
 
@@ -276,7 +414,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       <MatchNotificationModal
         notification={currentNotification}
         onLater={() => void dismissCurrentNotification()}
-        onWrite={() => void openCurrentMatch()}
+        onOpen={() => void openCurrentNotification()}
       />
     </MatchNotificationsContext.Provider>
   );

@@ -1,17 +1,17 @@
 import { motion, AnimatePresence } from "motion/react";
-import type { MatchNotification } from "./context";
+import type { PersonalNotification } from "./context";
 import { MatchNotificationCard } from "./MatchNotificationCard";
 
 type MatchNotificationModalProps = {
-  notification: MatchNotification | null;
+  notification: PersonalNotification | null;
   onLater: () => void;
-  onWrite: () => void;
+  onOpen: () => void;
 };
 
 export function MatchNotificationModal({
   notification,
   onLater,
-  onWrite,
+  onOpen,
 }: MatchNotificationModalProps) {
   return (
     <AnimatePresence>
@@ -26,7 +26,7 @@ export function MatchNotificationModal({
           <MatchNotificationCard
             notification={notification}
             onLater={onLater}
-            onWrite={onWrite}
+            onOpen={onOpen}
           />
         </motion.div>
       ) : null}

@@ -192,14 +192,21 @@ export default function ChatPage() {
                 <h3 className="truncate text-sm font-semibold">
                   {match.displayName}
                 </h3>
-                <span className="text-xs text-muted-foreground">
-                  {match.lastMessageAt
-                    ? new Intl.DateTimeFormat("ru-RU", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }).format(new Date(match.lastMessageAt))
-                    : ""}
-                </span>
+                <div className="flex items-center gap-2">
+                  {match.unreadCount > 0 ? (
+                    <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                      {match.unreadCount}
+                    </span>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">
+                    {match.lastMessageAt
+                      ? new Intl.DateTimeFormat("ru-RU", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }).format(new Date(match.lastMessageAt))
+                      : ""}
+                  </span>
+                </div>
               </div>
               <p className="truncate text-xs text-muted-foreground">
                 {match.lastMessagePreview ?? t("chat.no_messages_yet")}

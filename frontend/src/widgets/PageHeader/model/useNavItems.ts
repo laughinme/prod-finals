@@ -26,6 +26,10 @@ export function useNavItems(): NavItem[] {
       label: t("common.discovery"),
       to: "/discovery",
       icon: Sparkles,
+      badge:
+        (matchNotifications?.unseenLikeCount ?? 0) > 0
+          ? matchNotifications?.unseenLikeCount
+          : null,
     },
     {
       label: t("common.messages"),
