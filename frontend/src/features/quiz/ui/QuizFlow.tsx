@@ -7,7 +7,10 @@ import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/react";
 
 import type { Question } from "@/entities/quiz";
-import { useOnboardingState } from "@/features/quiz/model";
+import {
+  useOnboardingState,
+  useQuizProfilePreviewState,
+} from "@/features/quiz/model";
 
 import {
   getOnboardingConfig,
@@ -34,6 +37,11 @@ export function QuizFlow() {
   >({});
   const [showProfilePreview, setShowProfilePreview] = useState(false);
   const [hasHydratedState, setHasHydratedState] = useState(false);
+  const {
+    isProfilePreviewPending,
+    markProfilePreviewPending,
+    clearProfilePreviewPending,
+  } = useQuizProfilePreviewState();
 
   const {
     data: onboardingState,
@@ -53,6 +61,10 @@ export function QuizFlow() {
   const answerMutation = useMutation({
     mutationFn: postOnboardingAnswers,
     onSuccess: (nextState) => {
+      if (nextState.completed) {
+        markProfilePreviewPending();
+      }
+
       queryClient.setQueryData(["onboarding", "state"], {
         quizStarted: nextState.quizStarted,
         skipped: nextState.skipped,
@@ -169,16 +181,16 @@ export function QuizFlow() {
     return <Navigate to="/" replace />;
   }
 
+  if (showProfilePreview || isProfilePreviewPending) {
+    return <ProfilePreviewStep />;
+  }
+
   if (!onboardingState?.shouldShow) {
     return <Navigate to="/discovery" replace />;
   }
 
   if (!question && !isConfigLoading) {
     return <Navigate to="/discovery" replace />;
-  }
-
-  if (showProfilePreview) {
-    return <ProfilePreviewStep />;
   }
 
   const handleAnswerChange = (value: string | string[]) => {
@@ -251,6 +263,7 @@ export function QuizFlow() {
 
   const handleSkipAll = async () => {
     try {
+      clearProfilePreviewPending();
       await skipMutation.mutateAsync();
       navigate("/discovery", { replace: true });
     } catch (error) {

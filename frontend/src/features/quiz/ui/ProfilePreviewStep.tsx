@@ -6,7 +6,10 @@ import { useTranslation } from "react-i18next";
 
 import { useProfile, useUpdateProfile } from "@/features/profile/useProfile";
 import { useMatchmakingFlow } from "@/features/matchmaking/model";
-import { useQuizCompletion } from "@/features/quiz/model";
+import {
+  useQuizCompletion,
+  useQuizProfilePreviewState,
+} from "@/features/quiz/model";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -20,6 +23,7 @@ export function ProfilePreviewStep() {
   const updateProfile = useUpdateProfile();
   const { completeOnboarding } = useMatchmakingFlow();
   const { markQuizCompleted } = useQuizCompletion();
+  const { clearProfilePreviewPending } = useQuizProfilePreviewState();
 
   const [bio, setBio] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -40,6 +44,7 @@ export function ProfilePreviewStep() {
       if (currentBio !== (profile.bio ?? "")) {
         await updateProfile.mutateAsync({ bio: currentBio });
       }
+      clearProfilePreviewPending();
       markQuizCompleted();
       completeOnboarding();
       navigate("/discovery", { replace: true });

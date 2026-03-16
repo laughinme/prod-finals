@@ -119,6 +119,8 @@ export function useChatPage() {
     }
   };
 
+  const hasAnyChats = visibleMatches.length > 0;
+
   return {
     activeChatAvatar,
     activeChatInitial: activeChatName?.charAt(0).toUpperCase() ?? null,
@@ -130,6 +132,7 @@ export function useChatPage() {
     handleCloseMatch,
     handleSend,
     hasActiveChat,
+    hasAnyChats,
     input,
     isClosingMatch: closeMatchMutation.isPending,
     isLoadingConversation,

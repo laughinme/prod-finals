@@ -10,7 +10,10 @@ import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { HeaderLayout } from "@/app/layouts/HeaderLayout";
 import { useProfile } from "@/features/profile/useProfile";
-import { useOnboardingState } from "@/features/quiz/model";
+import {
+  useOnboardingState,
+  useQuizProfilePreviewState,
+} from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
@@ -53,6 +56,7 @@ export const RequireAuth = () => {
 export const RequireMatchmakingReady = () => {
   const { data: profile, isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -65,6 +69,10 @@ export const RequireMatchmakingReady = () => {
     return <Navigate to="/onboarding" replace />;
   }
 
+  if (isProfilePreviewPending) {
+    return <Navigate to="/quiz" replace />;
+  }
+
   if (shouldShowQuiz) {
     return <Navigate to="/quiz" replace />;
   }
@@ -75,6 +83,7 @@ export const RequireMatchmakingReady = () => {
 export const RequireIncompleteOnboarding = () => {
   const { data: profile, isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -84,7 +93,12 @@ export const RequireIncompleteOnboarding = () => {
   const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
   if (isPhotoDone) {
-    return <Navigate to={shouldShowQuiz ? "/quiz" : "/discovery"} replace />;
+    return (
+      <Navigate
+        to={isProfilePreviewPending ? "/quiz" : shouldShowQuiz ? "/quiz" : "/discovery"}
+        replace
+      />
+    );
   }
 
   return <Outlet />;
@@ -93,6 +107,7 @@ export const RequireIncompleteOnboarding = () => {
 export const RequireIncompleteQuiz = () => {
   const { data: profile, isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
+  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
@@ -101,7 +116,7 @@ export const RequireIncompleteQuiz = () => {
   const isPhotoDone = Boolean(profile?.profilePicUrl);
   const shouldShowQuiz = onboardingState?.shouldShow ?? false;
 
-  if (!shouldShowQuiz) {
+  if (!shouldShowQuiz && !isProfilePreviewPending) {
     return <Navigate to="/discovery" replace />;
   }
 

@@ -2,12 +2,16 @@ import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useProfile } from "@/features/profile/useProfile";
-import { useOnboardingState } from "@/features/quiz/model";
+import {
+  useOnboardingState,
+  useQuizProfilePreviewState,
+} from "@/features/quiz/model";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const { data: profile, isLoading } = useProfile();
   const { data: onboardingState, isLoading: isOnboardingStateLoading } = useOnboardingState();
+  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isLoading || isOnboardingStateLoading) {
     return (
@@ -22,6 +26,10 @@ export default function HomePage() {
 
   if (!isPhotoDone) {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (isProfilePreviewPending) {
+    return <Navigate to="/quiz" replace />;
   }
 
   if (shouldShowQuiz) {
