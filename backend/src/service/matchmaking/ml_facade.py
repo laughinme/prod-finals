@@ -66,18 +66,35 @@ def _is_specific_category_label(value: str | None) -> bool:
     }
 
 
-def _top_category_label(scores: list[CompatibilityCategoryScore]) -> str | None:
+def _top_category(scores: list[CompatibilityCategoryScore]) -> CompatibilityCategoryScore | None:
     for item in scores:
         if _is_specific_category_label(item.label):
-            return item.label
+            return item
     return None
+
+
+def _top_category_label(scores: list[CompatibilityCategoryScore]) -> str | None:
+    top = _top_category(scores)
+    return top.label if top is not None else None
 
 
 def _top_category_key(scores: list[CompatibilityCategoryScore]) -> str | None:
-    for item in scores:
-        if _is_specific_category_label(item.label):
-            return (item.category_key or item.label).strip().lower()
-    return None
+    top = _top_category(scores)
+    if top is None:
+        return None
+    return (top.category_key or top.label).strip().lower()
+
+
+def _category_preview_text(
+    *,
+    category_label: str,
+    score_percent: int | None = None,
+) -> str:
+    if score_percent is not None and score_percent >= 70:
+        return f"Сильное совпадение по интересам: «{category_label}»."
+    if score_percent is not None and score_percent >= 45:
+        return f"Хорошее совпадение по интересам: «{category_label}»."
+    return f"Ваш общий интерес — «{category_label}»."
 
 
 def _diversify_by_top_category(scored: list[RankedCandidate]) -> list[RankedCandidate]:
@@ -244,9 +261,12 @@ class MockMlFacade(MlFacade):
             for code in scored.reason_codes
         ]
         primary = reason_codes[0]
-        top_category_label = _top_category_label(scored.category_scores)
-        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category_label:
-            preview = f"Вы оба любите «{top_category_label}»."
+        top_category = _top_category(scored.category_scores)
+        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
+            preview = _category_preview_text(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+            )
         else:
             preview_map = {
                 CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
@@ -518,7 +538,7 @@ class HttpMlFacade(MlFacade):
         top_category_label: str | None = None,
     ) -> str:
         if code == "activity_overlap" and _is_specific_category_label(top_category_label):
-            return f"Вы оба любите «{top_category_label}»"
+            return f"Совпадает интерес: «{top_category_label}»"
         mapping = {
             "lifestyle_similarity": "Похожий образ жизни",
             "activity_overlap": "Похожие интересы",
@@ -536,9 +556,12 @@ class HttpMlFacade(MlFacade):
         category_scores: list[CompatibilityCategoryScore] | None = None,
     ) -> str:
         primary = reason_codes[0] if reason_codes else CompatibilityReasonCode.PROFILE_QUALITY
-        top_category_label = _top_category_label(category_scores or [])
-        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category_label:
-            return f"Вы оба любите «{top_category_label}»."
+        top_category = _top_category(category_scores or [])
+        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
+            return _category_preview_text(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+            )
         preview_map = {
             CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
             CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",

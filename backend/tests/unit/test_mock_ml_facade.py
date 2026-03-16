@@ -176,9 +176,9 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
     preview = facade.build_preview(ranked.candidates[0])
 
     assert ranked.decision_mode.value == "model"
-    assert preview.preview.startswith("Вы оба любите")
+    assert preview.preview.startswith("Сильное совпадение по интересам:")
     assert "category_fit" in preview.reason_codes
-    assert any(signal.label.startswith("Вы оба любите") for signal in preview.reason_signals)
+    assert any(signal.label.startswith("Совпадает интерес:") for signal in preview.reason_signals)
     assert preview.category_breakdown[0].label == category.label
 
 
