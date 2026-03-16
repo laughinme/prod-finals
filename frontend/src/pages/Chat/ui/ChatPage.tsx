@@ -15,12 +15,7 @@ import { useChatPage } from "@/pages/Chat/model";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
-import {
-  IconForbid,
-  IconForbid2Filled,
-  IconReport,
-  IconXFilled,
-} from "@tabler/icons-react";
+import { IconUserCircle, IconXFilled } from "@tabler/icons-react";
 
 const mobileSlide = {
   sidebar: {
@@ -43,7 +38,6 @@ export default function ChatPage() {
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const {
     activeChatAvatar,
-    activeChatInitial,
     activeChatMeta,
     activeChatName,
     activeMatch,
@@ -95,7 +89,6 @@ export default function ChatPage() {
     selectMatch(null);
   };
 
-  /* ── Empty / loading states ── */
   if (isLoadingInitialChat && !hasAnyChats && !hasActiveChat) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
@@ -176,13 +169,17 @@ export default function ChatPage() {
             )}
           >
             <div className="relative h-11 w-11 shrink-0 md:h-12 md:w-12">
-              <div className="h-full w-full overflow-hidden rounded-full">
-                <img
-                  src={match.avatarUrl}
-                  alt={match.displayName}
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-secondary text-muted-foreground/60">
+                {match.avatarUrl ? (
+                  <img
+                    src={match.avatarUrl}
+                    alt={match.displayName}
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <IconUserCircle className="size-8 md:size-9" />
+                )}
               </div>
               <div className="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
             </div>
@@ -218,10 +215,8 @@ export default function ChatPage() {
     </>
   );
 
-  /* ── Chat area content ── */
   const chatContent = (
     <>
-      {/* Header */}
       <div className="z-20 flex h-14 items-center justify-between border-b border-border bg-card px-3 md:h-16 md:px-6">
         <div className="flex items-center gap-3 md:gap-4">
           {isMobile && (
@@ -248,7 +243,7 @@ export default function ChatPage() {
                 referrerPolicy="no-referrer"
               />
             ) : (
-              activeChatInitial
+              <IconUserCircle className="size-7 text-muted-foreground/70 md:size-8" />
             )}
           </motion.div>
           <motion.div
@@ -319,7 +314,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 md:space-y-6 md:p-6">
         {isLoadingConversation ? (
           <motion.div
@@ -371,7 +365,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <motion.div
         initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import type { MatchProfile } from "../model";
+import { ProfileImageFallback } from "@/shared/components/ui/profile-image-fallback";
 
 function getPrimaryLocation(location: string): string {
   return location.split(",")[0]?.trim() ?? "";
@@ -88,17 +89,15 @@ export function MatchProfileMobileCard({
         style={cardFrameStyle}
         className="relative overflow-hidden rounded-4xl border border-[#1a2740] bg-[#111111] shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
       >
-        {profile.image ? (
-          <img
-            src={profile.image}
-            alt={profile.name}
-            className="absolute inset-0 h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-            draggable="false"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[#1b1b1b]" />
-        )}
+        <ProfileImageFallback
+          src={profile.image}
+          alt={profile.name}
+          containerClassName="absolute inset-0"
+          fallbackClassName="bg-[#1b1b1b]"
+          iconClassName="size-20 text-white/55"
+          referrerPolicy="no-referrer"
+          draggable="false"
+        />
 
         <div className="absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/60 via-black/20 to-transparent pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-[62%] bg-linear-to-t from-black via-black/85 via-45% to-transparent pointer-events-none" />

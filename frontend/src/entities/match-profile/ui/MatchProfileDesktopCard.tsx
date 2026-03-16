@@ -7,6 +7,7 @@ import { Heart, Info, MapPin, ShieldAlert, Sparkles, X } from "lucide-react";
 import type { MatchProfile } from "../model";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
+import { ProfileImageFallback } from "@/shared/components/ui/profile-image-fallback";
 import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 
 function getPrimaryLocation(location: string): string {
@@ -210,17 +211,15 @@ export function MatchProfileDesktopCard({
         ) : null}
 
         <div className="relative h-[50vh] w-full shrink-0 md:h-[70vh] md:w-[45%]">
-          {profile.image ? (
-            <img
-              src={profile.image}
-              alt={profile.name}
-              className="absolute inset-0 h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-              draggable="false"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-secondary" />
-          )}
+          <ProfileImageFallback
+            src={profile.image}
+            alt={profile.name}
+            containerClassName="absolute inset-0"
+            fallbackClassName="bg-secondary"
+            iconClassName="size-20 text-muted-foreground/70"
+            referrerPolicy="no-referrer"
+            draggable="false"
+          />
           <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent md:hidden" />
 
           {showMatchScore ? (
