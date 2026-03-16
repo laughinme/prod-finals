@@ -184,9 +184,6 @@ export function PreferencesEditor({ profile }: { profile: User }) {
               <p className="text-sm font-medium text-foreground">
                 {t("profile.ml_recommendations_label")}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("profile.ml_recommendations_description")}
-              </p>
             </div>
             <span
               className={cn(

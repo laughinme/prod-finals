@@ -329,7 +329,7 @@ export function QuizFlow() {
                 </div>
               </motion.div>
 
-              <div className="min-h-32 md:min-h-50">
+              <div className="min-h-20 md:min-h-32">
                 <QuizQuestionContent
                   question={question!}
                   currentAnswer={currentAnswer}
@@ -370,7 +370,7 @@ export function QuizFlow() {
               skipMutation.isPending
             }
             isNextLoading={answerMutation.isPending}
-            className="mt-5 md:mt-8"
+            className="mt-4 md:mt-6"
           />
         </div>
       </motion.div>
