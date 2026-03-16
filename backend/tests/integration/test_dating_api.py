@@ -169,6 +169,60 @@ async def _promote_to_admin(user_id: str) -> None:
         )
 
 
+async def _drop_today_recommendation_batches(*, user_id: str) -> None:
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                DELETE FROM recommendation_items
+                WHERE batch_id IN (
+                    SELECT id
+                    FROM recommendation_batches
+                    WHERE user_id = CAST(:user_id AS uuid)
+                      AND batch_date = CURRENT_DATE
+                )
+                """
+            ),
+            {"user_id": user_id},
+        )
+        await conn.execute(
+            text(
+                """
+                DELETE FROM recommendation_batches
+                WHERE user_id = CAST(:user_id AS uuid)
+                  AND batch_date = CURRENT_DATE
+                """
+            ),
+            {"user_id": user_id},
+        )
+
+
+async def _pair_state_snapshot(*, user_a_id: str, user_b_id: str) -> dict | None:
+    engine = get_engine()
+    async with engine.begin() as conn:
+        row = (
+            await conn.execute(
+                text(
+                    """
+                    SELECT status, cooldown_until, blocked_by_user_id
+                    FROM pair_states
+                    WHERE (
+                        user_low_id = CAST(:user_a_id AS uuid)
+                        AND user_high_id = CAST(:user_b_id AS uuid)
+                    )
+                    OR (
+                        user_low_id = CAST(:user_b_id AS uuid)
+                        AND user_high_id = CAST(:user_a_id AS uuid)
+                    )
+                    """
+                ),
+                {"user_a_id": user_a_id, "user_b_id": user_b_id},
+            )
+        ).mappings().first()
+    return dict(row) if row else None
+
+
 @pytest.mark.asyncio
 async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
     credentials_a, access_a = await _register_user(client, faker, "alice")
@@ -541,6 +595,124 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
             )
         ).scalars().all()
     assert outbox_topics
+
+
+@pytest.mark.asyncio
+async def test_pass_action_prevents_repeat_after_batch_regeneration(client: AsyncClient, faker: Faker):
+    _, access_a = await _register_user(client, faker, "pass_norepeat_a")
+    _, access_b = await _register_user(client, faker, "pass_norepeat_b")
+
+    profile_a = await _complete_profile(
+        client,
+        access_a,
+        display_name="Pass NoRepeat A",
+        birth_date="1997-05-12",
+        city_id="msk",
+        gender="female",
+    )
+    profile_b = await _complete_profile(
+        client,
+        access_b,
+        display_name="Pass NoRepeat B",
+        birth_date="1996-05-12",
+        city_id="msk",
+        gender="male",
+    )
+
+    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=18, age_max=99)
+
+    feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert feed_before.status_code == 200
+    assert feed_before.json()["feed_state"] == "ready"
+
+    card_b = next(card for card in feed_before.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
+    reaction = await client.post(
+        f"/api/v1/feed/items/{card_b['serve_item_id']}/reaction",
+        json={"action": "pass"},
+        headers=auth_header(access_a),
+    )
+    assert reaction.status_code == 200
+    assert reaction.json()["result"] == "passed"
+
+    await _drop_today_recommendation_batches(user_id=profile_a["id"])
+
+    feed_after = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert feed_after.status_code == 200
+    ids_after = {card["candidate"]["user_id"] for card in feed_after.json()["cards"]}
+    assert profile_b["id"] not in ids_after
+
+    pair_state = await _pair_state_snapshot(user_a_id=profile_a["id"], user_b_id=profile_b["id"])
+    assert pair_state is not None
+    assert pair_state["status"] == "closed"
+    assert pair_state["cooldown_until"] is not None
+
+
+@pytest.mark.asyncio
+async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClient, faker: Faker):
+    _, access_a = await _register_user(client, faker, "unblock_cooldown_a")
+    _, access_b = await _register_user(client, faker, "unblock_cooldown_b")
+
+    profile_a = await _complete_profile(
+        client,
+        access_a,
+        display_name="Unblock Cooldown A",
+        birth_date="1997-05-12",
+        city_id="msk",
+        gender="female",
+    )
+    profile_b = await _complete_profile(
+        client,
+        access_b,
+        display_name="Unblock Cooldown B",
+        birth_date="1996-05-12",
+        city_id="msk",
+        gender="male",
+    )
+
+    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=18, age_max=99)
+    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=18, age_max=99)
+
+    feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert feed_before.status_code == 200
+    assert any(card["candidate"]["user_id"] == profile_b["id"] for card in feed_before.json()["cards"])
+
+    block = await client.post(
+        "/api/v1/blocks",
+        json={
+            "target_user_id": profile_b["id"],
+            "source_context": "feed",
+            "reason_code": "harassment",
+        },
+        headers=auth_header(access_a),
+    )
+    assert block.status_code == 200
+    assert block.json()["status"] == "blocked"
+
+    unblock = await client.delete(
+        f"/api/v1/blocks/{profile_b['id']}",
+        headers=auth_header(access_a),
+    )
+    assert unblock.status_code == 200
+    assert unblock.json()["status"] == "unblocked"
+    assert unblock.json()["removed_from_blocklist"] is True
+
+    blocked_list = await client.get("/api/v1/blocks", headers=auth_header(access_a))
+    assert blocked_list.status_code == 200
+    assert profile_b["id"] not in {item["target_user_id"] for item in blocked_list.json()["items"]}
+
+    await _drop_today_recommendation_batches(user_id=profile_a["id"])
+
+    feed_after = await client.get("/api/v1/feed", headers=auth_header(access_a))
+    assert feed_after.status_code == 200
+    ids_after = {card["candidate"]["user_id"] for card in feed_after.json()["cards"]}
+    assert profile_b["id"] not in ids_after
+
+    pair_state = await _pair_state_snapshot(user_a_id=profile_a["id"], user_b_id=profile_b["id"])
+    assert pair_state is not None
+    assert pair_state["status"] == "closed"
+    assert pair_state["cooldown_until"] is not None
+    assert pair_state["blocked_by_user_id"] is None
 
 
 @pytest.mark.asyncio
