@@ -302,6 +302,10 @@ class MlRuntime:
         )
         print(f"[{request.trace_id}] Vectors synchronized dynamically for user {user_id_str}")
 
+    def pull_and_process_user_transactions(self, *, user_id: str | int, trace_id: UUID) -> None:
+        # External banking pull is not wired in this deployment; keep endpoint non-breaking.
+        print(f"[{trace_id}] Transaction pull skipped for user {user_id}: source is not configured")
+
     def _build_pipeline(self) -> ModelPipeline:
         artifact_path = Path(self._settings.model_artifact_path)
         if artifact_path.exists():

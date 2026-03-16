@@ -52,6 +52,27 @@ def _is_healthy_ml_check(value: object) -> bool:
     return bool(value)
 
 
+def _is_specific_category_label(value: str | None) -> bool:
+    if not value:
+        return False
+    normalized = value.strip().lower()
+    return normalized not in {
+        "",
+        "unknown",
+        "unknown_category",
+        "none",
+        "n/a",
+        "другое",
+    }
+
+
+def _top_category_label(scores: list[CompatibilityCategoryScore]) -> str | None:
+    for item in scores:
+        if _is_specific_category_label(item.label):
+            return item.label
+    return None
+
+
 class MlFacade:
     async def rank(
         self,
@@ -192,19 +213,24 @@ class MockMlFacade(MlFacade):
             for code in scored.reason_codes
         ]
         primary = reason_codes[0]
-        preview_map = {
-            CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
-            CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
-            CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
-            CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
-            CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
-            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
-        }
+        top_category_label = _top_category_label(scored.category_scores)
+        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category_label:
+            preview = f"Вы оба любите «{top_category_label}»."
+        else:
+            preview_map = {
+                CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
+                CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
+                CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
+                CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
+                CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
+                CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
+            }
+            preview = preview_map[primary]
         score_percent = int(round(scored.score * 100))
         return CompatibilityPreview(
             score=scored.score,
             score_percent=score_percent,
-            preview=preview_map[primary],
+            preview=preview,
             reason_codes=[code.value for code in reason_codes],
             reason_signals=scored.reason_signals
             or build_preview_reason_signals(
@@ -418,7 +444,7 @@ logger = logging.getLogger(__name__)
 # ML ReasonCode → backend CompatibilityReasonCode
 _ML_REASON_MAP: dict[str, CompatibilityReasonCode] = {
     "lifestyle_similarity": CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT,
-    "activity_overlap": CompatibilityReasonCode.GOAL_FIT,
+    "activity_overlap": CompatibilityReasonCode.CATEGORY_FIT,
     "communication_style_fit": CompatibilityReasonCode.CITY_FIT,
     "meetup_rhythm_fit": CompatibilityReasonCode.AGE_FIT,
     "locality_fit": CompatibilityReasonCode.CITY_FIT,
@@ -440,28 +466,48 @@ class HttpMlFacade(MlFacade):
     def _map_reason_code(self, ml_code: str) -> CompatibilityReasonCode:
         return _ML_REASON_MAP.get(ml_code, CompatibilityReasonCode.PROFILE_QUALITY)
 
-    def _map_reason_signal(self, payload: dict) -> CompatibilityReasonSignal:
+    def _map_reason_signal(
+        self,
+        payload: dict,
+        *,
+        top_category_label: str | None = None,
+    ) -> CompatibilityReasonSignal:
         code = str(payload.get("code", "")).strip() or CompatibilityReasonCode.PROFILE_QUALITY.value
         return CompatibilityReasonSignal(
             code=code,
-            label=self._signal_label(code),
+            label=self._signal_label(code, top_category_label=top_category_label),
             strength=str(payload.get("strength", "medium")).strip() or "medium",
             confidence=float(payload.get("confidence", 0.5) or 0.5),
         )
 
-    def _signal_label(self, code: str) -> str:
+    def _signal_label(
+        self,
+        code: str,
+        *,
+        top_category_label: str | None = None,
+    ) -> str:
+        if code == "activity_overlap" and _is_specific_category_label(top_category_label):
+            return f"Вы оба любите «{top_category_label}»"
         mapping = {
-            "lifestyle_similarity": "Lifestyle similarity",
-            "activity_overlap": "Activity overlap",
-            "communication_style_fit": "Communication style fit",
-            "meetup_rhythm_fit": "Meetup rhythm fit",
-            "locality_fit": "Locality fit",
-            "novelty_boost": "Novelty boost",
+            "lifestyle_similarity": "Похожий образ жизни",
+            "activity_overlap": "Похожие интересы",
+            "communication_style_fit": "Подходит стиль общения",
+            "meetup_rhythm_fit": "Совпадает ритм встреч",
+            "locality_fit": "Комфортная география встречи",
+            "novelty_boost": "Новый релевантный кандидат",
         }
-        return mapping.get(code, "Compatibility signal")
+        return mapping.get(code, "Сигнал совместимости")
 
-    def _preview_text(self, reason_codes: list[CompatibilityReasonCode]) -> str:
+    def _preview_text(
+        self,
+        reason_codes: list[CompatibilityReasonCode],
+        *,
+        category_scores: list[CompatibilityCategoryScore] | None = None,
+    ) -> str:
         primary = reason_codes[0] if reason_codes else CompatibilityReasonCode.PROFILE_QUALITY
+        top_category_label = _top_category_label(category_scores or [])
+        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category_label:
+            return f"Вы оба любите «{top_category_label}»."
         preview_map = {
             CompatibilityReasonCode.CATEGORY_FIT: "У вас заметно совпадают интересы и привычки.",
             CompatibilityReasonCode.CITY_FIT: "У вас совместимы город и привычный ритм встреч.",
@@ -538,6 +584,8 @@ class HttpMlFacade(MlFacade):
             if candidate_uuid is None:
                 continue
 
+            category_scores = self._category_scores_from_components(ml_item)
+            top_category_label = _top_category_label(category_scores)
             reason_codes = []
             for signal in ml_item.get("reason_signals", []):
                 code = self._map_reason_code(signal.get("code", ""))
@@ -553,11 +601,14 @@ class HttpMlFacade(MlFacade):
                     score=round(min(max(ml_item.get("score", 0.0), 0.0), 0.99), 2),
                     reason_codes=reason_codes[:4],
                     reason_signals=[
-                        self._map_reason_signal(signal)
+                        self._map_reason_signal(
+                            signal,
+                            top_category_label=top_category_label,
+                        )
                         for signal in ml_item.get("reason_signals", [])
                     ],
                     category_keys=[],
-                    category_scores=self._category_scores_from_components(ml_item),
+                    category_scores=category_scores,
                 )
             )
 
@@ -636,7 +687,10 @@ class HttpMlFacade(MlFacade):
         return CompatibilityPreview(
             score=scored.score,
             score_percent=score_percent,
-            preview=self._preview_text(reason_codes),
+            preview=self._preview_text(
+                reason_codes,
+                category_scores=scored.category_scores,
+            ),
             reason_codes=[code.value for code in reason_codes],
             reason_signals=scored.reason_signals
             or build_preview_reason_signals(

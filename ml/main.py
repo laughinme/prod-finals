@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from ml.service.auth import require_service_token
 from ml.service.runtime import MlRuntime
 from ml.service.schemas import (
+    AckStatus,
     AckResponse,
     CompatibilityExplanationRequest,
     CompatibilityExplanationResponse,
@@ -281,11 +282,13 @@ async def post_onboarding(
         import_transactions=payload.import_transactions,
     )
     if payload.import_transactions:
-        background_tasks.add_task(
-            runtime.pull_and_process_user_transactions, 
-            user_id=payload.user_id, 
-            trace_id=payload.trace_id
-        )
+        transaction_task = getattr(runtime, "pull_and_process_user_transactions", None)
+        if callable(transaction_task):
+            background_tasks.add_task(
+                transaction_task,
+                user_id=payload.user_id,
+                trace_id=payload.trace_id,
+            )
     return AckResponse(status=AckStatus.accepted, received_at=datetime.now(timezone.utc))
 
 @app.post(

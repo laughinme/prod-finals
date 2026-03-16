@@ -65,3 +65,20 @@ def test_feedback_swipe_returns_202() -> None:
     )
     assert response.status_code == 202
     assert response.json()["status"] == "accepted"
+
+
+def test_onboarding_profile_update_returns_202_with_import_transactions() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/v1/profiles/onboarding",
+        headers=_headers(),
+        json={
+            "trace_id": str(uuid4()),
+            "user_id": "cold-user-1",
+            "favorite_categories": ["coffee", "entertainment", "travel"],
+            "import_transactions": True,
+            "preferred_activity_hour": 18.0,
+        },
+    )
+    assert response.status_code == 202
+    assert response.json()["status"] == "accepted"
