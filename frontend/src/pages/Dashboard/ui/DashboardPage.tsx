@@ -37,6 +37,7 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { useProfile } from "@/features/profile";
+import { formatPercent, formatNumber, formatDayLabel } from "./utils";
 
 type OverviewRow = {
   day: string;
@@ -56,21 +57,6 @@ const overviewChartConfig = {
   replies: { label: "Replies", color: "var(--chart-5, #8b5cf6)" },
   safetyEvents: { label: "Safety events", color: "#ef4444" },
 };
-
-function formatPercent(value: number | null | undefined) {
-  return `${Math.round((value ?? 0) * 100)}%`;
-}
-
-function formatNumber(value: number | null | undefined) {
-  return new Intl.NumberFormat("ru-RU").format(value ?? 0);
-}
-
-function formatDayLabel(day: string) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "short",
-  }).format(new Date(day));
-}
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -277,7 +263,7 @@ export default function DashboardPage() {
               />
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
+            <section className="grid items-start gap-4 xl:grid-cols-[1.7fr_1fr]">
               <Card className="rounded-[28px]">
                 <CardHeader>
                   <CardTitle>{t("admin.activity_timeline")}</CardTitle>
@@ -404,7 +390,7 @@ export default function DashboardPage() {
               </Card>
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+            <section className="grid items-start gap-4 xl:grid-cols-[1.2fr_1fr]">
               <Card className="rounded-[28px]">
                 <CardHeader>
                   <CardTitle>{t("admin.daily_funnel")}</CardTitle>
@@ -467,39 +453,6 @@ export default function DashboardPage() {
                   items={funnelSummary?.by_decision_mode ?? []}
                 />
               </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-2">
-              <SegmentMatrixCard
-                title={t("admin.segment_matrix")}
-                description={t("admin.segment_matrix_description")}
-                items={funnelSummary?.by_segment ?? []}
-              />
-              <Card className="rounded-[28px]">
-                <CardHeader>
-                  <CardTitle>{t("admin.notes_title")}</CardTitle>
-                  <CardDescription>
-                    {t("admin.notes_description")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3 text-sm text-muted-foreground">
-                  <InsightRow
-                    icon={Bot}
-                    title={t("admin.insight_model_title")}
-                    text={t("admin.insight_model_text")}
-                  />
-                  <InsightRow
-                    icon={Activity}
-                    title={t("admin.insight_dataset_title")}
-                    text={t("admin.insight_dataset_text")}
-                  />
-                  <InsightRow
-                    icon={ChartColumn}
-                    title={t("admin.insight_funnel_title")}
-                    text={t("admin.insight_funnel_text")}
-                  />
-                </CardContent>
-              </Card>
             </section>
 
             {isError ? (
