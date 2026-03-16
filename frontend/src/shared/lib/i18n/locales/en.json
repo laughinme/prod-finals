@@ -262,6 +262,128 @@
     "failed_to_get_explanation": "Failed to get compatibility explanation for this card."
   },
   "admin": {
+    "dashboard": {
+      "badge": "Admin",
+      "title": "Operations and moderation control room",
+      "subtitle": "This page combines product metrics, match quality, and the moderation workflow: user reports, review actions, and bans.",
+      "tabs": {
+        "overview": "Overview",
+        "reviews": "Reviews",
+        "users": "Users"
+      },
+      "overview_error_title": "Failed to load overview",
+      "overview_error_description": "One or more admin endpoints did not respond. Check the backend and refresh the page.",
+      "cards": {
+        "total_users": "Total users",
+        "onboarded": "Completed onboarding",
+        "banned": "Banned",
+        "last_24h": "New in 24h"
+      },
+      "registrations_title": "Registrations by day",
+      "registrations_description": "Shows how new user inflow changes over time.",
+      "funnel_title": "Core funnel metrics",
+      "funnel_description": "A quick operational snapshot of feed delivery, likes, matches, messages, and safety events.",
+      "daily_outcomes_title": "Daily outcomes",
+      "daily_outcomes_description": "Matches, first messages, and reports over time.",
+      "conversions_title": "Conversions",
+      "conversions_description": "Shows the quality of transitions between funnel steps.",
+      "metrics": {
+        "feed_served": "Feed served",
+        "likes": "Likes",
+        "matches": "Matches",
+        "first_messages": "First messages",
+        "first_replies": "First replies",
+        "reports": "Reports"
+      },
+      "conversions": {
+        "like_rate": "Like rate",
+        "match_rate": "Matches from likes",
+        "first_message_rate": "First message from match",
+        "first_reply_rate": "Reply to first message",
+        "negative_rate": "Negative outcomes from match"
+      },
+      "segments": {
+        "user_source_title": "Breakdown by user source",
+        "decision_mode_title": "Breakdown by decision mode"
+      },
+      "segment_labels": {
+        "all": "All",
+        "user_source": {
+          "dataset": "Dataset",
+          "cold_start": "Cold start"
+        },
+        "decision_mode": {
+          "model": "Model",
+          "fallback": "Fallback",
+          "unknown": "Unknown"
+        }
+      },
+      "table": {
+        "segment": "Segment"
+      }
+    },
+    "reviews": {
+      "title": "Report review queue",
+      "subtitle": "Reports from feed and chat land here. Admins can inspect context, leave a note, dismiss the report, or ban the target user.",
+      "filter_placeholder": "Filter by status",
+      "filter_all": "All reports",
+      "filter_pending": "Pending only",
+      "filter_resolved": "Resolved only",
+      "filter_dismissed": "Dismissed only",
+      "summary": {
+        "total": "Total reports",
+        "pending": "Awaiting review",
+        "resolved": "Resolved",
+        "banned_targets": "Unique banned targets"
+      },
+      "flow_title": "How moderation works",
+      "flow_description": "Helpful for the team and for the jury: you can see how a report appears and what the moderator actually does next.",
+      "flow": {
+        "reported_title": "1. A user submits a report",
+        "reported_description": "The report is created from feed or chat via the safety flow and immediately enters the pending queue.",
+        "review_title": "2. Admin sees the queue",
+        "review_description": "The queue shows reporter, target, category, context, description, and whether the user also blocked the target.",
+        "action_title": "3. Admin takes action",
+        "action_description": "The admin can dismiss, resolve without a ban, or resolve and ban. The decision is stored in the report and reflected in the user list."
+      },
+      "error_title": "Failed to load the report queue",
+      "error_description": "Backend moderation endpoints did not respond. Check the server and refresh the page.",
+      "empty_title": "The queue is empty",
+      "empty_description": "There are no reports in the selected status right now. As soon as someone sends a report, it will appear here.",
+      "status": {
+        "pending": "Pending",
+        "resolved": "Resolved",
+        "dismissed": "Dismissed"
+      },
+      "context": {
+        "feed": "From feed",
+        "match_list": "From match list",
+        "conversation": "From conversation",
+        "profile": "From profile"
+      },
+      "category": {
+        "spam": "Spam",
+        "harassment": "Harassment",
+        "fake_profile": "Fake profile",
+        "inappropriate_content": "Inappropriate content",
+        "other": "Other"
+      },
+      "action_banned": "User was banned",
+      "meta_line": "{{createdAt}} · reporter {{actorEmail}} · target {{targetEmail}}",
+      "reason_title": "Report description",
+      "no_description": "The reporter did not provide a text description.",
+      "also_block": "The report was submitted together with a user block",
+      "note_label": "Moderator note",
+      "note_placeholder": "Add a short note with the final decision or context for the team.",
+      "resolve_and_ban": "Ban and resolve",
+      "resolve_only": "Resolve without ban",
+      "dismiss": "Dismiss",
+      "reviewed_by": "Reviewed by {{reviewer}} · {{reviewedAt}}",
+      "review_ban_success": "Report resolved and user banned",
+      "review_resolve_success": "Report resolved",
+      "review_dismiss_success": "Report dismissed",
+      "review_error": "Failed to save the review decision"
+    },
     "dashboard_title": "Dating service operations dashboard",
     "dashboard_description": "This page combines product funnel signals, match quality, dataset vs cold-start differences, and model vs fallback delivery in one place.",
     "generated_at": "Updated {{date}}",

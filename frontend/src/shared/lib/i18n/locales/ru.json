@@ -261,6 +261,128 @@
     "failed_to_get_explanation": "Не удалось получить описание совместимости для этой карточки."
   },
   "admin": {
+    "dashboard": {
+      "badge": "Admin",
+      "title": "Панель управления и модерации",
+      "subtitle": "Здесь собраны продуктовые метрики, качество мэтчей и операционный поток модерации: жалобы, ревью и баны пользователей.",
+      "tabs": {
+        "overview": "Обзор",
+        "reviews": "Ревью",
+        "users": "Пользователи"
+      },
+      "overview_error_title": "Не удалось загрузить обзор",
+      "overview_error_description": "Один или несколько admin endpoints не ответили. Проверьте backend и обновите страницу.",
+      "cards": {
+        "total_users": "Всего пользователей",
+        "onboarded": "Прошли онбординг",
+        "banned": "Забанены",
+        "last_24h": "Новых за 24 часа"
+      },
+      "registrations_title": "Регистрации по дням",
+      "registrations_description": "Показывает, как меняется приток пользователей по датам.",
+      "funnel_title": "Ключевые метрики воронки",
+      "funnel_description": "Быстрый operational snapshot по показам, лайкам, мэтчам, сообщениям и safety-событиям.",
+      "daily_outcomes_title": "Исходы по дням",
+      "daily_outcomes_description": "Матчи, первые сообщения и жалобы в ежедневной динамике.",
+      "conversions_title": "Конверсии",
+      "conversions_description": "Показывают качество переходов между ключевыми шагами funnel.",
+      "metrics": {
+        "feed_served": "Показы в выдаче",
+        "likes": "Лайки",
+        "matches": "Мэтчи",
+        "first_messages": "Первые сообщения",
+        "first_replies": "Первые ответы",
+        "reports": "Жалобы"
+      },
+      "conversions": {
+        "like_rate": "Лайк-рейт",
+        "match_rate": "Мэтчи из лайков",
+        "first_message_rate": "Первое сообщение из мэтча",
+        "first_reply_rate": "Ответ на первое сообщение",
+        "negative_rate": "Негативные исходы из мэтча"
+      },
+      "segments": {
+        "user_source_title": "Сегменты по источнику пользователя",
+        "decision_mode_title": "Сегменты по decision mode"
+      },
+      "segment_labels": {
+        "all": "Все",
+        "user_source": {
+          "dataset": "Dataset",
+          "cold_start": "Cold start"
+        },
+        "decision_mode": {
+          "model": "Model",
+          "fallback": "Fallback",
+          "unknown": "Unknown"
+        }
+      },
+      "table": {
+        "segment": "Сегмент"
+      }
+    },
+    "reviews": {
+      "title": "Очередь жалоб",
+      "subtitle": "Сюда попадают репорты из feed и chat. Админ может просмотреть контекст, оставить заметку, отклонить жалобу или забанить пользователя.",
+      "filter_placeholder": "Фильтр по статусу",
+      "filter_all": "Все жалобы",
+      "filter_pending": "Только pending",
+      "filter_resolved": "Только resolved",
+      "filter_dismissed": "Только dismissed",
+      "summary": {
+        "total": "Всего жалоб",
+        "pending": "Ждут ревью",
+        "resolved": "Решены",
+        "banned_targets": "Уникальных банов"
+      },
+      "flow_title": "Как работает moderation flow",
+      "flow_description": "Полезно и для команды, и для жюри: видно, как жалоба появляется и что именно делает модератор.",
+      "flow": {
+        "reported_title": "1. Пользователь жалуется",
+        "reported_description": "Жалоба создается из feed или chat через safety flow и сразу попадает в статус pending.",
+        "review_title": "2. Админ видит очередь",
+        "review_description": "В очереди видно автора жалобы, цель, категорию, контекст, описание и признак also_block.",
+        "action_title": "3. Принимается решение",
+        "action_description": "Админ может dismiss, resolve без бана или resolve с баном. Решение сохраняется в отчете и отражается в списке пользователей."
+      },
+      "error_title": "Не удалось загрузить очередь жалоб",
+      "error_description": "Backend moderation endpoints не ответили. Проверьте сервер и обновите страницу.",
+      "empty_title": "Очередь пустая",
+      "empty_description": "Сейчас нет жалоб в выбранном статусе. Как только пользователь отправит report, карточка появится здесь.",
+      "status": {
+        "pending": "Pending",
+        "resolved": "Resolved",
+        "dismissed": "Dismissed"
+      },
+      "context": {
+        "feed": "Из feed",
+        "match_list": "Из списка мэтчей",
+        "conversation": "Из чата",
+        "profile": "Из профиля"
+      },
+      "category": {
+        "spam": "Спам",
+        "harassment": "Харассмент",
+        "fake_profile": "Фейковый профиль",
+        "inappropriate_content": "Неподходящий контент",
+        "other": "Другое"
+      },
+      "action_banned": "Пользователь забанен",
+      "meta_line": "{{createdAt}} · пожаловался {{actorEmail}} · цель {{targetEmail}}",
+      "reason_title": "Описание жалобы",
+      "no_description": "Пользователь не оставил текстовое описание.",
+      "also_block": "Жалоба была отправлена вместе с блокировкой",
+      "note_label": "Заметка модератора",
+      "note_placeholder": "Коротко зафиксируйте решение или контекст для команды.",
+      "resolve_and_ban": "Забанить и завершить",
+      "resolve_only": "Подтвердить без бана",
+      "dismiss": "Отклонить",
+      "reviewed_by": "Проверил(а): {{reviewer}} · {{reviewedAt}}",
+      "review_ban_success": "Жалоба подтверждена, пользователь забанен",
+      "review_resolve_success": "Жалоба подтверждена",
+      "review_dismiss_success": "Жалоба отклонена",
+      "review_error": "Не удалось сохранить решение по жалобе"
+    },
     "dashboard_title": "Операционный дашборд сервиса знакомств",
     "dashboard_description": "Здесь собраны продуктовые сигналы по воронке, качеству мэтчей и различиям между dataset и cold start сегментами, а также между model и fallback выдачей.",
     "generated_at": "Обновлено {{date}}",
