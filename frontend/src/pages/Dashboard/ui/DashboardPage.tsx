@@ -35,8 +35,8 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Separator } from "@/shared/components/ui/separator";
 
-import { useBanUser } from "./hooks/use-ban-user";
-import { useModerationUsers } from "./hooks/use-moderation-users";
+import { useBanUser } from "../model/use-ban-user";
+import { useModerationUsers } from "../model/use-moderation-users";
 
 export default function ModerationPage() {
   const { t } = useTranslation();
@@ -152,7 +152,8 @@ export default function ModerationPage() {
             {t("admin.moderation_page.error_description")}
           </p>
           <Button onClick={() => refetch()} variant="outline" className="gap-2">
-            <Loader2 className="h-4 w-4" /> {t("admin.moderation_page.try_again")}
+            <Loader2 className="h-4 w-4" />{" "}
+            {t("admin.moderation_page.try_again")}
           </Button>
         </div>
       ) : users.length === 0 ? (
