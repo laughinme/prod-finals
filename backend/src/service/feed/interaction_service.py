@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
+from core.errors import ForbiddenError
 from database.relational_db import Conversation, InteractionEvent, Match, PairState, RecommendationItem, User
 from domain.dating import (
     AuditEntityType,
@@ -10,16 +11,71 @@ from domain.dating import (
     FeedReactionRequest,
     FeedReactionResponse,
     FeedReactionResult,
+    FeedTestMatchResponse,
     MatchLink,
     MatchStatus,
     SafetySourceContext,
 )
 from domain.notifications import MatchCreatedEventPayload, NotificationPeer
 
-from service.matchmaking import BaseDatingService, FeedItemNotFoundError, normalize_pair
+from service.matchmaking import (
+    BaseDatingService,
+    FeedItemAlreadyProcessedError,
+    FeedItemNotFoundError,
+    normalize_pair,
+)
 
 
 class InteractionService(BaseDatingService):
+    async def arm_test_match(
+        self,
+        *,
+        user: User,
+        serve_item_id,
+    ) -> FeedTestMatchResponse:
+        if not self.settings.FEED_TEST_MATCH_ENABLED:
+            raise ForbiddenError("Test match mode is disabled")
+
+        item = await self.matchmaking_repo.get_recommendation_item_for_user(
+            serve_item_id=serve_item_id,
+            owner_user_id=user.id,
+        )
+        if item is None:
+            raise FeedItemNotFoundError()
+        if item.processed_at is not None:
+            raise FeedItemAlreadyProcessedError()
+
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(user.id, item.target_user_id)
+        now = self.now()
+        actor_slot = "low" if pair_state.user_low_id == user.id else "high"
+
+        if actor_slot == "low":
+            pair_state.high_action = FeedAction.LIKE.value
+            pair_state.high_action_at = now
+        else:
+            pair_state.low_action = FeedAction.LIKE.value
+            pair_state.low_action_at = now
+
+        pair_state.status = "one_way_like"
+        pair_state.cooldown_until = None
+        pair_state.hidden_by_user_id = None
+
+        await self.add_audit_event(
+            event_type="feed_test_match_armed",
+            entity_type=AuditEntityType.FEED_ITEM,
+            entity_id=str(item.id),
+            actor_user_id=user.id,
+            payload={
+                "target_user_id": str(item.target_user_id),
+                "message": "Swipe right to complete a mutual match.",
+            },
+        )
+        await self.uow.commit()
+
+        return FeedTestMatchResponse(
+            message="Тестовый мэтч подготовлен. Свайпните вправо, чтобы случился мэтч обоих.",
+        )
+
     async def submit_reaction(
         self,
         *,

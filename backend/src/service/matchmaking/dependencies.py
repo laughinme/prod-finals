@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from fastapi import Depends
 
 from core.config import Settings, get_settings
@@ -5,15 +7,41 @@ from database.relational_db import MatchmakingInterface, NotificationInterface, 
 from service.realtime import RealtimeService, get_realtime_service
 
 from .ml_facade import HttpMlFacade, MlFacade, MockMlFacade
+from .preview_text_generator import LlmCategoryPreviewGenerator
+
+
+@lru_cache
+def _get_preview_text_generator(
+    enabled: bool,
+    provider: str,
+    api_key: str,
+    model: str,
+    timeout_sec: float,
+) -> LlmCategoryPreviewGenerator:
+    return LlmCategoryPreviewGenerator(
+        enabled=enabled,
+        provider=provider,
+        api_key=api_key,
+        model=model,
+        timeout_sec=timeout_sec,
+    )
 
 
 def get_ml_facade(settings: Settings = Depends(get_settings)) -> MlFacade:
+    preview_text_generator = _get_preview_text_generator(
+        bool(settings.ML_PREVIEW_LLM_ENABLED),
+        settings.ML_PREVIEW_LLM_PROVIDER,
+        settings.ML_PREVIEW_LLM_API_KEY,
+        settings.ML_PREVIEW_LLM_MODEL,
+        float(settings.ML_PREVIEW_LLM_TIMEOUT_SEC),
+    )
     if settings.ML_SERVICE_URL:
         return HttpMlFacade(
             base_url=settings.ML_SERVICE_URL,
             service_token=settings.ML_SERVICE_TOKEN,
+            preview_text_generator=preview_text_generator,
         )
-    return MockMlFacade()
+    return MockMlFacade(preview_text_generator=preview_text_generator)
 
 
 def build_matchmaking_common(uow: UoW, ml_facade: MlFacade) -> dict:

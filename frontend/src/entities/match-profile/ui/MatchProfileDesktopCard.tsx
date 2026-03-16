@@ -9,6 +9,8 @@ import { ScoreBreakdownPopover } from "./ScoreBreakdownPopover";
 interface MatchProfileDesktopCardProps {
   profile: MatchProfile;
   onOpenReport: () => void;
+  onPrepareTestMatch?: () => void;
+  isPreparingTestMatch?: boolean;
   showMatchScore?: boolean;
   showReportButton?: boolean;
 }
@@ -16,6 +18,8 @@ interface MatchProfileDesktopCardProps {
 export function MatchProfileDesktopCard({
   profile,
   onOpenReport,
+  onPrepareTestMatch,
+  isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
 }: MatchProfileDesktopCardProps) {
@@ -81,12 +85,28 @@ export function MatchProfileDesktopCard({
           </div>
 
           {showReportButton ? (
-            <button
-              className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
-              onClick={onOpenReport}
-            >
-              <ShieldAlert className="size-7.5 opacity-80" />
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              {onPrepareTestMatch ? (
+                <button
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={onPrepareTestMatch}
+                  disabled={isPreparingTestMatch}
+                  className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 disabled:opacity-60"
+                >
+                  {t("discovery.test_match_button")}
+                </button>
+              ) : null}
+
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="text-muted-foreground transition-colors hover:text-destructive"
+                onClick={onOpenReport}
+              >
+                <ShieldAlert className="size-7.5 opacity-80" />
+              </button>
+            </div>
           ) : null}
         </div>
 

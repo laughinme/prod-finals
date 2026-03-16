@@ -24,6 +24,7 @@ from domain.dating import (
 )
 from domain.misc import MlConnectionStatusModel
 from domain.dating.category_catalog import category_label_map, pick_category_keys
+from .preview_text_generator import LlmCategoryPreviewGenerator
 from .reason_signals import build_preview_reason_signals
 
 
@@ -132,7 +133,7 @@ class MlFacade:
     async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
         raise NotImplementedError
 
-    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
+    async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         raise NotImplementedError
 
     def empty_state(self, code: FeedEmptyStateCode) -> FeedEmptyState:
@@ -170,6 +171,13 @@ class MlFacade:
 
 
 class MockMlFacade(MlFacade):
+    def __init__(
+        self,
+        *,
+        preview_text_generator: LlmCategoryPreviewGenerator | None = None,
+    ) -> None:
+        self._preview_text_generator = preview_text_generator or LlmCategoryPreviewGenerator()
+
     async def rank(
         self,
         requester: FeedCandidateContext,
@@ -255,17 +263,24 @@ class MockMlFacade(MlFacade):
             disclaimer="These explanations use aggregated profile and onboarding filter signals only.",
         )
 
-    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
+    async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         reason_codes = [
             code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
             for code in scored.reason_codes
         ]
+        if not reason_codes:
+            reason_codes = [CompatibilityReasonCode.PROFILE_QUALITY]
         primary = reason_codes[0]
         top_category = _top_category(scored.category_scores)
         if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
-            preview = _category_preview_text(
+            fallback_preview = _category_preview_text(
                 category_label=top_category.label,
                 score_percent=top_category.score_percent,
+            )
+            preview = await self._preview_text_generator.render_category_preview(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+                fallback_text=fallback_preview,
             )
         else:
             preview_map = {
@@ -506,10 +521,17 @@ _ML_REASON_MAP: dict[str, CompatibilityReasonCode] = {
 class HttpMlFacade(MlFacade):
     """MlFacade implementation that calls the real ML service over HTTP."""
 
-    def __init__(self, *, base_url: str, service_token: str) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        service_token: str,
+        preview_text_generator: LlmCategoryPreviewGenerator | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._service_token = service_token
-        self._fallback = MockMlFacade()
+        self._preview_text_generator = preview_text_generator or LlmCategoryPreviewGenerator()
+        self._fallback = MockMlFacade(preview_text_generator=self._preview_text_generator)
 
     def _headers(self) -> dict[str, str]:
         return {"X-Service-Token": self._service_token}
@@ -784,19 +806,33 @@ class HttpMlFacade(MlFacade):
             disclaimer="These explanations use aggregated profile and ML signals.",
         )
 
-    def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
+    async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         reason_codes = [
             code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
             for code in scored.reason_codes
         ]
+        if not reason_codes:
+            reason_codes = [CompatibilityReasonCode.PROFILE_QUALITY]
         score_percent = int(round(scored.score * 100))
+        top_category = _top_category(scored.category_scores)
+        preview_text = self._preview_text(
+            reason_codes,
+            category_scores=scored.category_scores,
+        )
+        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
+            fallback_preview = _category_preview_text(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+            )
+            preview_text = await self._preview_text_generator.render_category_preview(
+                category_label=top_category.label,
+                score_percent=top_category.score_percent,
+                fallback_text=fallback_preview,
+            )
         return CompatibilityPreview(
             score=scored.score,
             score_percent=score_percent,
-            preview=self._preview_text(
-                reason_codes,
-                category_scores=scored.category_scores,
-            ),
+            preview=preview_text,
             reason_codes=[code.value for code in reason_codes],
             reason_signals=scored.reason_signals
             or build_preview_reason_signals(

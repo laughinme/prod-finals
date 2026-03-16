@@ -173,7 +173,7 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
 
     facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
     ranked = await facade.rank(requester, [candidate], limit=1)
-    preview = facade.build_preview(ranked.candidates[0])
+    preview = await facade.build_preview(ranked.candidates[0])
 
     assert ranked.decision_mode.value == "model"
     assert preview.preview.startswith("Сильное совпадение по интересам:")

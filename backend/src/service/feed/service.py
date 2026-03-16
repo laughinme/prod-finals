@@ -181,7 +181,7 @@ class FeedService(BaseDatingService):
         )
 
         for index, candidate_score in enumerate(ranked.candidates, start=1):
-            preview = self.ml_facade.build_preview(candidate_score)
+            preview = await self.ml_facade.build_preview(candidate_score)
             await self.matchmaking_repo.add(
                 RecommendationItem(
                     batch_id=batch.id,

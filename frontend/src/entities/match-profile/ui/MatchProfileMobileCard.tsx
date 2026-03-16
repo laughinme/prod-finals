@@ -15,6 +15,8 @@ interface MatchProfileMobileCardProps {
   onLike: () => void;
   onPass: () => void;
   onOpenReport: () => void;
+  onPrepareTestMatch?: () => void;
+  isPreparingTestMatch?: boolean;
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
@@ -25,6 +27,8 @@ export function MatchProfileMobileCard({
   onLike,
   onPass,
   onOpenReport,
+  onPrepareTestMatch,
+  isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
   showActions = true,
@@ -62,6 +66,17 @@ export function MatchProfileMobileCard({
 
             {showReportButton ? (
               <div className="flex gap-2">
+                {onPrepareTestMatch ? (
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={onPrepareTestMatch}
+                    disabled={isPreparingTestMatch}
+                    className="rounded-full bg-[#2A2A2A]/80 px-3 py-2 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-[#383838] disabled:opacity-60"
+                  >
+                    {t("discovery.test_match_button")}
+                  </button>
+                ) : null}
                 <button
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}

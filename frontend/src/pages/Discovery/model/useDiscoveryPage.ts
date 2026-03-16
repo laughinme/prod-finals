@@ -10,6 +10,7 @@ import {
   useFeed,
   useFeedExplanation,
   useFeedReaction,
+  useFeedTestMatch,
 } from "@/features/matchmaking";
 import { useBlockUser, useReportUser } from "@/features/safety";
 
@@ -158,6 +159,7 @@ export function useDiscoveryPage() {
     removeProfile,
   } = useFeed();
   const feedReactionMutation = useFeedReaction();
+  const feedTestMatchMutation = useFeedTestMatch();
   const blockUserMutation = useBlockUser();
   const reportUserMutation = useReportUser();
   const [showReport, setShowReport] = useState(false);
@@ -317,6 +319,21 @@ export function useDiscoveryPage() {
     }
   };
 
+  const handlePrepareTestMatch = async () => {
+    if (!currentProfile) return;
+    if (currentProfile.source !== "feed" || typeof currentProfile.id !== "string") {
+      return;
+    }
+
+    try {
+      await feedTestMatchMutation.mutateAsync({
+        serveItemId: currentProfile.id,
+      });
+    } catch {
+      // handled in feed test-match mutation hook
+    }
+  };
+
   return {
     currentProfile,
     nextProfiles: profiles.slice(1, 3),
@@ -329,7 +346,9 @@ export function useDiscoveryPage() {
     closeReport: () => setShowReport(false),
     handleLike,
     handlePass,
+    handlePrepareTestMatch,
     handleBlock,
     handleReport,
+    isPreparingTestMatch: feedTestMatchMutation.isPending,
   };
 }

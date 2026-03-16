@@ -10,6 +10,8 @@ interface SwipeableCardProps {
   onLike: () => void;
   onPass: () => void;
   onOpenReport: () => void;
+  onPrepareTestMatch?: () => void;
+  isPreparingTestMatch?: boolean;
   exitX: number;
 }
 
@@ -19,6 +21,8 @@ export function SwipeableCard({
   onLike,
   onPass,
   onOpenReport,
+  onPrepareTestMatch,
+  isPreparingTestMatch = false,
 }: SwipeableCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const interactionRef = useRef<{ x: number; y: number } | undefined>(
@@ -160,6 +164,8 @@ export function SwipeableCard({
         onPass={onPass}
         onLike={onLike}
         onOpenReport={onOpenReport}
+        onPrepareTestMatch={onPrepareTestMatch}
+        isPreparingTestMatch={isPreparingTestMatch}
       />
     </div>
   );

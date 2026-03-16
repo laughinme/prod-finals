@@ -130,6 +130,11 @@ export type FeedReactionResponseDto = {
   next_card_hint: string | null;
 };
 
+export type FeedTestMatchResponseDto = {
+  status: string;
+  message: string;
+};
+
 export type FeedEmptyStateDto = {
   code: FeedEmptyStateCode;
   title: string;
@@ -177,6 +182,16 @@ export const postFeedReaction = async (
   const response = await apiProtected.post<FeedReactionResponseDto>(
     `/feed/items/${serveItemId}/reaction`,
     payload,
+  );
+
+  return response.data;
+};
+
+export const postFeedTestMatch = async (
+  serveItemId: string,
+): Promise<FeedTestMatchResponseDto> => {
+  const response = await apiProtected.post<FeedTestMatchResponseDto>(
+    `/feed/items/${serveItemId}/test-match`,
   );
 
   return response.data;

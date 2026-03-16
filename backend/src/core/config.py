@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     SCHEDULER_ENABLED: bool = False
     APP_TIMEZONE: str = "Europe/Moscow"
     PAIR_COOLDOWN_DAYS: int = 30
+    FEED_TEST_MATCH_ENABLED: bool = False
     DEV_SEED_ENABLED: bool = False
     MOCK_USER_SEED_ENABLED: bool = False
     MOCK_USER_SEED_LIMIT: int = 0
@@ -41,6 +42,11 @@ class Settings(BaseSettings):
     # ML service integration
     ML_SERVICE_URL: str = ""
     ML_SERVICE_TOKEN: str = "dev-ml-token"
+    ML_PREVIEW_LLM_ENABLED: bool = False
+    ML_PREVIEW_LLM_PROVIDER: str = "huggingface"
+    ML_PREVIEW_LLM_API_KEY: str = ""
+    ML_PREVIEW_LLM_MODEL: str = "google/flan-t5-small"
+    ML_PREVIEW_LLM_TIMEOUT_SEC: float = 4.0
 
     # API settings
     API_PORT: int = 8080

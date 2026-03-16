@@ -23,9 +23,11 @@ export default function DiscoveryPage() {
     closeReport,
     handleLike,
     handlePass,
+    handlePrepareTestMatch,
     handleBlock,
     handleReport,
     isSafetyPending,
+    isPreparingTestMatch,
   } = useDiscoveryPage();
 
   return (
@@ -95,6 +97,8 @@ export default function DiscoveryPage() {
               onLike={() => void handleLike()}
               onPass={() => void handlePass()}
               onOpenReport={openReport}
+              onPrepareTestMatch={() => void handlePrepareTestMatch()}
+              isPreparingTestMatch={isPreparingTestMatch}
               exitX={exitX}
             />
           </>

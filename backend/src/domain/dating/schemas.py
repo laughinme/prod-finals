@@ -208,6 +208,11 @@ class FeedReactionResponse(BaseModel):
     next_card_hint: str | None = None
 
 
+class FeedTestMatchResponse(BaseModel):
+    status: str = "armed"
+    message: str
+
+
 class MatchListItem(BaseModel):
     match_id: UUID
     candidate_user_id: UUID

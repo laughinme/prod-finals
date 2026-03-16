@@ -6,4 +6,5 @@ export {
   useFeedExplanation,
 } from "./useFeedExplanation";
 export { useFeedReaction, type FeedReactionVariables } from "./useFeedReaction";
+export { useFeedTestMatch, type FeedTestMatchVariables } from "./useFeedTestMatch";
 export type * from "./types";
