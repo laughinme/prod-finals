@@ -36,6 +36,7 @@ export function HeaderUserMenu() {
   const email = profile?.email ?? auth?.user?.email ?? "profile@t-match.local";
   const name = profile?.fullName || email;
   const avatarUrl = profile?.profilePicUrl ?? null;
+  const isAdmin = profile?.roles.includes("admin") ?? false;
 
   const initials = name
     .split(/[\s@]+/)
@@ -78,12 +79,14 @@ export function HeaderUserMenu() {
               <span>{t("common.profile")}</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/dashboard" className="cursor-pointer">
-              <IconLayoutDashboard className="mr-2 h-4 w-4" />
-              <span>{t("common.dashboard")}</span>
-            </Link>
-          </DropdownMenuItem>
+          {isAdmin ? (
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard" className="cursor-pointer">
+                <IconLayoutDashboard className="mr-2 h-4 w-4" />
+                <span>{t("common.dashboard")}</span>
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem

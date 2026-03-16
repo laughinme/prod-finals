@@ -72,6 +72,20 @@ export const RequireMatchmakingReady = () => {
   return <Outlet />;
 };
 
+export const RequireAdmin = () => {
+  const { data: profile, isPending } = useProfile();
+
+  if (isPending) {
+    return <MatchmakingLoadingState />;
+  }
+
+  if (!profile?.roles.includes("admin")) {
+    return <Navigate to="/discovery" replace />;
+  }
+
+  return <Outlet />;
+};
+
 export const RequireIncompleteOnboarding = () => {
   const { isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
@@ -143,12 +157,15 @@ export const routes: RouteObject[] = [
         element: <HeaderLayout />,
         children: [
           {
+            element: <RequireAdmin />,
+            children: [{ path: "dashboard/*", element: <DashboardPage /> }],
+          },
+          {
             element: <RequireMatchmakingReady />,
             children: [
               { path: "discovery", element: <DiscoveryPage /> },
               { path: "chat", element: <ChatPage /> },
               { path: "matches", element: <MatchesPage /> },
-              { path: "dashboard", element: <DashboardPage /> },
             ],
           },
           { path: "profile", element: <ProfilePage /> },
