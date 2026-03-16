@@ -61,6 +61,7 @@
     "demo_accounts_eyebrow": "Demo",
     "demo_accounts_title": "Fast jury access",
     "demo_accounts_description": "The first two dataset accounts are pinned to the top of each other's feeds, so two devices can quickly show like, match, and chat.",
+    "demo_accounts_folder_title": "Test accounts",
     "tid_mock_badge": "Mock T-ID",
     "login_with_tid_mock": "Login with T-ID",
     "tid_mock_description": "Mock sign-in that immediately opens the first demo dataset account.",
