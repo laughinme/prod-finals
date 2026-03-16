@@ -34,7 +34,7 @@ export function MatchProfileMobileCard({
 
   return (
     <div className="mx-auto w-full max-w-100 select-none">
-      <div className="relative aspect-4/7 overflow-hidden rounded-4xl bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
+      <div className="relative aspect-4/7 overflow-hidden rounded-4xl border-2 border-black bg-black shadow-[0_20px_60px_rgba(0,0,0,0.15)] sm:rounded-[40px]">
         {profile.image ? (
           <img
             src={profile.image}

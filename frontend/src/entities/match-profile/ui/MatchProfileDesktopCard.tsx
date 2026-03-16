@@ -24,7 +24,7 @@ export function MatchProfileDesktopCard({
   const hasMeta = Boolean(profile.location || profile.activity);
 
   return (
-    <Card className="relative flex flex-col overflow-hidden rounded-4xl border-border bg-card p-0 shadow-2xl shadow-primary/5 select-none md:flex-row">
+    <Card className="relative flex flex-col overflow-hidden rounded-4xl border-2 border-black bg-card p-0 shadow-2xl shadow-primary/5 select-none md:flex-row">
       {showMatchScore ? (
         <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
           <ScoreBreakdownPopover categories={profile.categoryBreakdown}>

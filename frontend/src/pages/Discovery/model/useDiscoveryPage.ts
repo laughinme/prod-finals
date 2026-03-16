@@ -206,7 +206,7 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
-    stackDepth: Math.min(profiles.length, 3),
+    nextProfiles: profiles.slice(1, 3),
     isFeedLoading,
     isSafetyPending: blockUserMutation.isPending || reportUserMutation.isPending,
     exitX,

@@ -128,6 +128,21 @@ export function SwipeableCard({
   const likeOpacity = clamp(progress, 0, 1);
   const nopeOpacity = clamp(-progress, 0, 1);
 
+  // Entrance animation: start from stack position, animate to front
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transition = "none";
+    card.style.transform = "translateY(-24px) scale(0.97)";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.style.transition = "transform 0.3s ease-out";
+        card.style.transform = "translateY(0) scale(1)";
+      });
+    });
+  }, [profile.id]);
+
   return (
     <div
       ref={cardRef}

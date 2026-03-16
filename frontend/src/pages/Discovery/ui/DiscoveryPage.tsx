@@ -3,16 +3,19 @@ import { useTranslation } from "react-i18next";
 import { Coffee, ShieldAlert } from "lucide-react";
 
 import { SwipeableCard } from "@/features/matchmaking";
+import { MatchProfileCard } from "@/entities/match-profile/ui";
 import { useDiscoveryPage } from "@/pages/Discovery/model";
 
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+
+const noop = () => {};
 
 export default function DiscoveryPage() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const {
     currentProfile,
-    stackDepth,
+    nextProfiles,
     isFeedLoading,
     exitX,
     showReport,
@@ -59,21 +62,31 @@ export default function DiscoveryPage() {
           </motion.div>
         ) : (
           <>
-            {[2, 1].map((i) =>
-              stackDepth > i ? (
+            {nextProfiles.map((profile, idx) => {
+              const depth = idx + 1;
+              return (
                 <div
-                  key={`stack-${i}`}
-                  className="pointer-events-none absolute inset-x-4 mx-auto max-w-5xl md:inset-x-8"
+                  key={`stack-${profile.id}`}
+                  className="pointer-events-none absolute inset-x-4 z-0 mx-auto max-w-5xl overflow-hidden rounded-4xl md:inset-x-8"
                   style={{
-                    zIndex: i,
-                    transform: `scale(${1 - i * 0.04}) translateY(${i * 10}px)`,
-                    opacity: 1 - i * 0.25,
+                    zIndex: 10 - depth,
+                    transform: `translateY(${depth * -24}px) scale(${1 - depth * 0.03})`,
+                    transition: "transform 0.35s ease-out",
                   }}
                 >
-                  <div className="aspect-4/3 w-full rounded-4xl border border-border bg-card shadow-lg md:aspect-16/10" />
+                  <MatchProfileCard
+                    profile={profile}
+                    isMobile={isMobile}
+                    onLike={noop}
+                    onPass={noop}
+                    onOpenReport={noop}
+                    showMatchScore={false}
+                    showReportButton={false}
+                    showActions={false}
+                  />
                 </div>
-              ) : null,
-            )}
+              );
+            })}
 
             <SwipeableCard
               key={`${currentProfile.id}-${isMobile ? "mobile" : "desktop"}`}
