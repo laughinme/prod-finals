@@ -38,6 +38,8 @@ class InteractionService(BaseDatingService):
             actor_user_id=user.id,
             serve_item_id=item.id,
         )
+        batch = await self.matchmaking_repo.get_recommendation_batch(item.batch_id)
+        decision_mode = batch.decision_mode if batch is not None else None
         pair_state = await self.matchmaking_repo.get_or_create_pair_state(user.id, item.target_user_id)
         if existing is not None or item.processed_at is not None:
             return self._existing_reaction_response(item, pair_state)
@@ -61,7 +63,11 @@ class InteractionService(BaseDatingService):
         notification_user_id = None
         result = FeedReactionResult.LIKED
         if payload.action == FeedAction.LIKE and counterpart_action == FeedAction.LIKE.value:
-            match, conversation = await self._ensure_match(user.id, item.target_user_id)
+            match, conversation, match_created = await self._ensure_match(
+                user.id,
+                item.target_user_id,
+                source_decision_mode=decision_mode,
+            )
             pair_state.status = "conversation_active"
             pair_state.match_id = match.id
             pair_state.conversation_id = conversation.id
@@ -73,6 +79,22 @@ class InteractionService(BaseDatingService):
                 match=match,
                 conversation=conversation,
             )
+            if match_created:
+                await self.add_audit_event(
+                    event_type="match_created",
+                    entity_type=AuditEntityType.MATCH,
+                    entity_id=str(match.id),
+                    actor_user_id=user.id,
+                    payload={
+                        "peer_user_id": str(item.target_user_id),
+                        "decision_mode": decision_mode,
+                    },
+                )
+                await self.increment_funnel_counter(
+                    actor=user,
+                    counter_name="match_created",
+                    decision_mode=decision_mode,
+                )
         elif payload.action == FeedAction.LIKE:
             pair_state.status = "one_way_like"
             result = FeedReactionResult.LIKED
@@ -106,6 +128,11 @@ class InteractionService(BaseDatingService):
                 "dwell_time_ms": payload.dwell_time_ms,
             },
         )
+        await self.increment_funnel_counter(
+            actor=user,
+            counter_name=f"feed_{payload.action.value}",
+            decision_mode=decision_mode,
+        )
         target_user = await self.user_repo.get_by_id(item.target_user_id)
         actor_ml_id = user.service_user_id or str(user.id)
         target_ml_id = (target_user.service_user_id if target_user else None) or str(item.target_user_id)
@@ -120,6 +147,17 @@ class InteractionService(BaseDatingService):
                 "dwell_time_ms": payload.dwell_time_ms,
             },
         )
+        if match_link is not None:
+            await self.add_outbox_event(
+                topic="ml.interactions.match_outcome",
+                payload={
+                    "match_id": str(match_link.match_id),
+                    "user_a_id": actor_ml_id,
+                    "user_b_id": target_ml_id,
+                    "outcome": "match_created",
+                    "happened_at": now.isoformat(),
+                },
+            )
         await self.uow.commit()
         if notification_payload is not None and notification_user_id is not None:
             await self.realtime_service.publish_match_created(
@@ -156,7 +194,13 @@ class InteractionService(BaseDatingService):
         )
         return payload, peer_user_id
 
-    async def _ensure_match(self, user_a_id, user_b_id) -> tuple[Match, Conversation]:
+    async def _ensure_match(
+        self,
+        user_a_id,
+        user_b_id,
+        *,
+        source_decision_mode: str | None,
+    ) -> tuple[Match, Conversation, bool]:
         existing = await self.matchmaking_repo.get_match_for_users(user_a_id, user_b_id)
         if existing is not None:
             conversation = await self.uow.session.scalar(
@@ -168,7 +212,10 @@ class InteractionService(BaseDatingService):
                 )
                 existing.conversation_id = conversation.id
                 await self.uow.session.flush()
-            return existing, conversation
+            if existing.source_decision_mode is None and source_decision_mode is not None:
+                existing.source_decision_mode = source_decision_mode
+                await self.uow.session.flush()
+            return existing, conversation, False
 
         user_low_id, user_high_id = normalize_pair(user_a_id, user_b_id)
         match = await self.matchmaking_repo.add(
@@ -176,6 +223,7 @@ class InteractionService(BaseDatingService):
                 user_low_id=user_low_id,
                 user_high_id=user_high_id,
                 status=MatchStatus.ACTIVE.value,
+                source_decision_mode=source_decision_mode,
             )
         )
         conversation = await self.matchmaking_repo.add(
@@ -183,7 +231,7 @@ class InteractionService(BaseDatingService):
         )
         match.conversation_id = conversation.id
         await self.uow.session.flush()
-        return match, conversation
+        return match, conversation, True
 
     def _existing_reaction_response(
         self,

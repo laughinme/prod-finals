@@ -12,6 +12,7 @@ from database.relational_db import (
     UserInterface,
 )
 from domain.dating import AuditEntityType, FeedCandidateContext, FeedLockReason, ProfileStatus
+from domain.statistics import FunnelDecisionMode, FunnelUserSource
 from service.realtime import RealtimeService
 
 from .ml_facade import MlFacade
@@ -106,3 +107,29 @@ class BaseDatingService:
 
     async def add_outbox_event(self, *, topic: str, payload: dict) -> OutboxEvent:
         return await self.matchmaking_repo.add(OutboxEvent(topic=topic, payload=payload, status="pending"))
+
+    def funnel_user_source(self, user: User) -> FunnelUserSource:
+        return FunnelUserSource.DATASET if bool(user.is_dataset_user) else FunnelUserSource.COLD_START
+
+    def funnel_decision_mode(self, raw: str | None) -> FunnelDecisionMode:
+        normalized = (raw or "").strip().lower()
+        if normalized == "model":
+            return FunnelDecisionMode.MODEL
+        if normalized == "fallback":
+            return FunnelDecisionMode.FALLBACK
+        return FunnelDecisionMode.UNKNOWN
+
+    async def increment_funnel_counter(
+        self,
+        *,
+        actor: User,
+        counter_name: str,
+        decision_mode: str | None,
+    ) -> None:
+        await self.matchmaking_repo.increment_daily_funnel_counter(
+            day=self.local_today(),
+            user_source=self.funnel_user_source(actor).value,
+            decision_mode=self.funnel_decision_mode(decision_mode).value,
+            counter_name=counter_name,
+            now=self.now(),
+        )

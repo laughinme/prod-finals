@@ -37,6 +37,7 @@ class SafetyService(BaseDatingService):
             )
         )
         pair_state = await self.matchmaking_repo.get_or_create_pair_state(actor.id, target.id)
+        match = await self.uow.session.get(Match, pair_state.match_id) if pair_state.match_id else None
         pair_state.status = "blocked"
         pair_state.blocked_by_user_id = actor.id
 
@@ -48,6 +49,22 @@ class SafetyService(BaseDatingService):
             actor_user_id=actor.id,
             payload={"target_user_id": str(target.id), "reason_code": payload.reason_code.value},
         )
+        await self.increment_funnel_counter(
+            actor=actor,
+            counter_name="user_blocked",
+            decision_mode=match.source_decision_mode if match is not None else None,
+        )
+        if match is not None:
+            await self.add_outbox_event(
+                topic="ml.interactions.match_outcome",
+                payload={
+                    "match_id": str(match.id),
+                    "user_a_id": actor.service_user_id or str(actor.id),
+                    "user_b_id": target.service_user_id or str(target.id),
+                    "outcome": "block_after_match",
+                    "happened_at": self.now().isoformat(),
+                },
+            )
         await self.uow.commit()
         if conversation_closed and pair_state.conversation_id:
             conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
@@ -84,6 +101,8 @@ class SafetyService(BaseDatingService):
                 also_block=payload.also_block,
             )
         )
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(actor.id, target.id)
+        match = await self.uow.session.get(Match, pair_state.match_id) if pair_state.match_id else None
         also_block_applied = False
         if payload.also_block:
             try:
@@ -106,6 +125,22 @@ class SafetyService(BaseDatingService):
             actor_user_id=actor.id,
             payload={"target_user_id": str(target.id), "category": payload.category.value},
         )
+        await self.increment_funnel_counter(
+            actor=actor,
+            counter_name="user_reported",
+            decision_mode=match.source_decision_mode if match is not None else None,
+        )
+        if match is not None:
+            await self.add_outbox_event(
+                topic="ml.interactions.match_outcome",
+                payload={
+                    "match_id": str(match.id),
+                    "user_a_id": actor.service_user_id or str(actor.id),
+                    "user_b_id": target.service_user_id or str(target.id),
+                    "outcome": "report_after_match",
+                    "happened_at": self.now().isoformat(),
+                },
+            )
         await self.uow.commit()
 
         return ReportResponse(

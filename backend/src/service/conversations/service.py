@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from core.errors import BadRequestError
@@ -101,9 +101,19 @@ class ConversationService(BaseDatingService):
         row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
         if row is None:
             raise ConversationNotFoundError()
-        conversation, match, _peer = row
+        conversation, match, peer = row
         if conversation.status != ConversationStatus.ACTIVE.value:
             raise ConversationUnavailableError()
+        existing_messages = await self.matchmaking_repo.list_messages_chronological(
+            conversation_id=conversation.id,
+            limit=2,
+        )
+        is_first_message = len(existing_messages) == 0
+        is_first_reply = len(existing_messages) == 1 and existing_messages[0].sender_user_id != user.id
+        reply_within_24h = (
+            is_first_reply
+            and (self.now() - existing_messages[0].created_at) <= timedelta(hours=24)
+        )
 
         message = await self.matchmaking_repo.add(
             Message(
@@ -120,6 +130,53 @@ class ConversationService(BaseDatingService):
             actor_user_id=user.id,
             payload={"match_id": str(match.id)},
         )
+        if is_first_message:
+            await self.add_audit_event(
+                event_type="chat_first_message_sent",
+                entity_type=AuditEntityType.CONVERSATION,
+                entity_id=str(conversation.id),
+                actor_user_id=user.id,
+                payload={"match_id": str(match.id)},
+            )
+            await self.increment_funnel_counter(
+                actor=user,
+                counter_name="chat_first_message_sent",
+                decision_mode=match.source_decision_mode,
+            )
+            await self.add_outbox_event(
+                topic="ml.interactions.match_outcome",
+                payload={
+                    "match_id": str(match.id),
+                    "user_a_id": (user.service_user_id or str(user.id)),
+                    "user_b_id": (peer.service_user_id or str(peer.id)),
+                    "outcome": "first_message_sent",
+                    "happened_at": message.created_at.isoformat(),
+                },
+            )
+        if is_first_reply:
+            await self.add_audit_event(
+                event_type="chat_first_reply_received",
+                entity_type=AuditEntityType.CONVERSATION,
+                entity_id=str(conversation.id),
+                actor_user_id=user.id,
+                payload={"match_id": str(match.id)},
+            )
+            await self.increment_funnel_counter(
+                actor=user,
+                counter_name="chat_first_reply_received",
+                decision_mode=match.source_decision_mode,
+            )
+            if reply_within_24h:
+                await self.add_outbox_event(
+                    topic="ml.interactions.match_outcome",
+                    payload={
+                        "match_id": str(match.id),
+                        "user_a_id": (user.service_user_id or str(user.id)),
+                        "user_b_id": (peer.service_user_id or str(peer.id)),
+                        "outcome": "first_reply_within_24h",
+                        "happened_at": message.created_at.isoformat(),
+                    },
+                )
         await self.uow.commit()
         response = MessageResponse(
             message_id=message.id,

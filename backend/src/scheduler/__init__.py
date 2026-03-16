@@ -3,7 +3,7 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.config import Settings, get_settings
-from service.matchmaking import dispatch_ml_swipe_events
+from service.matchmaking import dispatch_ml_match_outcome_events, dispatch_ml_swipe_events
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,16 @@ def init_scheduler(settings: Settings | None = None) -> AsyncIOScheduler | None:
             max_instances=1,
         )
         logger.info("Scheduled ML swipe outbox dispatcher")
+        scheduler.add_job(
+            dispatch_ml_match_outcome_events,
+            trigger="interval",
+            seconds=5,
+            kwargs={"settings": settings},
+            id="ml_match_outcome_outbox_dispatch",
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info("Scheduled ML match outcome outbox dispatcher")
 
     scheduler.start()
     logger.info("Scheduler started")

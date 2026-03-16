@@ -69,6 +69,23 @@ class MatchService(BaseDatingService):
             actor_user_id=user.id,
             payload={"reason_code": payload.reason_code.value},
         )
+        await self.increment_funnel_counter(
+            actor=user,
+            counter_name="match_closed",
+            decision_mode=match.source_decision_mode,
+        )
+        peer_user_id = match.user_high_id if match.user_low_id == user.id else match.user_low_id
+        peer = await self.user_repo.get_by_id(peer_user_id)
+        await self.add_outbox_event(
+            topic="ml.interactions.match_outcome",
+            payload={
+                "match_id": str(match.id),
+                "user_a_id": user.service_user_id or str(user.id),
+                "user_b_id": (peer.service_user_id if peer else str(peer_user_id)) or str(peer_user_id),
+                "outcome": "conversation_closed",
+                "happened_at": now.isoformat(),
+            },
+        )
         await self.uow.commit()
         if conversation is not None:
             await self.realtime_service.publish_conversation_closed(

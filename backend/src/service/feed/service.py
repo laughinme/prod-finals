@@ -3,6 +3,7 @@ from datetime import date
 
 from database.relational_db import RecommendationBatch, RecommendationItem, User
 from domain.dating import (
+    AuditEntityType,
     CompatibilityExplanationResponse,
     CompatibilityPreview,
     DecisionMode,
@@ -85,6 +86,24 @@ class FeedService(BaseDatingService):
                 cards=[],
             )
 
+        await self.add_audit_event(
+            event_type="feed_served",
+            entity_type=AuditEntityType.USER,
+            entity_id=str(user.id),
+            actor_user_id=user.id,
+            payload={
+                "batch_id": str(batch.id),
+                "decision_mode": batch.decision_mode,
+                "cards_returned": len(cards),
+            },
+        )
+        await self.increment_funnel_counter(
+            actor=user,
+            counter_name="feed_served",
+            decision_mode=batch.decision_mode,
+        )
+        await self.uow.commit()
+
         return FeedResponse(
             feed_state=FeedState.READY,
             profile_status=user.profile_status,
@@ -105,6 +124,22 @@ class FeedService(BaseDatingService):
         candidate = await self.user_repo.get_by_id(item.target_user_id)
         if candidate is None:
             raise FeedItemNotFoundError()
+        batch = await self.matchmaking_repo.get_recommendation_batch(item.batch_id)
+        decision_mode = batch.decision_mode if batch is not None else None
+
+        await self.add_audit_event(
+            event_type="feed_explanation_opened",
+            entity_type=AuditEntityType.FEED_ITEM,
+            entity_id=str(item.id),
+            actor_user_id=user.id,
+            payload={"target_user_id": str(item.target_user_id), "decision_mode": decision_mode},
+        )
+        await self.increment_funnel_counter(
+            actor=user,
+            counter_name="feed_explanation_opened",
+            decision_mode=decision_mode,
+        )
+        await self.uow.commit()
 
         return await self.ml_facade.explain(
             ExplanationRequest(
