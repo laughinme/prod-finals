@@ -195,6 +195,7 @@ export function useDiscoveryPage() {
   const location = useLocation();
   const routeState = location.state as DiscoveryLocationState;
   const { data: viewerProfile } = useProfile();
+
   const {
     profiles,
     isLoading: isFeedLoading,
@@ -548,7 +549,9 @@ export function useDiscoveryPage() {
 
   return {
     currentProfile,
-    nextProfiles: specialLikeProfile ? profiles.slice(0, 2) : profiles.slice(1, 3),
+    nextProfiles: specialLikeProfile
+      ? profiles.slice(0, 2)
+      : profiles.slice(1, 3),
     isFeedLoading: isFeedLoading || likeNotificationCardQuery.isLoading,
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,

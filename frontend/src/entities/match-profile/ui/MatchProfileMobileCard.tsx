@@ -86,7 +86,7 @@ export function MatchProfileMobileCard({
     <div className="mx-auto flex w-full justify-center select-none">
       <div
         style={cardFrameStyle}
-        className="relative overflow-hidden rounded-[32px] border border-[#1a2740] bg-[#111111] shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
+        className="relative overflow-hidden rounded-4xl border border-[#1a2740] bg-[#111111] shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
       >
         {profile.image ? (
           <img
@@ -100,8 +100,8 @@ export function MatchProfileMobileCard({
           <div className="absolute inset-0 bg-[#1b1b1b]" />
         )}
 
-        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-[62%] bg-gradient-to-t from-black via-black/85 via-45% to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-36 bg-linear-to-b from-black/60 via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-[62%] bg-linear-to-t from-black via-black/85 via-45% to-transparent pointer-events-none" />
 
         {onPrepareTestMatch ? (
           <div className="absolute top-5 left-5 z-20">
@@ -136,7 +136,7 @@ export function MatchProfileMobileCard({
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pt-24 pb-6">
           <div className="flex flex-col gap-6">
             <div className="relative isolate space-y-3">
-              <div className="pointer-events-none absolute -inset-x-5 -inset-y-5 -z-10 rounded-[38px] bg-gradient-to-b from-black/24 via-black/48 to-black/72 blur-[34px]" />
+              <div className="pointer-events-none absolute -inset-x-5 -inset-y-5 -z-10 rounded-[38px] bg-linear-to-b from-black/24 via-black/48 to-black/72 blur-[34px]" />
 
               {profile.tags.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
@@ -226,10 +226,10 @@ export function MatchProfileMobileCard({
                   setShowDetails((value) => !value);
                 }}
                 disabled={!hasDetails}
-                className={`flex size-14 items-center justify-center rounded-full border text-white backdrop-blur-md transition-colors ${
+                className={`flex size-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
                   showDetails
-                    ? "border-white/20 bg-black/70"
-                    : "border-white/10 bg-black/45 hover:bg-black/55"
+                    ? "border-sky-300/50 bg-sky-500/22 text-sky-200"
+                    : "border-sky-300/30 bg-black/45 text-sky-300 hover:bg-black/55 hover:text-sky-200"
                 }`}
                 aria-label={t("common.details")}
                 title={t("common.details")}
@@ -297,7 +297,7 @@ export function MatchProfileMobileCard({
                       </h4>
 
                       <div className="space-y-3">
-                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
+                        <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
                             <Sparkles className="size-7 text-primary" />
                           </div>
@@ -311,7 +311,7 @@ export function MatchProfileMobileCard({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
+                        <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
                             <MapPin className="size-7 text-primary" />
                           </div>
@@ -325,7 +325,7 @@ export function MatchProfileMobileCard({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 rounded-[24px] border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
+                        <div className="flex items-center gap-4 rounded-3xl border border-primary/20 bg-linear-to-r from-primary/18 via-primary/10 to-primary/6 p-4">
                           <div className="flex size-16 items-center justify-center rounded-[20px] bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
                             <Info className="size-7 text-primary" />
                           </div>
@@ -341,7 +341,7 @@ export function MatchProfileMobileCard({
                       </div>
                     </div>
 
-                    <div className="sticky bottom-0 -mx-6 bg-gradient-to-t from-white via-[#fffdf0] to-white/90 px-6 pt-4 pb-1">
+                    <div className="sticky bottom-0 -mx-6 bg-linear-to-t from-white via-[#fffdf0] to-white/90 px-6 pt-4 pb-1">
                       <button
                         type="button"
                         onMouseDown={(e) => e.stopPropagation()}
