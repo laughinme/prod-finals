@@ -326,14 +326,6 @@ async def _upsert_profiles_via_ml(
             synced_ok += 1
             continue
         synced_failed += 1
-        print(
-            "ML sync failed for user",
-            profile.ml_user_id,
-            "status=",
-            response.status_code,
-            "body=",
-            response.text[:300],
-        )
 
     return synced_ok, synced_failed
 
@@ -343,13 +335,6 @@ async def _run(args: argparse.Namespace) -> int:
     ml_service_url = (args.ml_service_url or settings.ML_SERVICE_URL or "").strip()
     ml_service_token = (args.ml_service_token or settings.ML_SERVICE_TOKEN or "").strip()
     qdrant_url = (args.qdrant_url or DEFAULT_QDRANT_URL).rstrip("/")
-
-    if not ml_service_url:
-        print("ML sync skipped: ML_SERVICE_URL is empty")
-        return 0
-    if not ml_service_token:
-        print("ML sync skipped: ML_SERVICE_TOKEN is empty")
-        return 0
 
     users, assigned = await _ensure_ml_user_ids()
     users_by_normalized_id = {
@@ -442,22 +427,9 @@ async def _run(args: argparse.Namespace) -> int:
             snapshot_final = snapshot_after_ml
         remaining_missing_ids = backend_ids_normalized - snapshot_final.normalized_party_ids
 
-    print("users_total:", len(users))
-    print("service_user_id_assigned:", assigned)
-    print("qdrant_points_before_sync:", snapshot.points_count)
-    print("qdrant_orphans_deleted:", deleted_orphans)
-    print("users_planned_for_ml_upsert:", len(users_to_sync))
-    print("ml_upsert_ok:", synced_ok)
-    print("ml_upsert_failed:", synced_failed)
-    print("direct_qdrant_upserted:", direct_upserted)
-    print("qdrant_points_after_sync:", snapshot_final.points_count)
-    print("missing_after_sync:", len(remaining_missing_ids))
-    print("bootstrap_categories:", ", ".join(bootstrap_categories))
-
     if synced_failed or remaining_missing_ids:
         if remaining_missing_ids:
             sample = sorted(list(remaining_missing_ids))[:10]
-            print("missing_party_rk_sample:", sample)
         return 1
     return 0
 

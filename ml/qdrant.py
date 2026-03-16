@@ -33,7 +33,7 @@ def run_ingestion():
     predict_df = df[df['category_nm'].isna()]
     if len(predict_df) > 0:
                                                            
-        print(f"2. Обучение CatBoost... Размер train: {len(train_df)} строк, predict: {len(predict_df)} строк")
+        print(f"2. Обучение CatBoost Размер: {len(train_df)} строк, predict: {len(predict_df)} строк")
         
         model = CatBoostClassifier(
             iterations=120,                                                                     
@@ -48,9 +48,9 @@ def run_ingestion():
         )
         preds = model.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
         df.loc[df['category_nm'].isna(), 'category_nm'] = preds.flatten()
-        print("✅ Категории успешно восстановлены.")
+        print("Категории восстановлены.")
                      
-    print("3. Создание профилей...")
+    print("3. Создание профилей..")
     cat_dist = df.groupby(['party_rk', 'category_nm']).size().unstack(fill_value=0).astype(float)
     cat_dist = cat_dist.div(cat_dist.sum(axis=1), axis=0)
     avg_hour = df.groupby('party_rk')['hour'].mean().rename('hour')
@@ -90,6 +90,6 @@ def run_ingestion():
         }) for rk, row in profiles_scaled.iterrows()
 ]
     client.upsert(collection_name=config.COLLECTION_NAME, points=points)
-    print("✅ Данные успешно загружены в Qdrant!")
+    print("Даные загружены в Qdrant")
 if __name__ == "__main__":
     run_ingestion()

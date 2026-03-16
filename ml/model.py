@@ -35,19 +35,10 @@ class MlRuntime:
         else:
             self.status = MlStatus.ok 
 
-    def _bootstrap(self):
-        if not os.path.exists(self.data_path):
-            print(f"⚠️ Файл данных не найден: {self.data_path}")
-            return
-
-                                                                
+    def _bootstrap(self):                                                                
         sample_count = int(os.getenv("ML_SAMPLE_USER_COUNT", 100))
         df = pd.read_csv(self.data_path)
-        
-                                                                  
-                                                    
-        
-                                              
+                                                   
         self._sync_to_qdrant(profiles_scaled, df)
 
     def _sync_to_qdrant(self, profiles_df, df_enriched):
@@ -183,12 +174,12 @@ random_user = user_profiles.index[10]
 target_hour = user_raw_hours[random_user]
 target_cat = user_top_cats[random_user]
 
-print(f"\n🎯 Ищем пару для: {random_user}")
-print(f"ℹ️ Профиль: Любит '{target_cat}', активен в районе {format_hour(target_hour)}")
+print(f"\nИщем пару для: {random_user}")
+print(f"Профиль: Любит '{target_cat}', активен в районе {format_hour(target_hour)}")
 
 matches = get_matches(random_user, user_profiles)
 
-print("\n--- Match Found! ---")
+print("\nMatch!")
 for i, row in matches.iterrows():
     m_rk = row['party_rk']
     m_score = row['score']
@@ -206,7 +197,7 @@ for i, row in matches.iterrows():
     else:
         time_msg = "в другое время дня"
 
-    print(f"\n❤️ Мэтч #{i+1} (Сходство: {m_score:.1%})")
+    print(f"\n Мэтч #{i+1} (Сходство: {m_score:.1%})")
     print(f"ID: {m_rk}")
-    print(f"👉 Этот пользователь подходит вам, так как тоже часто выбирает '{m_cat}'.")
-    print(f"🕒 Обычно он совершает покупки {time_msg} (около {format_hour(m_hour)}).")
+    print(f" Этот пользователь подходит он часто выбирает '{m_cat}'.")
+    print(f" он совершает покупки {time_msg} (около {format_hour(m_hour)}).")

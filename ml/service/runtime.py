@@ -175,11 +175,11 @@ class MlRuntime:
             self._catboost = CatBoostClassifier()
             self._catboost.load_model(models_dir / "imputer.cbm") 
             self._has_artifacts = True
-            print("✅ ML Artifacts loaded successfully")
+            print("Артифакты окак")
         except Exception as e:
             self._has_artifacts = False
             self._startup_error = f"Artifacts not found: {e}"
-            print("⚠️ Running in fallback mode without CatBoost/Scaler")
+            print("ошибка кот")
     def update_user_profile_favorites(
         self, 
         user_id: str | int, 
@@ -249,7 +249,7 @@ class MlRuntime:
                 )
             ]
         )
-        print(f"[{trace_id}] Cold start profile generated for user {user_id}")
+        print(f"[{trace_id}] ъолодный стартr {user_id}")
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
     def process_transactions_sync_background(self, payload: Any):
         from ml.service.schemas import TransactionSyncRequest 
@@ -300,11 +300,11 @@ class MlRuntime:
                 )
             ]
         )
-        print(f"[{request.trace_id}] Vectors synchronized dynamically for user {user_id_str}")
+        print(f"[{request.trace_id}] синхрон {user_id_str}")
 
     def pull_and_process_user_transactions(self, *, user_id: str | int, trace_id: UUID) -> None:
                                                                                             
-        print(f"[{trace_id}] Transaction pull skipped for user {user_id}: source is not configured")
+        print(f"[{trace_id}] скип транз {user_id}")
 
     def _build_pipeline(self) -> ModelPipeline:
         artifact_path = Path(self._settings.model_artifact_path)
