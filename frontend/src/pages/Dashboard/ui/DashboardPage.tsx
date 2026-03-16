@@ -138,8 +138,8 @@ export default function DashboardPage() {
             ))}
           </div>
           <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
-            <Skeleton className="h-[360px] rounded-3xl" />
-            <Skeleton className="h-[360px] rounded-3xl" />
+            <Skeleton className="h-90 rounded-3xl" />
+            <Skeleton className="h-90 rounded-3xl" />
           </div>
         </div>
       </main>
@@ -153,8 +153,8 @@ export default function DashboardPage() {
   return (
     <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 lg:px-6">
       <div className="grid gap-6">
-        <section className="relative overflow-hidden rounded-[32px] border border-border bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.22),_transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.98),rgba(250,250,249,0.92))] p-6 shadow-sm">
-          <div className="absolute inset-y-0 right-0 hidden w-72 bg-[radial-gradient(circle,_rgba(14,165,233,0.12),_transparent_60%)] lg:block" />
+        <section className="relative overflow-hidden rounded-4xl border border-border bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.22),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.98),rgba(250,250,249,0.92))] p-6 shadow-sm">
+          <div className="absolute inset-y-0 right-0 hidden w-72 bg-[radial-gradient(circle,rgba(14,165,233,0.12),transparent_60%)] lg:block" />
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <Badge
@@ -288,7 +288,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <ChartContainer
                     config={overviewChartConfig}
-                    className="h-[320px] w-full"
+                    className="h-80 w-full"
                   >
                     <AreaChart
                       data={dailyRows}
@@ -415,7 +415,7 @@ export default function DashboardPage() {
                 <CardContent>
                   <ChartContainer
                     config={overviewChartConfig}
-                    className="h-[320px] w-full"
+                    className="h-80 w-full"
                   >
                     <BarChart
                       data={dailyRows}
@@ -531,7 +531,7 @@ function MetricCard({
   hint: string;
 }) {
   return (
-    <Card className="rounded-[24px] border-border/80 bg-card/95">
+    <Card className="rounded-3xl border-border/80 bg-card/95">
       <CardHeader className="gap-3">
         <div className="flex items-center justify-between">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
