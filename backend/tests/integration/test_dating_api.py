@@ -928,6 +928,49 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
     assert audit_ok.status_code == 200
     assert any(item["event_type"] == "user_reported" for item in audit_ok.json()["items"])
 
+    moderation_summary = await client.get(
+        "/api/v1/admins/moderation/reports/summary",
+        headers=auth_header(admin_access),
+    )
+    assert moderation_summary.status_code == 200
+    assert moderation_summary.json()["pending_reports"] >= 1
+
+    moderation_reports = await client.get(
+        "/api/v1/admins/moderation/reports/",
+        headers=auth_header(admin_access),
+        params={"status": "pending"},
+    )
+    assert moderation_reports.status_code == 200
+    pending_report = next(
+        item
+        for item in moderation_reports.json()["items"]
+        if item["id"] == report.json()["report_id"]
+    )
+    assert pending_report["target"]["id"] == profile_c["id"]
+    assert pending_report["review_status"] == "pending"
+
+    review = await client.post(
+        f"/api/v1/admins/moderation/reports/{report.json()['report_id']}/review",
+        headers=auth_header(admin_access),
+        json={
+            "status": "resolved",
+            "review_note": "Confirmed during moderation",
+            "ban_user": True,
+        },
+    )
+    assert review.status_code == 200
+    assert review.json()["report"]["review_status"] == "resolved"
+    assert review.json()["report"]["review_action"] == "banned"
+    assert review.json()["report"]["reviewer"]["id"] == profile_a["id"]
+
+    banned_users = await client.get(
+        "/api/v1/admins/users/",
+        headers=auth_header(admin_access),
+        params={"banned": True, "limit": 50},
+    )
+    assert banned_users.status_code == 200
+    assert any(item["id"] == profile_c["id"] for item in banned_users.json()["items"])
+
 
 @pytest.mark.asyncio
 async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
