@@ -130,9 +130,27 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       return;
     }
     await markSeenByNotificationId(currentNotification.notificationId);
-    await queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
-    navigate("/chat", {
+    void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+    navigate("/match", {
       state: {
+        matchedProfile: {
+          id: currentNotification.peer.userId,
+          candidateUserId: currentNotification.peer.userId,
+          name: currentNotification.peer.displayName,
+          age: null,
+          image: currentNotification.peer.avatarUrl,
+          bio: "",
+          matchScore: 0,
+          categoryBreakdown: [],
+          tags: [],
+          explanation: "",
+          location: "",
+          activity: "",
+          reasonCodes: [],
+          detailsAvailable: false,
+          actions: null,
+          source: "notification",
+        },
         matchId: currentNotification.matchId,
         conversationId: currentNotification.conversationId,
       },
