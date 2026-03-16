@@ -59,10 +59,14 @@ def _is_specific_category_label(value: str | None) -> bool:
     normalized = value.strip().lower()
     return normalized not in {
         "",
+        "<none>",
         "unknown",
         "unknown_category",
         "none",
+        "null",
+        "nan",
         "n/a",
+        "-",
         "другое",
     }
 
@@ -91,6 +95,8 @@ def _category_preview_text(
     category_label: str,
     score_percent: int | None = None,
 ) -> str:
+    if not _is_specific_category_label(category_label):
+        return "У вас заметно совпадают интересы и привычки."
     if score_percent is not None and score_percent >= 70:
         return f"Сильное совпадение по интересам: «{category_label}»."
     if score_percent is not None and score_percent >= 45:
