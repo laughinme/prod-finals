@@ -83,6 +83,19 @@ export function MatchProfileDesktopCard({
         <div className="mb-6 hidden items-start justify-between gap-6 md:flex">
           <div className="min-w-0 pt-15">
             <h2 className="mb-3 text-6xl font-black tracking-tight text-foreground">{title}</h2>
+            {profile.tags.length > 0 ? (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {profile.tags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="rounded-xl bg-secondary/50 px-4 py-2 text-sm font-semibold text-secondary-foreground"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
             {hasMeta ? (
               <div className="flex items-center gap-4 font-medium text-muted-foreground">
                 {profile.location ? (
@@ -114,18 +127,6 @@ export function MatchProfileDesktopCard({
             </p>
           </div>
         )}
-
-        <div className="mb-8 flex flex-wrap gap-2">
-          {profile.tags.map((tag) => (
-            <Badge
-              key={tag}
-              variant="secondary"
-              className="rounded-xl bg-secondary/50 px-4 py-2 text-sm font-semibold text-secondary-foreground"
-            >
-              {tag}
-            </Badge>
-          ))}
-        </div>
 
         <div className="mt-auto mb-0 rounded-3xl border border-primary/10 bg-primary/5 p-6">
           <div>
