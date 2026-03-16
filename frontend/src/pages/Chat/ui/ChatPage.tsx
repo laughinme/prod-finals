@@ -44,6 +44,7 @@ export default function ChatPage() {
     handleCloseMatch,
     handleReportUser,
     handleSend,
+    hasActiveChat,
     hasAnyChats,
     input,
     isBlockingUser,
@@ -63,15 +64,15 @@ export default function ChatPage() {
     visibleMatches,
   } = useChatPage();
 
-  const showSidebar = !isMobile || !activeMatch;
-  const showChat = !isMobile || !!activeMatch;
+  const showSidebar = !isMobile || !hasActiveChat;
+  const showChat = !isMobile || hasActiveChat;
 
   const handleBack = () => {
     selectMatch(null);
   };
 
   /* ── Empty / loading states ── */
-  if (isLoadingInitialChat && !hasAnyChats) {
+  if (isLoadingInitialChat && !hasAnyChats && !hasActiveChat) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
         <motion.div
@@ -86,7 +87,7 @@ export default function ChatPage() {
     );
   }
 
-  if (!hasAnyChats) {
+  if (!hasAnyChats && !hasActiveChat) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center bg-secondary/10 p-8 text-center">
         <motion.div
