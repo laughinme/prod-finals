@@ -15,7 +15,13 @@ from domain.dating import (
     MessageStatus,
     SendMessageRequest,
 )
-from domain.notifications import ConversationClosedEventPayload, MessageCreatedEventPayload, RealtimeSubscriptionResponse
+from domain.notifications import (
+    ConversationClosedEventPayload,
+    MessageCreatedEventPayload,
+    MessageReceivedEventPayload,
+    NotificationPeer,
+    RealtimeSubscriptionResponse,
+)
 
 from service.matchmaking import BaseDatingService, ConversationNotFoundError, ConversationUnavailableError
 
@@ -26,6 +32,12 @@ class ConversationService(BaseDatingService):
         if row is None:
             raise ConversationNotFoundError()
         conversation, match, peer = row
+        await self.notification_repo.mark_conversation_notifications_read(
+            user_id=user.id,
+            conversation_id=conversation.id,
+            read_at=self.now(),
+        )
+        await self.uow.commit()
         return ConversationResponse(
             conversation_id=conversation.id,
             match_id=match.id,
@@ -58,6 +70,12 @@ class ConversationService(BaseDatingService):
             cursor=parsed_cursor,
             limit=limit,
         )
+        await self.notification_repo.mark_conversation_notifications_read(
+            user_id=user.id,
+            conversation_id=conversation_id,
+            read_at=self.now(),
+        )
+        await self.uow.commit()
         next_cursor = None
         if len(messages) > limit:
             next_cursor = messages[-1].created_at.isoformat()
@@ -123,6 +141,7 @@ class ConversationService(BaseDatingService):
                 text=payload.text,
             )
         )
+        match.updated_at = message.created_at
         await self.add_audit_event(
             event_type="message_sent",
             entity_type=AuditEntityType.CONVERSATION,
@@ -178,6 +197,14 @@ class ConversationService(BaseDatingService):
                     },
                 )
         await self.uow.commit()
+        peer_notification = await self.notification_repo.add_message_notification(
+            user_id=peer.id,
+            match_id=match.id,
+            conversation_id=conversation.id,
+            message_id=message.id,
+            sender_user_id=user.id,
+        )
+        await self.uow.commit()
         response = MessageResponse(
             message_id=message.id,
             sender_user_id=message.sender_user_id,
@@ -194,6 +221,22 @@ class ConversationService(BaseDatingService):
                 text=message.text,
                 created_at=message.created_at,
                 status=MessageStatus.SENT.value,
+            ),
+        )
+        await self.realtime_service.publish_message_received(
+            user_id=peer.id,
+            payload=MessageReceivedEventPayload(
+                notification_id=peer_notification.id,
+                match_id=match.id,
+                conversation_id=conversation.id,
+                message_id=message.id,
+                peer=NotificationPeer(
+                    user_id=user.id,
+                    display_name=user.resolved_display_name or "",
+                    avatar_url=user.avatar_url,
+                ),
+                preview_text=message.text,
+                created_at=peer_notification.created_at,
             ),
         )
         return response

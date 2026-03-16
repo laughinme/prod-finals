@@ -10,8 +10,10 @@ import jwt
 from core.config import Settings, get_settings
 from domain.notifications import (
     ConversationClosedEventPayload,
+    LikeReceivedEventPayload,
     MatchCreatedEventPayload,
     MessageCreatedEventPayload,
+    MessageReceivedEventPayload,
     RealtimeConnectionResponse,
     RealtimeSubscriptionResponse,
 )
@@ -91,19 +93,50 @@ class RealtimeService:
         )
 
     async def publish_match_created(self, *, user_id, payload: MatchCreatedEventPayload) -> None:
+        await self._publish_personal_event(
+            user_id=user_id,
+            event_type="match_created",
+            payload=payload.model_dump(mode="json"),
+            log_label="match_created",
+        )
+
+    async def publish_like_received(self, *, user_id, payload: LikeReceivedEventPayload) -> None:
+        await self._publish_personal_event(
+            user_id=user_id,
+            event_type="like_received",
+            payload=payload.model_dump(mode="json"),
+            log_label="like_received",
+        )
+
+    async def publish_message_received(self, *, user_id, payload: MessageReceivedEventPayload) -> None:
+        await self._publish_personal_event(
+            user_id=user_id,
+            event_type="message_received",
+            payload=payload.model_dump(mode="json"),
+            log_label="message_received",
+        )
+
+    async def _publish_personal_event(
+        self,
+        *,
+        user_id,
+        event_type: str,
+        payload: dict,
+        log_label: str,
+    ) -> None:
         if not self.is_enabled:
             return
         publication = {
             "channel": self.build_personal_channel(user_id=user_id),
             "data": {
-                "type": "match_created",
-                "payload": payload.model_dump(mode="json"),
+                "type": event_type,
+                "payload": payload,
             },
         }
         try:
             await asyncio.to_thread(self._post_publication, publication)
         except (OSError, urllib_error.URLError, urllib_error.HTTPError) as exc:
-            logger.warning("Failed to publish realtime match notification: %s", exc)
+            logger.warning("Failed to publish realtime %s notification: %s", log_label, exc)
 
     async def publish_message_created(
         self,

@@ -17,7 +17,7 @@ from domain.dating import (
     MatchStatus,
     SafetySourceContext,
 )
-from domain.notifications import MatchCreatedEventPayload, NotificationPeer
+from domain.notifications import LikeReceivedEventPayload, MatchCreatedEventPayload, NotificationPeer
 
 from service.matchmaking import (
     BaseDatingService,
@@ -125,6 +125,8 @@ class InteractionService(BaseDatingService):
         match_link = None
         notification_payload = None
         notification_user_id = None
+        like_notification_payload = None
+        like_notification_user_id = None
         result = FeedReactionResult.LIKED
         if payload.action == FeedAction.LIKE and counterpart_action == FeedAction.LIKE.value:
             match, conversation, match_created = await self._ensure_match(
@@ -137,6 +139,10 @@ class InteractionService(BaseDatingService):
             pair_state.conversation_id = conversation.id
             result = FeedReactionResult.MATCHED
             match_link = MatchLink(match_id=match.id, conversation_id=conversation.id)
+            await self.notification_repo.delete_like_notification(
+                user_id=user.id,
+                liker_user_id=item.target_user_id,
+            )
             notification_payload, notification_user_id = await self._build_match_notification(
                 actor=user,
                 peer_user_id=item.target_user_id,
@@ -162,13 +168,26 @@ class InteractionService(BaseDatingService):
         elif payload.action == FeedAction.LIKE:
             pair_state.status = "one_way_like"
             result = FeedReactionResult.LIKED
+            like_notification_payload, like_notification_user_id = await self._build_like_notification(
+                actor=user,
+                peer_user_id=item.target_user_id,
+                pair_state=pair_state,
+            )
         elif payload.action == FeedAction.PASS:
             pair_state.status = "closed"
             pair_state.cooldown_until = now + timedelta(days=self.cooldown_days)
+            await self.notification_repo.delete_like_notification(
+                user_id=user.id,
+                liker_user_id=item.target_user_id,
+            )
             result = FeedReactionResult.PASSED
         else:
             pair_state.status = "hidden"
             pair_state.hidden_by_user_id = user.id
+            await self.notification_repo.delete_like_notification(
+                user_id=user.id,
+                liker_user_id=item.target_user_id,
+            )
             result = FeedReactionResult.HIDDEN
 
         await self.matchmaking_repo.add(
@@ -240,6 +259,11 @@ class InteractionService(BaseDatingService):
                 user_id=notification_user_id,
                 payload=notification_payload,
             )
+        if like_notification_payload is not None and like_notification_user_id is not None:
+            await self.realtime_service.publish_like_received(
+                user_id=like_notification_user_id,
+                payload=like_notification_payload,
+            )
 
         return FeedReactionResponse(result=result, match=match_link, next_card_hint="next_available")
 
@@ -261,6 +285,30 @@ class InteractionService(BaseDatingService):
             notification_id=notification.id,
             match_id=match.id,
             conversation_id=conversation.id,
+            peer=NotificationPeer(
+                user_id=actor.id,
+                display_name=actor.resolved_display_name or "",
+                avatar_url=actor.avatar_url,
+            ),
+            created_at=notification.created_at,
+        )
+        return payload, peer_user_id
+
+    async def _build_like_notification(
+        self,
+        *,
+        actor: User,
+        peer_user_id,
+        pair_state: PairState,
+    ) -> tuple[LikeReceivedEventPayload, object]:
+        notification = await self.notification_repo.add_like_notification(
+            user_id=peer_user_id,
+            liker_user_id=actor.id,
+            pair_state_id=pair_state.id,
+        )
+        payload = LikeReceivedEventPayload(
+            notification_id=notification.id,
+            liker_user_id=actor.id,
             peer=NotificationPeer(
                 user_id=actor.id,
                 display_name=actor.resolved_display_name or "",

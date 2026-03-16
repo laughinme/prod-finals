@@ -20,6 +20,7 @@ from service.matchmaking import BaseDatingService, InvalidMatchStateError, Match
 class MatchService(BaseDatingService):
     async def list_matches(self, user: User) -> MatchListResponse:
         rows = await self.matchmaking_repo.list_matches_for_user(user.id)
+        unread_counts = await self.notification_repo.count_unread_messages_by_match(user_id=user.id)
         items = [
             MatchListItem(
                 match_id=match.id,
@@ -30,7 +31,7 @@ class MatchService(BaseDatingService):
                 status=match.status,
                 last_message_preview=last_message.text if last_message else None,
                 last_message_at=last_message.created_at if last_message else None,
-                unread_count=0,
+                unread_count=unread_counts.get(match.id, 0),
             )
             for match, peer, conversation, last_message in rows
         ]
