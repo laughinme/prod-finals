@@ -130,11 +130,23 @@ class User(TimestampMixin, Base):
 
     @property
     def missing_required_fields(self) -> list[str]:
-        return []
+        missing: list[str] = []
+        if not (self.first_name and self.first_name.strip()):
+            missing.append("first_name")
+        if self.birth_date is None:
+            missing.append("birth_date")
+        if self.gender is None:
+            missing.append("gender")
+        if not self.has_approved_photo:
+            missing.append("avatar")
+        return missing
 
     @property
     def has_min_profile(self) -> bool:
-        return True
+        return not any(
+            field in {"first_name", "birth_date", "gender"}
+            for field in self.missing_required_fields
+        )
 
     @property
     def has_approved_photo(self) -> bool:
@@ -144,6 +156,8 @@ class User(TimestampMixin, Base):
     def profile_status(self) -> str:
         if self.banned:
             return ProfileStatus.BLOCKED.value
+        if not self.has_min_profile:
+            return ProfileStatus.REQUIRED_FIELDS_MISSING.value
         if self.avatar_moderation_status == AvatarModerationStatus.PENDING.value:
             return ProfileStatus.AVATAR_PENDING.value
         if self.avatar_moderation_status in {
@@ -176,11 +190,22 @@ class User(TimestampMixin, Base):
     def onboarding_status(self) -> str:
         if self.banned:
             return "blocked_from_feed"
+        if not self.has_min_profile:
+            return "profile_required"
         if self.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return "photo_pending"
         if self.profile_status == ProfileStatus.AVATAR_REQUIRED.value:
             return "photo_required"
         return "ready_for_feed"
+
+    @property
+    def required_profile_step_key(self) -> str | None:
+        missing = set(self.missing_required_fields)
+        if "avatar" in missing:
+            return "photo_upload"
+        if missing:
+            return "profile_basics"
+        return None
 
     def has_roles(self, *slugs: str) -> bool:
         if not slugs:

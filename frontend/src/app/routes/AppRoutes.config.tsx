@@ -10,10 +10,7 @@ import ProfilePage from "@/pages/Profile/ui/ProfilePage";
 import { useAuth } from "@/app/providers/auth/useAuth";
 import { HeaderLayout } from "@/app/layouts/HeaderLayout";
 import { useProfile } from "@/features/profile/useProfile";
-import {
-  useOnboardingState,
-  useQuizProfilePreviewState,
-} from "@/features/quiz/model";
+import { useOnboardingState } from "@/features/quiz/model";
 
 import DashboardPage from "@/pages/Dashboard";
 import OnboardingPage from "@/pages/Onboarding/ui/OnboardingPage";
@@ -54,26 +51,21 @@ export const RequireAuth = () => {
 };
 
 export const RequireMatchmakingReady = () => {
-  const { data: profile, isPending } = useProfile();
+  const { isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
-  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl);
-  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
-
-  if (!isPhotoDone) {
-    return <Navigate to="/onboarding" replace />;
+  const currentStepKey = onboardingState?.currentStepKey ?? null;
+  if (currentStepKey === "photo_upload") {
+    return <Navigate to="/photo-upload" replace />;
   }
-
-  if (isProfilePreviewPending) {
-    return <Navigate to="/quiz" replace />;
+  if (currentStepKey === "profile_basics") {
+    return <Navigate to="/profile" replace />;
   }
-
-  if (shouldShowQuiz) {
+  if (onboardingState?.shouldShow) {
     return <Navigate to="/quiz" replace />;
   }
 
@@ -81,50 +73,50 @@ export const RequireMatchmakingReady = () => {
 };
 
 export const RequireIncompleteOnboarding = () => {
-  const { data: profile, isPending } = useProfile();
+  const { isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
-  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl);
-  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
-
-  if (isPhotoDone) {
-    return (
-      <Navigate
-        to={isProfilePreviewPending ? "/quiz" : shouldShowQuiz ? "/quiz" : "/discovery"}
-        replace
-      />
-    );
+  const currentStepKey = onboardingState?.currentStepKey ?? null;
+  if (currentStepKey === "photo_upload") {
+    return <Outlet />;
   }
-
-  return <Outlet />;
+  if (currentStepKey === "profile_basics") {
+    return <Navigate to="/profile" replace />;
+  }
+  if (onboardingState?.shouldShow) {
+    return <Navigate to="/quiz" replace />;
+  }
+  return <Navigate to="/discovery" replace />;
 };
 
 export const RequireIncompleteQuiz = () => {
-  const { data: profile, isPending } = useProfile();
+  const { isPending } = useProfile();
   const { data: onboardingState, isPending: isOnboardingStatePending } = useOnboardingState();
-  const { isProfilePreviewPending } = useQuizProfilePreviewState();
 
   if (isPending || isOnboardingStatePending) {
     return <MatchmakingLoadingState />;
   }
 
-  const isPhotoDone = Boolean(profile?.profilePicUrl);
-  const shouldShowQuiz = onboardingState?.shouldShow ?? false;
-
-  if (!isPhotoDone) {
-    return <Navigate to="/onboarding" replace />;
+  const currentStepKey = onboardingState?.currentStepKey ?? null;
+  if (currentStepKey === "photo_upload") {
+    return <Navigate to="/photo-upload" replace />;
   }
-
-  if (!shouldShowQuiz && !isProfilePreviewPending) {
+  if (currentStepKey === "profile_basics") {
+    return <Navigate to="/profile" replace />;
+  }
+  if (!onboardingState?.shouldShow) {
     return <Navigate to="/discovery" replace />;
   }
 
-  return <Outlet />;
+  if (currentStepKey === "match_preferences" || currentStepKey === "interests" || currentStepKey === "profile_preview") {
+    return <Outlet />;
+  }
+
+  return <Navigate to="/discovery" replace />;
 };
 
 export const routes: RouteObject[] = [
@@ -156,10 +148,10 @@ export const routes: RouteObject[] = [
               { path: "discovery", element: <DiscoveryPage /> },
               { path: "chat", element: <ChatPage /> },
               { path: "matches", element: <MatchesPage /> },
-              { path: "profile", element: <ProfilePage /> },
               { path: "dashboard", element: <DashboardPage /> },
             ],
           },
+          { path: "profile", element: <ProfilePage /> },
         ],
       },
     ],

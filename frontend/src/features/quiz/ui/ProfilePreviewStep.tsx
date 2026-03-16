@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useProfile, useUpdateProfile } from "@/features/profile/useProfile";
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
-import { useQuizProfilePreviewState } from "@/features/quiz/model";
+import { postOnboardingAnswers } from "@/shared/api/onboarding";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -15,11 +15,20 @@ import * as Sentry from "@sentry/react";
 export function ProfilePreviewStep() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
-  const { completeOnboarding } = useMatchmakingFlow();
-  const { clearProfilePreviewPending } = useQuizProfilePreviewState();
+  const completePreview = useMutation({
+    mutationFn: () =>
+      postOnboardingAnswers({
+        stepKey: "profile_preview",
+        answers: ["confirmed"],
+      }),
+    onSuccess: (nextState) => {
+      queryClient.setQueryData(["onboarding", "state"], nextState);
+    },
+  });
 
   const [bio, setBio] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -40,8 +49,7 @@ export function ProfilePreviewStep() {
       if (currentBio !== (profile.bio ?? "")) {
         await updateProfile.mutateAsync({ bio: currentBio });
       }
-      clearProfilePreviewPending();
-      completeOnboarding();
+      await completePreview.mutateAsync();
       navigate("/discovery", { replace: true });
     } catch (e) {
       Sentry.captureException(e);
@@ -83,9 +91,9 @@ export function ProfilePreviewStep() {
       size="lg"
       className="h-12 w-full rounded-2xl text-base font-semibold shadow-lg hover:bg-primary md:h-14 md:min-w-64 md:w-auto md:text-lg"
       onClick={handleSave}
-      disabled={updateProfile.isPending}
+      disabled={updateProfile.isPending || completePreview.isPending}
     >
-      {updateProfile.isPending ? (
+      {updateProfile.isPending || completePreview.isPending ? (
         <Loader2 className="animate-spin" />
       ) : (
         t("common.save_and_start")

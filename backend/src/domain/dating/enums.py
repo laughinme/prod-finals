@@ -9,6 +9,7 @@ class AvatarModerationStatus(str, Enum):
 
 
 class ProfileStatus(str, Enum):
+    REQUIRED_FIELDS_MISSING = "required_fields_missing"
     AVATAR_REQUIRED = "avatar_required"
     AVATAR_PENDING = "avatar_pending"
     READY = "ready"
@@ -23,6 +24,7 @@ class FeedState(str, Enum):
 
 
 class FeedLockReason(str, Enum):
+    REQUIRED_FIELDS_MISSING = "required_fields_missing"
     AVATAR_REQUIRED = "avatar_required"
     AVATAR_PENDING = "avatar_pending"
     BLOCKED = "blocked"

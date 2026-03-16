@@ -35,6 +35,8 @@ export interface OnboardingStateDto {
   completed: boolean;
   should_show: boolean;
   current_step_key?: string | null;
+  required_profile_step_key?: string | null;
+  missing_required_fields?: string[];
   completed_step_keys: string[];
   answers_by_step: Record<string, string[]>;
 }
@@ -49,4 +51,3 @@ export interface OnboardingAnswersResponseDto extends OnboardingStateDto {
   step_key: string;
   saved?: boolean;
 }
-

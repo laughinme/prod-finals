@@ -48,6 +48,20 @@ _QUIZ_STEPS = [
     ),
 ]
 
+_PROFILE_PREVIEW_STEP = OnboardingStep(
+    step_key="profile_preview",
+    title="Проверьте анкету",
+    subtitle="Посмотрите, как ваша карточка будет выглядеть в выдаче.",
+    description="Подтвердите анкету перед первым входом в подборку.",
+    step_type=OnboardingStepType.SINGLE_SELECT,
+    optional=False,
+    multi_select=False,
+    required_for_feed=False,
+    min_answers=1,
+    max_answers=1,
+    options=[OnboardingStepOption(value="confirmed", label="Готово")],
+)
+
 _OPTION_LABELS = {
     option.value: option.label
     for step in _QUIZ_STEPS
@@ -63,6 +77,8 @@ def get_step(step_key: str) -> OnboardingStep | None:
     for step in _QUIZ_STEPS:
         if step.step_key == step_key:
             return step
+    if step_key == _PROFILE_PREVIEW_STEP.step_key:
+        return _PROFILE_PREVIEW_STEP
     return None
 
 

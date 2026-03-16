@@ -77,6 +77,8 @@ class BaseDatingService:
     def _build_lock_reason(self, user: User) -> FeedLockReason | None:
         if user.profile_status == ProfileStatus.BLOCKED.value:
             return FeedLockReason.BLOCKED
+        if user.profile_status == ProfileStatus.REQUIRED_FIELDS_MISSING.value:
+            return FeedLockReason.REQUIRED_FIELDS_MISSING
         if user.profile_status == ProfileStatus.AVATAR_PENDING.value:
             return FeedLockReason.AVATAR_PENDING
         if user.profile_status == ProfileStatus.AVATAR_REQUIRED.value:

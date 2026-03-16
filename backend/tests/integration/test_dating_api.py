@@ -139,6 +139,14 @@ async def _answer_onboarding_filters(
             },
             headers=auth_header(access_token),
         ),
+        await client.post(
+            "/api/v1/onboarding/answers",
+            json={
+                "step_key": "profile_preview",
+                "answers": ["confirmed"],
+            },
+            headers=auth_header(access_token),
+        ),
     ]
     for response in responses:
         assert response.status_code == 200
@@ -190,8 +198,16 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
     assert onboarding_state.status_code == 200
     assert onboarding_state.json()["should_show"] is True
-    assert onboarding_state.json()["current_step_key"] == "match_preferences"
+    assert onboarding_state.json()["current_step_key"] == "photo_upload"
     assert onboarding_state.json()["completed_step_keys"] == []
+    assert onboarding_state.json()["missing_required_fields"] == ["avatar"]
+
+    await _upload_avatar(client, access_a)
+
+    onboarding_state_after_photo = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    assert onboarding_state_after_photo.status_code == 200
+    assert onboarding_state_after_photo.json()["current_step_key"] == "match_preferences"
+    assert onboarding_state_after_photo.json()["missing_required_fields"] == []
 
     answer = await client.post(
         "/api/v1/onboarding/answers",
@@ -218,9 +234,22 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert interests_answer.status_code == 200
-    assert interests_answer.json()["completed"] is True
-    assert interests_answer.json()["should_show"] is False
-    assert interests_answer.json()["current_step_key"] is None
+    assert interests_answer.json()["completed"] is False
+    assert interests_answer.json()["should_show"] is True
+    assert interests_answer.json()["current_step_key"] == "profile_preview"
+
+    preview_answer = await client.post(
+        "/api/v1/onboarding/answers",
+        json={
+            "step_key": "profile_preview",
+            "answers": ["confirmed"],
+        },
+        headers=auth_header(access_a),
+    )
+    assert preview_answer.status_code == 200
+    assert preview_answer.json()["completed"] is True
+    assert preview_answer.json()["should_show"] is False
+    assert preview_answer.json()["current_step_key"] is None
 
     updated_onboarding_config = await client.get(
         "/api/v1/onboarding/config",
@@ -492,19 +521,20 @@ async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, fake
     initial_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
     assert initial_state.status_code == 200
     assert initial_state.json()["should_show"] is True
-    assert initial_state.json()["current_step_key"] == "match_preferences"
+    assert initial_state.json()["current_step_key"] == "photo_upload"
 
     skip_response = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_token))
     assert skip_response.status_code == 200
     assert skip_response.json()["quiz_started"] is True
     assert skip_response.json()["skipped"] is True
-    assert skip_response.json()["should_show"] is False
-    assert skip_response.json()["current_step_key"] is None
+    assert skip_response.json()["should_show"] is True
+    assert skip_response.json()["current_step_key"] == "photo_upload"
 
     refreshed_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
     assert refreshed_state.status_code == 200
     assert refreshed_state.json()["skipped"] is True
-    assert refreshed_state.json()["should_show"] is False
+    assert refreshed_state.json()["should_show"] is True
+    assert refreshed_state.json()["current_step_key"] == "photo_upload"
 
 
 @pytest.mark.asyncio

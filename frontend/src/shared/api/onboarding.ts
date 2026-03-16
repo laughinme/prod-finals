@@ -43,6 +43,8 @@ export interface OnboardingState {
   completed: boolean;
   shouldShow: boolean;
   currentStepKey?: string | null;
+  requiredProfileStepKey?: string | null;
+  missingRequiredFields: string[];
   completedStepKeys: string[];
   answersByStep: Record<string, string[]>;
 }
@@ -93,6 +95,8 @@ const toOnboardingState = (dto: OnboardingStateDto): OnboardingState => ({
   completed: dto.completed,
   shouldShow: dto.should_show,
   currentStepKey: dto.current_step_key ?? null,
+  requiredProfileStepKey: dto.required_profile_step_key ?? null,
+  missingRequiredFields: dto.missing_required_fields ?? [],
   completedStepKeys: dto.completed_step_keys ?? [],
   answersByStep: dto.answers_by_step ?? {},
 });

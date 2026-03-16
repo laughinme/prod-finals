@@ -38,6 +38,8 @@ class UserModel(TimestampModel):
     is_onboarded: bool
     onboarding_status: str
     has_min_profile: bool
+    missing_required_fields: list[str] = Field(default_factory=list)
+    required_profile_step_key: str | None = None
     has_approved_photo: bool
     profile_status: str
     banned: bool

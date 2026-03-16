@@ -17,6 +17,9 @@ from service.matchmaking import BaseDatingService
 
 
 IMPORT_TRANSACTIONS_STEP_KEY = "import_transactions"
+PROFILE_PREVIEW_STEP_KEY = "profile_preview"
+PHOTO_UPLOAD_STEP_KEY = "photo_upload"
+PROFILE_BASICS_STEP_KEY = "profile_basics"
 
 
 class OnboardingService(BaseDatingService):
@@ -112,6 +115,8 @@ class OnboardingService(BaseDatingService):
         return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
+        if step.step_key == PROFILE_PREVIEW_STEP_KEY:
+            return self._validate_profile_preview(step, answers)
         if step.step_key == "match_preferences":
             return self._validate_match_preferences(step, answers)
 
@@ -144,6 +149,12 @@ class OnboardingService(BaseDatingService):
         allowed_values = {option.value for option in step.options}
         if any(answer not in allowed_values for answer in normalized):
             raise BadRequestError("Unknown answer passed for quiz step")
+        return normalized
+
+    def _validate_profile_preview(self, step, answers: list[str]) -> list[str]:
+        normalized = [answer.strip() for answer in answers if answer and answer.strip()]
+        if normalized != ["confirmed"]:
+            raise BadRequestError("Profile preview requires explicit confirmation")
         return normalized
 
     def _validate_match_preferences(self, step, answers: list[str]) -> list[str]:
@@ -197,10 +208,12 @@ class OnboardingService(BaseDatingService):
         ]
 
     def _apply_quiz_answer_to_user(self, user: User, step_key: str, answers: list[str]) -> None:
-        if not answers:
-            return
-
         if step_key == "match_preferences":
+            if not answers:
+                user.looking_for_genders = []
+                user.age_range_min = None
+                user.age_range_max = None
+                return
             genders = [
                 answer.split(":", 1)[1]
                 for answer in answers
@@ -221,25 +234,33 @@ class OnboardingService(BaseDatingService):
             user.age_range_max = age_max
             return
         if step_key == "interests":
-            user.interests = list(answers)
+            user.interests = list(answers or [])
             return
 
     def _build_progress(self, user: User, records: Iterable) -> OnboardingProgress:
         steps = get_quiz_steps()
         step_keys = [step.step_key for step in steps]
-        answers_by_step = self._build_answers_by_step(user, records, step_keys)
-        completed_step_keys = [step_key for step_key in step_keys if step_key in answers_by_step]
-        completed = len(completed_step_keys) == len(step_keys)
-        should_show = not user.onboarding_skipped and not completed
+        workflow_step_keys = [*step_keys, PROFILE_PREVIEW_STEP_KEY]
+        answers_by_step = self._build_answers_by_step(user, records, workflow_step_keys)
+        completed_step_keys = [step_key for step_key in workflow_step_keys if step_key in answers_by_step]
+        required_profile_step_key = user.required_profile_step_key
+        missing_required_fields = list(user.missing_required_fields)
+        completed = len(completed_step_keys) == len(workflow_step_keys) and required_profile_step_key is None
+        should_show = required_profile_step_key is not None or (not user.onboarding_skipped and not completed)
 
         current_step_key: str | None = None
-        if should_show:
-            if user.quiz_current_step_key in step_keys and user.quiz_current_step_key not in completed_step_keys:
+        if required_profile_step_key is not None:
+            current_step_key = required_profile_step_key
+        elif should_show:
+            if (
+                user.quiz_current_step_key in workflow_step_keys
+                and user.quiz_current_step_key not in completed_step_keys
+            ):
                 current_step_key = user.quiz_current_step_key
             else:
                 current_step_key = next(
-                    (step_key for step_key in step_keys if step_key not in completed_step_keys),
-                    step_keys[0] if step_keys else None,
+                    (step_key for step_key in workflow_step_keys if step_key not in completed_step_keys),
+                    workflow_step_keys[0] if workflow_step_keys else None,
                 )
 
         return OnboardingProgress(
@@ -248,6 +269,8 @@ class OnboardingService(BaseDatingService):
             completed=completed,
             should_show=should_show,
             current_step_key=current_step_key,
+            required_profile_step_key=required_profile_step_key,
+            missing_required_fields=missing_required_fields,
             completed_step_keys=completed_step_keys,
             answers_by_step=answers_by_step,
         )

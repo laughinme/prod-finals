@@ -7,10 +7,7 @@ import { Loader2 } from "lucide-react";
 import * as Sentry from "@sentry/react";
 
 import type { Question } from "@/entities/quiz";
-import {
-  useOnboardingState,
-  useQuizProfilePreviewState,
-} from "@/features/quiz/model";
+import { useOnboardingState } from "@/features/quiz/model";
 
 import {
   getOnboardingConfig,
@@ -35,13 +32,7 @@ export function QuizFlow() {
   const [importTransactions, setImportTransactions] = useState<
     Record<string, boolean>
   >({});
-  const [showProfilePreview, setShowProfilePreview] = useState(false);
   const [hasHydratedState, setHasHydratedState] = useState(false);
-  const {
-    isProfilePreviewPending,
-    markProfilePreviewPending,
-    clearProfilePreviewPending,
-  } = useQuizProfilePreviewState();
 
   const {
     data: onboardingState,
@@ -61,16 +52,14 @@ export function QuizFlow() {
   const answerMutation = useMutation({
     mutationFn: postOnboardingAnswers,
     onSuccess: (nextState) => {
-      if (nextState.completed) {
-        markProfilePreviewPending();
-      }
-
       queryClient.setQueryData(["onboarding", "state"], {
         quizStarted: nextState.quizStarted,
         skipped: nextState.skipped,
         completed: nextState.completed,
         shouldShow: nextState.shouldShow,
         currentStepKey: nextState.currentStepKey,
+        requiredProfileStepKey: nextState.requiredProfileStepKey,
+        missingRequiredFields: nextState.missingRequiredFields,
         completedStepKeys: nextState.completedStepKeys,
         answersByStep: nextState.answersByStep,
       });
@@ -181,7 +170,15 @@ export function QuizFlow() {
     return <Navigate to="/" replace />;
   }
 
-  if (showProfilePreview || isProfilePreviewPending) {
+  if (onboardingState?.currentStepKey === "photo_upload") {
+    return <Navigate to="/photo-upload" replace />;
+  }
+
+  if (onboardingState?.currentStepKey === "profile_basics") {
+    return <Navigate to="/profile" replace />;
+  }
+
+  if (onboardingState?.currentStepKey === "profile_preview") {
     return <ProfilePreviewStep />;
   }
 
@@ -242,11 +239,6 @@ export function QuizFlow() {
           : undefined,
       });
 
-      if (nextState.completed) {
-        setShowProfilePreview(true);
-        return;
-      }
-
       if (nextState.currentStepKey) {
         const nextIndex = steps.findIndex(
           (step) => step.stepKey === nextState.currentStepKey,
@@ -263,7 +255,6 @@ export function QuizFlow() {
 
   const handleSkipAll = async () => {
     try {
-      clearProfilePreviewPending();
       await skipMutation.mutateAsync();
       navigate("/discovery", { replace: true });
     } catch (error) {
