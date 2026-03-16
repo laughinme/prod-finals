@@ -1,13 +1,12 @@
-import * as React from "react"
-import { z } from "zod"
+import { z } from "zod";
 
-import data from "@/app/dashboard/data.json"
+import data from "@/app/dashboard/data.json";
 
-import { ChartAreaInteractive } from "@/shared/components/chart-area-interactive"
-import { DataTable, schema } from "@/shared/components/data-table"
-import { SectionCards } from "@/shared/components/section-cards"
+import { ChartAreaInteractive } from "@/shared/components/chart-area-interactive";
+import { DataTable, schema } from "@/shared/components/data-table";
+import { SectionCards } from "@/shared/components/section-cards";
 
-const tableData = z.array(schema).parse(data)
+const tableData = z.array(schema).parse(data);
 
 export default function DashboardPage() {
   return (
@@ -20,5 +19,5 @@ export default function DashboardPage() {
         <DataTable data={tableData} />
       </div>
     </main>
-  )
+  );
 }

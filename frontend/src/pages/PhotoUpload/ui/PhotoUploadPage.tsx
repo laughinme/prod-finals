@@ -1,13 +1,12 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useTranslation } from "react-i18next";
 
 import { usePhotoUpload } from "@/pages/PhotoUpload/model";
 import { PhotoUploadBackground } from "./PhotoUploadBackground";
 import { PhotoUploadIdleState } from "./PhotoUploadIdleState";
 import { PhotoUploadPreviewState } from "./PhotoUploadPreviewState";
+import { PhotoUploadHeader } from "./PhotoUploadHeader";
 
 export default function PhotoUploadPage() {
-  const { t } = useTranslation();
   const {
     dropZoneRef,
     error,
@@ -42,19 +41,8 @@ export default function PhotoUploadPage() {
         transition={{ duration: 0.5 }}
         className="relative z-10 w-full max-w-lg"
       >
-        {/* Header */}
-        <div className="mb-8">
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="w-full text-center text-4xl font-black uppercase tracking-wide text-black"
-          >
-            {t("photo_upload.title")}
-          </motion.h1>
-        </div>
+        <PhotoUploadHeader></PhotoUploadHeader>
 
-        {/* Upload area */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -82,7 +70,6 @@ export default function PhotoUploadPage() {
           </AnimatePresence>
         </motion.div>
 
-        {/* Error message */}
         <AnimatePresence>
           {error && (
             <motion.p
