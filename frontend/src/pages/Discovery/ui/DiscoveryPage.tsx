@@ -88,7 +88,9 @@ export default function DiscoveryPage() {
                 <div
                   className="w-full max-w-5xl overflow-hidden rounded-4xl"
                   style={{
-                    transform: `translateY(${depth * -24}px) scale(${1 - depth * 0.03})`,
+                    transform: isMobile
+                      ? `translateY(${depth * 8}px) scale(${1 - depth * 0.02})`
+                      : `translateY(${depth * -24}px) scale(${1 - depth * 0.03})`,
                     transition: "transform 0.35s ease-out",
                   }}
                 >

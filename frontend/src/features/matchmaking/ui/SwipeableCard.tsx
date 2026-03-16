@@ -125,7 +125,9 @@ export function SwipeableCard({
     const card = cardRef.current;
     if (!card) return;
     card.style.transition = "none";
-    card.style.transform = "translateY(-24px) scale(0.97)";
+    card.style.transform = isMobile
+      ? "translateY(8px) scale(0.98)"
+      : "translateY(-24px) scale(0.97)";
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -133,7 +135,7 @@ export function SwipeableCard({
         card.style.transform = "translateY(0) scale(1)";
       });
     });
-  }, [profile.id]);
+  }, [profile.id, isMobile]);
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center px-4 md:px-8">
