@@ -21,7 +21,7 @@ export function MultiSelectQuestion({
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 md:gap-3">
       {question.options.map((option) => {
         const isSelected = currentAnswer.includes(option.value);
 
@@ -31,7 +31,7 @@ export function MultiSelectQuestion({
             type="button"
             onClick={() => toggleOption(option.value)}
             className={cn(
-              "rounded-xl border-2 px-5 py-4 text-left font-medium transition-all",
+              "rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-all md:px-5 md:py-4 md:text-base",
               isSelected
                 ? "border-primary bg-primary/10 text-foreground"
                 : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground",

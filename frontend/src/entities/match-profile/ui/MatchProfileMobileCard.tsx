@@ -20,6 +20,7 @@ interface MatchProfileMobileCardProps {
   onOpenReport: () => void;
   onPrepareTestMatch?: () => void;
   isPreparingTestMatch?: boolean;
+  showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
 }
@@ -31,6 +32,7 @@ export function MatchProfileMobileCard({
   onOpenReport,
   onPrepareTestMatch,
   isPreparingTestMatch = false,
+  showMatchScore = true,
   showReportButton = true,
   showActions = true,
 }: MatchProfileMobileCardProps) {
@@ -103,18 +105,20 @@ export function MatchProfileMobileCard({
               ) : null}
 
               {/* Compatibility badge */}
-              <div className="flex flex-wrap gap-2">
-                <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-                  <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur-md transition-all active:scale-95">
-                    <div className="flex size-5 items-center justify-center rounded-full bg-red-500/20">
-                      <Heart className="size-3 fill-red-500 text-red-500" />
+              {showMatchScore ? (
+                <div className="flex flex-wrap gap-2">
+                  <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
+                    <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur-md transition-all active:scale-95">
+                      <div className="flex size-5 items-center justify-center rounded-full bg-red-500/20">
+                        <Heart className="size-3 fill-red-500 text-red-500" />
+                      </div>
+                      <span className="text-sm font-bold text-white">
+                        {profile.matchScore}%
+                      </span>
                     </div>
-                    <span className="text-sm font-bold text-white">
-                      {profile.matchScore}%
-                    </span>
-                  </div>
-                </ScoreBreakdownPopover>
-              </div>
+                  </ScoreBreakdownPopover>
+                </div>
+              ) : null}
             </div>
 
             {/* Side buttons: Info toggle */}

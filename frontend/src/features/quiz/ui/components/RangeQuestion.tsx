@@ -28,8 +28,8 @@ export function RangeQuestion({ question, currentAnswer, onChange }: RangeQuesti
   };
 
   return (
-    <div className="flex flex-col gap-8 py-6">
-      <div className="space-y-4">
+    <div className="flex flex-col gap-5 py-3 md:gap-8 md:py-6">
+      <div className="space-y-3 md:space-y-4">
         <label className="text-sm font-medium text-muted-foreground flex justify-between">
           <span>{t("common.from")}</span>
           <span className="text-foreground font-bold">{currentMin}</span>
@@ -44,7 +44,7 @@ export function RangeQuestion({ question, currentAnswer, onChange }: RangeQuesti
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         <label className="text-sm font-medium text-muted-foreground flex justify-between">
           <span>{t("common.to")}</span>
           <span className="text-foreground font-bold">{currentMax}</span>

@@ -293,15 +293,15 @@ export function QuizFlow() {
   };
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-secondary/20 p-6 md:p-12">
+    <div className="flex min-h-dvh flex-1 items-center justify-center bg-secondary/20 px-3 py-4 md:p-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex w-full max-w-xl flex-col overflow-hidden rounded-4xl border border-border bg-card shadow-xl"
+        className="flex w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-xl md:rounded-4xl"
       >
         <QuizProgress currentIndex={currentIndex} totalSteps={steps.length} />
 
-        <div className="p-8 md:p-12">
+        <div className="p-5 md:p-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={question!.stepKey}
@@ -309,7 +309,7 @@ export function QuizFlow() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="space-y-8"
+              className="space-y-5 md:space-y-8"
             >
               <QuizHeader
                 title={question!.title}
@@ -322,7 +322,7 @@ export function QuizFlow() {
                 }
               />
 
-              <div className="min-h-50">
+              <div className="min-h-32 md:min-h-50">
                 <QuizQuestionContent
                   question={question!}
                   currentAnswer={currentAnswer}
@@ -363,7 +363,7 @@ export function QuizFlow() {
               skipMutation.isPending
             }
             isNextLoading={answerMutation.isPending}
-            className="mt-8"
+            className="mt-5 md:mt-8"
           />
         </div>
       </motion.div>

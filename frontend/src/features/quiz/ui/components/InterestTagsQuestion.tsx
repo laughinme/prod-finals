@@ -37,8 +37,8 @@ export function InterestTagsQuestion({
     onToggleImportTransactions;
 
   return (
-    <div className="space-y-6 py-2">
-      <div className="flex flex-wrap gap-3">
+    <div className="space-y-4 py-1 md:space-y-6 md:py-2">
+      <div className="flex flex-wrap gap-2 md:gap-3">
         {question.options.map((option) => {
           const isSelected = currentAnswer.includes(option.value);
           return (
@@ -47,7 +47,7 @@ export function InterestTagsQuestion({
               type="button"
               onClick={() => toggleOption(option.value)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-medium transition-all md:gap-2 md:rounded-2xl md:px-4 md:py-3 md:text-sm",
                 isSelected
                   ? "border-primary bg-primary/10 text-foreground shadow-sm"
                   : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",

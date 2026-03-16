@@ -30,7 +30,7 @@ export function QuizControls({
   return (
     <div
       className={cn(
-        "mt-8 flex gap-4 pt-4 border-t border-border/50",
+        "mt-8 flex gap-3 pt-4 border-t border-border/50 md:gap-4",
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function QuizControls({
         <Button
           variant="outline"
           size="lg"
-          className="h-14 flex-1 rounded-2xl text-lg"
+          className="h-11 flex-1 rounded-xl text-sm md:h-14 md:rounded-2xl md:text-lg"
           onClick={onBack}
           disabled={isBackDisabled || isBackLoading}
         >
@@ -48,7 +48,7 @@ export function QuizControls({
 
       <Button
         size="lg"
-        className="h-14 flex-1 rounded-2xl text-lg"
+        className="h-11 flex-1 rounded-xl text-sm md:h-14 md:rounded-2xl md:text-lg"
         onClick={onNext}
         disabled={isNextDisabled || isNextLoading}
       >

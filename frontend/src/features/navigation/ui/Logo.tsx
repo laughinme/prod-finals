@@ -3,7 +3,11 @@ import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { HeartHandshake } from "lucide-react";
 
-export function Logo() {
+interface LogoProps {
+  compact?: boolean;
+}
+
+export function Logo({ compact = false }: LogoProps) {
   const { t } = useTranslation();
 
   return (
@@ -15,14 +19,16 @@ export function Logo() {
       >
         <HeartHandshake className="size-4.5 text-primary-foreground md:size-5" />
       </motion.div>
-      <div>
-        <div className="text-sm font-extrabold tracking-tight md:text-base">
-          T-Match
+      {!compact && (
+        <div>
+          <div className="text-sm font-extrabold tracking-tight md:text-base">
+            T-Match
+          </div>
+          <div className="hidden text-xs text-muted-foreground sm:block">
+            {t("common.slogan")}
+          </div>
         </div>
-        <div className="hidden text-xs text-muted-foreground sm:block">
-          {t("common.slogan")}
-        </div>
-      </div>
+      )}
     </NavLink>
   );
 }
