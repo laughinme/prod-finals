@@ -180,3 +180,75 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
     assert "category_fit" in preview.reason_codes
     assert any(signal.label.startswith("Вы оба любите") for signal in preview.reason_signals)
     assert preview.category_breakdown[0].label == category.label
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_http_ml_facade_diversifies_top_category_order(monkeypatch):
+    requester = FeedCandidateContext(
+        user_id=uuid4(),
+        ml_user_id="requester-ml",
+        display_name="Requester",
+    )
+    candidate_a = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-a", display_name="A")
+    candidate_b = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-b", display_name="B")
+    candidate_c = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-c", display_name="C")
+    candidate_d = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-d", display_name="D")
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "decision_mode": "model",
+                "candidates": [
+                    {
+                        "candidate_user_id": "cand-a",
+                        "score": 0.99,
+                        "score_components": {"supermarkets": 1.0},
+                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                    },
+                    {
+                        "candidate_user_id": "cand-b",
+                        "score": 0.98,
+                        "score_components": {"supermarkets": 1.0},
+                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                    },
+                    {
+                        "candidate_user_id": "cand-c",
+                        "score": 0.97,
+                        "score_components": {"restaurants": 1.0},
+                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                    },
+                    {
+                        "candidate_user_id": "cand-d",
+                        "score": 0.96,
+                        "score_components": {"supermarkets": 1.0},
+                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                    },
+                ],
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+
+    facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
+    ranked = await facade.rank(requester, [candidate_a, candidate_b, candidate_c, candidate_d], limit=4)
+    ordered_ids = [str(item.candidate_user_id) for item in ranked.candidates]
+
+    assert ranked.decision_mode.value == "model"
+    assert ordered_ids[0] == str(candidate_a.user_id)
+    assert ordered_ids[1] == str(candidate_c.user_id)

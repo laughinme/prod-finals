@@ -73,6 +73,36 @@ def _top_category_label(scores: list[CompatibilityCategoryScore]) -> str | None:
     return None
 
 
+def _top_category_key(scores: list[CompatibilityCategoryScore]) -> str | None:
+    for item in scores:
+        if _is_specific_category_label(item.label):
+            return (item.category_key or item.label).strip().lower()
+    return None
+
+
+def _diversify_by_top_category(scored: list[RankedCandidate]) -> list[RankedCandidate]:
+    if len(scored) < 3:
+        return scored
+
+    remaining = list(scored)
+    diversified: list[RankedCandidate] = []
+    previous_key: str | None = None
+
+    while remaining:
+        chosen_index = 0
+        for index, candidate in enumerate(remaining):
+            key = _top_category_key(candidate.category_scores)
+            if previous_key is None or key is None or key != previous_key:
+                chosen_index = index
+                break
+
+        selected = remaining.pop(chosen_index)
+        diversified.append(selected)
+        previous_key = _top_category_key(selected.category_scores)
+
+    return diversified
+
+
 class MlFacade:
     async def rank(
         self,
@@ -188,6 +218,7 @@ class MockMlFacade(MlFacade):
             )
 
         scored.sort(key=lambda item: item.score, reverse=True)
+        scored = _diversify_by_top_category(scored)
         return RankedCandidates(
             decision_mode=DecisionMode.FALLBACK,
             candidates=scored[:limit],
@@ -613,6 +644,7 @@ class HttpMlFacade(MlFacade):
             )
 
         scored.sort(key=lambda item: item.score, reverse=True)
+        scored = _diversify_by_top_category(scored)
 
         if not scored:
             logger.info("ML returned %d candidates but none matched backend user pool, falling back to mock", len(ml_candidates))
