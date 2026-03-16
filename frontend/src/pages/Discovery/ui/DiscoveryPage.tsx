@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Coffee, ShieldAlert } from "lucide-react";
@@ -13,6 +14,16 @@ const noop = () => {};
 export default function DiscoveryPage() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
+
+  // Lock vertical scrolling on mobile for this page
+  useEffect(() => {
+    if (!isMobile) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobile]);
+
   const {
     currentProfile,
     nextProfiles,
@@ -31,7 +42,7 @@ export default function DiscoveryPage() {
   } = useDiscoveryPage();
 
   return (
-    <main className="relative flex flex-1 items-center justify-center overflow-hidden bg-secondary/20 p-4 md:p-8">
+    <main className="relative flex h-[calc(100dvh-4rem)] items-center justify-center overflow-hidden bg-secondary/20 p-0 md:h-[calc(100dvh-5rem)] md:p-8">
       <AnimatePresence initial={false}>
         {isFeedLoading ? (
           <motion.div
@@ -69,9 +80,14 @@ export default function DiscoveryPage() {
               return (
                 <div
                   key={`stack-${profile.id}`}
-                  className="pointer-events-none absolute inset-x-4 z-0 mx-auto max-w-5xl overflow-hidden rounded-4xl md:inset-x-8"
+                  className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-4 md:px-8"
                   style={{
                     zIndex: 10 - depth,
+                  }}
+                >
+                <div
+                  className="w-full max-w-5xl overflow-hidden rounded-4xl"
+                  style={{
                     transform: `translateY(${depth * -24}px) scale(${1 - depth * 0.03})`,
                     transition: "transform 0.35s ease-out",
                   }}
@@ -86,6 +102,7 @@ export default function DiscoveryPage() {
                     showReportButton={false}
                     showActions={false}
                   />
+                </div>
                 </div>
               );
             })}

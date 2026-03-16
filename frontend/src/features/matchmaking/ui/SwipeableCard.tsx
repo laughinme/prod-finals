@@ -136,37 +136,39 @@ export function SwipeableCard({
   }, [profile.id]);
 
   return (
-    <div
-      ref={cardRef}
-      onTouchStart={handleStart}
-      onMouseDown={handleStart}
-      style={{
-        touchAction: "pan-y",
-      }}
-      className="absolute inset-x-4 z-10 mx-auto w-auto max-w-5xl cursor-grab select-none active:cursor-grabbing md:inset-x-8"
-    >
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-4 md:px-8">
       <div
-        style={{ opacity: likeOpacity }}
-        className="pointer-events-none absolute top-12 left-12 z-20 rounded-xl border-4 border-green-500 px-4 py-2 text-4xl font-black text-green-500 uppercase -rotate-15 md:top-20 md:left-20"
+        ref={cardRef}
+        onTouchStart={handleStart}
+        onMouseDown={handleStart}
+        style={{
+          touchAction: "none",
+        }}
+        className="relative w-full max-w-5xl cursor-grab select-none active:cursor-grabbing"
       >
-        LIKE
-      </div>
-      <div
-        style={{ opacity: nopeOpacity }}
-        className="pointer-events-none absolute top-12 right-12 z-20 rounded-xl border-4 border-red-500 px-4 py-2 text-4xl font-black text-red-500 uppercase rotate-15 md:top-20 md:right-20"
-      >
-        NOPE
-      </div>
+        <div
+          style={{ opacity: likeOpacity }}
+          className="pointer-events-none absolute top-12 left-12 z-20 rounded-xl border-4 border-green-500 px-4 py-2 text-4xl font-black text-green-500 uppercase -rotate-15 md:top-20 md:left-20"
+        >
+          LIKE
+        </div>
+        <div
+          style={{ opacity: nopeOpacity }}
+          className="pointer-events-none absolute top-12 right-12 z-20 rounded-xl border-4 border-red-500 px-4 py-2 text-4xl font-black text-red-500 uppercase rotate-15 md:top-20 md:right-20"
+        >
+          NOPE
+        </div>
 
-      <MatchProfileCard
-        profile={profile}
-        isMobile={isMobile}
-        onPass={onPass}
-        onLike={onLike}
-        onOpenReport={onOpenReport}
-        onPrepareTestMatch={onPrepareTestMatch}
-        isPreparingTestMatch={isPreparingTestMatch}
-      />
+        <MatchProfileCard
+          profile={profile}
+          isMobile={isMobile}
+          onPass={onPass}
+          onLike={onLike}
+          onOpenReport={onOpenReport}
+          onPrepareTestMatch={onPrepareTestMatch}
+          isPreparingTestMatch={isPreparingTestMatch}
+        />
+      </div>
     </div>
   );
 }

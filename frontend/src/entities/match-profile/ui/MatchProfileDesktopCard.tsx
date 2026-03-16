@@ -29,15 +29,26 @@ export function MatchProfileDesktopCard({
 
   return (
     <Card className="relative flex flex-col overflow-hidden rounded-4xl border-2 border-black bg-card p-0 shadow-2xl shadow-primary/5 select-none md:flex-row">
-      {showMatchScore ? (
-        <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
+      <div className="absolute top-6 left-6 z-20 hidden items-center gap-2 md:flex">
+        {showMatchScore ? (
           <ScoreBreakdownPopover categories={profile.categoryBreakdown}>
-            <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md ">
+            <div className="rounded-xl border border-primary/20 bg-black/90 px-3 py-1 text-lg font-black text-primary shadow-xl backdrop-blur-md">
               {profile.matchScore}%
             </div>
           </ScoreBreakdownPopover>
-        </div>
-      ) : null}
+        ) : null}
+        {onPrepareTestMatch ? (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={onPrepareTestMatch}
+            disabled={isPreparingTestMatch}
+            className="rounded-xl bg-black/90 px-3 py-1 text-sm font-semibold text-white shadow-xl backdrop-blur-md transition-colors hover:bg-black/80 disabled:opacity-60"
+          >
+            {t("discovery.test_match_button")}
+          </button>
+        ) : null}
+      </div>
 
       <div className="relative h-[50vh] w-full shrink-0 md:h-[70vh] md:w-[45%]">
         {profile.image ? (
@@ -85,28 +96,14 @@ export function MatchProfileDesktopCard({
           </div>
 
           {showReportButton ? (
-            <div className="flex shrink-0 items-center gap-3">
-              {onPrepareTestMatch ? (
-                <button
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onPrepareTestMatch}
-                  disabled={isPreparingTestMatch}
-                  className="rounded-xl bg-secondary px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 disabled:opacity-60"
-                >
-                  {t("discovery.test_match_button")}
-                </button>
-              ) : null}
-
-              <button
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="text-muted-foreground transition-colors hover:text-destructive"
-                onClick={onOpenReport}
-              >
-                <ShieldAlert className="size-7.5 opacity-80" />
-              </button>
-            </div>
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+              onClick={onOpenReport}
+            >
+              <ShieldAlert className="size-7.5 opacity-80" />
+            </button>
           ) : null}
         </div>
 
