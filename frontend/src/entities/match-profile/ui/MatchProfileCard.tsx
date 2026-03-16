@@ -5,9 +5,14 @@ import { MatchProfileMobileCard } from "./MatchProfileMobileCard";
 export interface MatchProfileCardProps {
   profile: MatchProfile;
   isMobile: boolean;
-  onLike: () => void;
+  onLike: () => void | boolean | Promise<boolean | void>;
   onPass: () => void;
   onOpenReport: () => void;
+  onPrepareTestMatch?: () => void;
+  isPreparingTestMatch?: boolean;
+  showMatchScore?: boolean;
+  showReportButton?: boolean;
+  showActions?: boolean;
 }
 
 export function MatchProfileCard({
@@ -16,6 +21,11 @@ export function MatchProfileCard({
   onLike,
   onPass,
   onOpenReport,
+  onPrepareTestMatch,
+  isPreparingTestMatch = false,
+  showMatchScore = true,
+  showReportButton = true,
+  showActions = true,
 }: MatchProfileCardProps) {
   if (isMobile) {
     return (
@@ -24,6 +34,11 @@ export function MatchProfileCard({
         onLike={onLike}
         onPass={onPass}
         onOpenReport={onOpenReport}
+        onPrepareTestMatch={onPrepareTestMatch}
+        isPreparingTestMatch={isPreparingTestMatch}
+        showMatchScore={showMatchScore}
+        showReportButton={showReportButton}
+        showActions={showActions}
       />
     );
   }
@@ -31,9 +46,11 @@ export function MatchProfileCard({
   return (
     <MatchProfileDesktopCard
       profile={profile}
-      onLike={onLike}
-      onPass={onPass}
       onOpenReport={onOpenReport}
+      onPrepareTestMatch={onPrepareTestMatch}
+      isPreparingTestMatch={isPreparingTestMatch}
+      showMatchScore={showMatchScore}
+      showReportButton={showReportButton}
     />
   );
 }

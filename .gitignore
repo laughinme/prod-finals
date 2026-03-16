@@ -195,4 +195,4 @@ deploy/secrets/
 .vercel
 /ml/catboost_info
 /ml/transaction_600_new.csv
-
+/ml/data

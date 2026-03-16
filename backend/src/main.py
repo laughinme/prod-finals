@@ -1,9 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 import logging
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
+import httpx
 from sqlalchemy import text
 
 from api import get_api_routers
@@ -44,6 +46,8 @@ def create_app(
             if settings.STORAGE_AUTO_CREATE_BUCKETS:
                 storage = get_media_storage_service()
                 await asyncio.to_thread(storage.ensure_buckets)
+            else:
+                storage = get_media_storage_service()
 
             should_run_scheduler = (
                 settings.SCHEDULER_ENABLED if enable_scheduler is None else enable_scheduler
@@ -73,47 +77,117 @@ def create_app(
     app.include_router(get_webhooks())
 
 
-    # Checks
     @app.get("/api/ping")
-    @app.get("/api/health")
-    async def liveness():
-        return {"status": "operating"}
+    async def ping():
+        return {"status": "ok"}
 
-    @app.get("/api/ready")
-    async def readiness():
-        checks: dict[str, str] = {}
+    @app.get("/api/health")
+    async def health():
+        dependencies: dict[str, str] = {}
+
         try:
             session_factory = get_session_factory(settings)
             async with session_factory() as session:
                 await session.execute(text("SELECT 1"))
-            checks["database"] = "ok"
+            dependencies["database"] = "ok"
         except Exception as exc:
-            logger.warning("Database readiness check failed: %s", exc)
-            checks["database"] = "error"
+            logger.warning("Database health check failed: %s", exc)
+            dependencies["database"] = "error"
 
         try:
             redis = init_redis(settings)
             await redis.ping()
-            checks["redis"] = "ok"
+            dependencies["redis"] = "ok"
         except Exception as exc:
-            logger.warning("Redis readiness check failed: %s", exc)
-            checks["redis"] = "error"
+            logger.warning("Redis health check failed: %s", exc)
+            dependencies["redis"] = "error"
 
         try:
             storage = get_media_storage_service()
             await asyncio.to_thread(storage.check_health)
-            checks["storage"] = "ok"
+            dependencies["storage"] = "ok"
         except Exception as exc:
-            logger.warning("Storage readiness check failed: %s", exc)
-            checks["storage"] = "error"
-        
-        if any(value != "ok" for value in checks.values()):
-            return JSONResponse(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"status": "not_ready", "checks": checks},
-            )
+            logger.warning("Storage health check failed: %s", exc)
+            dependencies["storage"] = "error"
 
-        return {"status": "ready", "checks": checks}
+        if settings.ML_SERVICE_URL:
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(
+                        f"{settings.ML_SERVICE_URL.rstrip('/')}/v1/health",
+                        headers={"X-Service-Token": settings.ML_SERVICE_TOKEN},
+                    )
+                    response.raise_for_status()
+                    ml_payload = response.json()
+                dependencies["ml"] = (
+                    "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                )
+            except Exception as exc:
+                logger.warning("ML health check failed: %s", exc)
+                dependencies["ml"] = "error"
+
+        return {
+            "status": "ok" if all(value == "ok" for value in dependencies.values()) else "degraded",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "version": settings.APP_VERSION,
+            "dependencies": dependencies,
+        }
+
+    @app.get("/api/ready")
+    async def readiness():
+        checks: dict[str, str] = {}
+        for attempt in range(2):
+            checks = {}
+            try:
+                session_factory = get_session_factory(settings)
+                async with session_factory() as session:
+                    await session.execute(text("SELECT 1"))
+                checks["database"] = "ok"
+            except Exception as exc:
+                logger.warning("Database readiness check failed: %s", exc)
+                checks["database"] = "error"
+
+            try:
+                redis = init_redis(settings)
+                await redis.ping()
+                checks["redis"] = "ok"
+            except Exception as exc:
+                logger.warning("Redis readiness check failed: %s", exc)
+                checks["redis"] = "error"
+
+            try:
+                storage = get_media_storage_service()
+                await asyncio.to_thread(storage.check_health)
+                checks["storage"] = "ok"
+            except Exception as exc:
+                logger.warning("Storage readiness check failed: %s", exc)
+                checks["storage"] = "error"
+
+            if settings.ML_SERVICE_URL:
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        response = await client.get(
+                            f"{settings.ML_SERVICE_URL.rstrip('/')}/v1/health",
+                            headers={"X-Service-Token": settings.ML_SERVICE_TOKEN},
+                        )
+                        response.raise_for_status()
+                        ml_payload = response.json()
+                    checks["ml"] = (
+                        "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                    )
+                except Exception as exc:
+                    logger.warning("ML readiness check failed: %s", exc)
+                    checks["ml"] = "error"
+
+            if all(value == "ok" for value in checks.values()):
+                return {"status": "ready", "checks": checks}
+            if attempt == 0:
+                await asyncio.sleep(0.2)
+
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not_ready", "checks": checks},
+        )
 
     return app
 

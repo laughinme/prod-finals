@@ -18,7 +18,6 @@ def get_auth_routers() -> APIRouter:
             403: {"description": "Forbidden"},
             429: {"description": "Too Many Requests"}
         },
-        dependencies=[Depends(auth_rate_limit)]
     )
     
     router.include_router(register_router)

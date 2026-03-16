@@ -3,12 +3,14 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.config import Settings, get_settings
+from service.matchmaking import dispatch_ml_match_outcome_events, dispatch_ml_swipe_events
 
 logger = logging.getLogger(__name__)
 
 
 def init_scheduler(settings: Settings | None = None) -> AsyncIOScheduler | None:
     settings = settings or get_settings()
+    ml_service_url = getattr(settings, "ML_SERVICE_URL", "")
     if not settings.SCHEDULER_ENABLED:
         logger.info("Scheduler is disabled")
         return None
@@ -21,6 +23,28 @@ def init_scheduler(settings: Settings | None = None) -> AsyncIOScheduler | None:
             "misfire_grace_time": 30,
         },
     )
+
+    if ml_service_url:
+        scheduler.add_job(
+            dispatch_ml_swipe_events,
+            trigger="interval",
+            seconds=5,
+            kwargs={"settings": settings},
+            id="ml_swipe_outbox_dispatch",
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info("Scheduled ML swipe outbox dispatcher")
+        scheduler.add_job(
+            dispatch_ml_match_outcome_events,
+            trigger="interval",
+            seconds=5,
+            kwargs={"settings": settings},
+            id="ml_match_outcome_outbox_dispatch",
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info("Scheduled ML match outcome outbox dispatcher")
 
     scheduler.start()
     logger.info("Scheduler started")

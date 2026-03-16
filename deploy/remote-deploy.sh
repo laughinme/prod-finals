@@ -73,8 +73,11 @@ print_diagnostics() {
   echo "----- caddy logs -----"
   "${compose_cmd[@]}" logs --tail=120 caddy || true
   echo
+  echo "----- centrifugo logs -----"
+  "${compose_cmd[@]}" logs --tail=120 centrifugo || true
+  echo
   echo "----- infra logs -----"
-  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init || true
+  "${compose_cmd[@]}" logs --tail=120 db redis minio minio-init centrifugo || true
 }
 
 wait_for_backend_health() {
@@ -138,6 +141,64 @@ wait_for_service_running() {
   return 1
 }
 
+run_ml_profile_sync() {
+  local collection
+  local batch_size
+  local qdrant_url
+  local default_categories
+  local delete_orphans
+  local upsert_existing
+  local direct_upsert_fallback
+  local sync_args=()
+
+  collection="$(read_env_value ML_SYNC_COLLECTION)"
+  batch_size="$(read_env_value ML_SYNC_BATCH_SIZE)"
+  qdrant_url="$(read_env_value ML_SYNC_QDRANT_URL)"
+  default_categories="$(read_env_value ML_SYNC_DEFAULT_CATEGORIES)"
+  delete_orphans="$(read_env_value ML_SYNC_DELETE_ORPHANS)"
+  upsert_existing="$(read_env_value ML_SYNC_UPSERT_EXISTING)"
+  direct_upsert_fallback="$(read_env_value ML_SYNC_DIRECT_UPSERT_FALLBACK)"
+
+  if [[ -z "$collection" ]]; then
+    collection="user_profiles"
+  fi
+  if [[ -z "$batch_size" ]]; then
+    batch_size="200"
+  fi
+  if [[ -z "$delete_orphans" ]]; then
+    delete_orphans="true"
+  fi
+  if [[ -z "$upsert_existing" ]]; then
+    upsert_existing="false"
+  fi
+  if [[ -z "$direct_upsert_fallback" ]]; then
+    direct_upsert_fallback="true"
+  fi
+
+  sync_args+=(python -m scripts.sync_ml_profiles)
+  sync_args+=(--collection "$collection")
+  sync_args+=(--batch-size "$batch_size")
+
+  if [[ -n "$qdrant_url" ]]; then
+    sync_args+=(--qdrant-url "$qdrant_url")
+  fi
+  if [[ -n "$default_categories" ]]; then
+    sync_args+=(--default-categories "$default_categories")
+  fi
+  if is_truthy "$delete_orphans"; then
+    sync_args+=(--delete-orphans)
+  fi
+  if is_truthy "$upsert_existing"; then
+    sync_args+=(--upsert-existing)
+  fi
+  if ! is_truthy "$direct_upsert_fallback"; then
+    sync_args+=(--no-direct-upsert-fallback)
+  fi
+
+  echo "Running ML profile sync..."
+  "${compose_cmd[@]}" exec -T backend "${sync_args[@]}"
+}
+
 if is_truthy "$(read_env_value ML_TRAIN_ON_START)"; then
   if [[ -z "$(read_env_value ML_TRAIN_DATA_URL)" ]]; then
     if is_truthy "$(read_env_value ML_TRAIN_REQUIRED)"; then
@@ -160,7 +221,7 @@ if ! "${compose_cmd[@]}" up --abort-on-container-exit --exit-code-from minio-ini
   exit 1
 fi
 
-if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service backend caddy; then
+if ! "${compose_cmd[@]}" up -d --build --remove-orphans ml-service centrifugo backend caddy; then
   echo "Failed to start application services." >&2
   print_diagnostics
   exit 1
@@ -178,10 +239,31 @@ if ! wait_for_service_running caddy 60; then
   exit 1
 fi
 
+if ! wait_for_service_running centrifugo 60; then
+  echo "Centrifugo did not start correctly." >&2
+  print_diagnostics
+  exit 1
+fi
+
 if ! wait_for_service_running ml-service 120; then
   echo "ml-service did not start correctly." >&2
   print_diagnostics
   exit 1
+fi
+
+sync_on_deploy="$(read_env_value ML_SYNC_ON_DEPLOY)"
+if [[ -z "$sync_on_deploy" ]]; then
+  sync_on_deploy="true"
+fi
+
+if is_truthy "$sync_on_deploy"; then
+  if ! run_ml_profile_sync; then
+    echo "ML profile sync failed." >&2
+    print_diagnostics
+    exit 1
+  fi
+else
+  echo "ML profile sync disabled (ML_SYNC_ON_DEPLOY=false)."
 fi
 
 "${compose_cmd[@]}" ps || true

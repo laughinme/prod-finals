@@ -2,40 +2,57 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
-    """
-    Project dependencies config
-    """
     model_config = SettingsConfigDict(
         env_file=f'{BASE_DIR}/.env',
         extra='ignore'
     )
     
-    # Stage / debug
     APP_STAGE: Literal["dev", "prod"] = "dev"
+    APP_VERSION: str = "dev"
     DEBUG: bool | None = None
     LOG_LEVEL: str = "INFO"
     SQL_ECHO: bool = False
     SCHEDULER_ENABLED: bool = False
+    APP_TIMEZONE: str = "Europe/Moscow"
+    PAIR_COOLDOWN_DAYS: int = 30
+    FEED_TEST_MATCH_ENABLED: bool = False
+    ADMIN_RANDOM_MIX_PERCENT: int = 0
+    DEV_SEED_ENABLED: bool = False
+    MOCK_USER_SEED_ENABLED: bool = False
+    MOCK_USER_SEED_LIMIT: int = 0
+    MOCK_USER_SEED_PASSWORD: str = "DemoPass123!"
+    CENTRIFUGO_ENABLED: bool = False
+    CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api/publish"
+    CENTRIFUGO_WS_URL: str = ""
+    CENTRIFUGO_API_KEY: str = ""
+    CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
+    CENTRIFUGO_TOKEN_TTL_SEC: int = 900
 
-    # API settings
+    ML_SERVICE_URL: str = ""
+    ML_SERVICE_TOKEN: str = "dev-ml-token"
+    ML_PREVIEW_LLM_ENABLED: bool = False
+    ML_PREVIEW_LLM_PROVIDER: str = "huggingface"
+    ML_PREVIEW_LLM_BASE_URL: str = ""
+    ML_PREVIEW_LLM_API_KEY: str = ""
+    ML_PREVIEW_LLM_MODEL: str = "Qwen/Qwen2.5-0.5B-Instruct"
+    ML_PREVIEW_LLM_TIMEOUT_SEC: float = 4.0
+
     API_PORT: int = 8080
     API_HOST: str = '0.0.0.0'
     
-    # Site data (url, paths)
     SITE_URL: str = ''
     
-    # Media settings
     MEDIA_DIR: str = 'media'
-    MAX_PHOTO_SIZE: int = 5  # in MB
+    MAX_PHOTO_SIZE: int = 5 
     
-    # S3-compatible object storage (MinIO, S3, R2, etc.)
     STORAGE_ENDPOINT_INTERNAL: str = "http://minio:9000"
     STORAGE_ENDPOINT_PUBLIC: str = "http://localhost"
     STORAGE_REGION: str = "us-east-1"
@@ -47,29 +64,24 @@ class Settings(BaseSettings):
     STORAGE_USE_PATH_STYLE: bool = True
     STORAGE_AUTO_CREATE_BUCKETS: bool = True
 
-    # Optional notifications adapter
     NOTIFICATIONS_PROVIDER: Literal["noop", "telegram"] = "noop"
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
     
-    # Auth Settings    
     JWT_SECRET: str
     JWT_ALGO: str = "HS256"
     ACCESS_TTL: int = 60 * 15
     REFRESH_TTL: int = 60 * 60 * 24 * 7
     CSRF_HMAC_KEY: bytes = b"change-me"
 
-    # Cookie settings
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     COOKIE_DOMAIN: str | None = None
     COOKIE_PATH: str = "/"
 
-    # CORS settings (optional, use only if you call backend directly)
     CORS_ALLOW_ORIGINS: str = ""
     CORS_ALLOW_ORIGIN_REGEX: str = ""
     
-    # Database settings
     DATABASE_URL: str
     REDIS_URL: str
 
@@ -96,6 +108,18 @@ class Settings(BaseSettings):
 
         return value
 
+    @field_validator("ADMIN_RANDOM_MIX_PERCENT", mode="before")
+    @classmethod
+    def _normalize_admin_random_mix_percent(cls, value: int | str | None) -> int:
+        if value is None:
+            return 0
+        normalized = int(value)
+        if normalized < 0:
+            return 0
+        if normalized > 80:
+            return 80
+        return normalized
+
     @field_validator("CSRF_HMAC_KEY", mode="before")
     @classmethod
     def _ensure_bytes(cls, value: str | bytes) -> bytes:
@@ -118,6 +142,19 @@ class Settings(BaseSettings):
             return value
         return value.rstrip("/")
 
+    @model_validator(mode="after")
+    def _populate_centrifugo_ws_url(self) -> "Settings":
+        if self.CENTRIFUGO_WS_URL or not self.SITE_URL:
+            return self
+
+        parsed = urlsplit(self.SITE_URL)
+        if not parsed.scheme or not parsed.netloc:
+            return self
+
+        ws_scheme = "wss" if parsed.scheme == "https" else "ws"
+        self.CENTRIFUGO_WS_URL = urlunsplit((ws_scheme, parsed.netloc, "/connection/websocket", "", ""))
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -130,7 +167,6 @@ def clear_settings_cache() -> None:
         from service.media import clear_media_storage_service_cache
         clear_media_storage_service_cache()
     except Exception:
-        # Media storage service may be unavailable during bootstrap/import phases.
         pass
 
 

@@ -1,11 +1,11 @@
 from typing import Annotated, Literal
-from fastapi import APIRouter, Depends, Response, Request, Header
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from core.errors import UnauthorizedError
 from core.http.cookies import clear_auth_cookies, set_auth_cookies
 from service.auth import CredentialsService, get_credentials_service
-from domain.auth import UserLogin, TokenPair
+from domain.auth import TokenPair, UserLogin
 
 router = APIRouter()
 security = HTTPBearer(
@@ -18,15 +18,7 @@ security = HTTPBearer(
     path="/login",
     response_model=TokenPair,
     summary="Authenticate user and issue tokens",
-    responses={        
-        200: {
-            'description': 'refresh_token field varies depending on the source of request. ' \
-            'For web it is always null and being set as httponly cookie, ' \
-            'however any other platform gets access and refresh tokens in response body. ' \
-            'It is made to protect web from xss and csrf attacks'
-        },
-        401: {"description": "Wrong credentials"}
-    }
+    responses={401: {"description": "Wrong credentials"}},
 )
 async def login_user(
     response: Response,
@@ -34,13 +26,12 @@ async def login_user(
     svc: Annotated[CredentialsService, Depends(get_credentials_service)],
     client: Literal['web', 'mobile'] = Header('web', alias='X-Client'),
 ) -> TokenPair:
-    access, refresh, csrf = await svc.login(payload, client)
+    _user, access, refresh, csrf = await svc.login(payload, client)
     
     if client == 'web':
         set_auth_cookies(response, refresh, csrf)
-    
         return TokenPair(access_token=access, refresh_token=None)
-    
+
     return TokenPair(access_token=access, refresh_token=refresh)
 
 

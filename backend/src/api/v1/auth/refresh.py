@@ -44,17 +44,14 @@ async def refresh_tokens(
         
         result = await svc.refresh_tokens(cookie_refresh, x_csrf)
         if result is None:
-            # token invalid or csrf mismatch
             clear_auth_cookies(response)
             raise UnauthorizedError("Invalid refresh token")
         
         new_access, new_refresh, new_csrf = result
         
-        # set fresh cookies
         set_auth_cookies(response, new_refresh, new_csrf)
 
-        # body: only short-lived access token
-        return TokenPair(access_token=new_access, refresh_token=None)
+        return TokenPair(access_token=new_access, refresh_token=new_refresh)
         
     if not creds or creds.scheme.lower() != "bearer":
         raise UnauthorizedError("Missing refresh token")

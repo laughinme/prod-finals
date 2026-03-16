@@ -1,14 +1,25 @@
 import { motion } from "motion/react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, MessageCircle } from "lucide-react";
 
-import { useMatchmakingFlow } from "@/features/matchmaking/model";
+import type { MatchProfile } from "@/entities/match-profile/model";
+import { useProfile } from "@/features/profile";
 import { Button } from "@/shared/components/ui/button";
 
+type MatchNavigationState = {
+  matchedProfile?: MatchProfile;
+  matchId?: string | null;
+  conversationId?: string | null;
+};
+
 export default function MatchPage() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { currentUserPreview, matchedProfile, openChat, closeMatch } =
-    useMatchmakingFlow();
+  const { t } = useTranslation();
+  const { data: profile } = useProfile();
+  const state = location.state as MatchNavigationState | null;
+  const matchedProfile = state?.matchedProfile ?? null;
 
   if (!matchedProfile) {
     return <Navigate to="/discovery" replace />;
@@ -26,12 +37,16 @@ export default function MatchPage() {
           className="mb-12 flex items-center justify-center gap-8"
         >
           <div className="relative z-10 h-32 w-32 overflow-hidden rounded-full border-8 border-background shadow-2xl md:h-48 md:w-48">
-            <img
-              src={currentUserPreview.image}
-              alt="You"
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
+            {profile?.profilePicUrl ? (
+              <img
+                src={profile.profilePicUrl}
+                alt={t("common.you")}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="h-full w-full bg-secondary" />
+            )}
           </div>
 
           <div className="-mx-12 z-20 flex h-16 w-16 items-center justify-center rounded-full border-8 border-background bg-primary shadow-xl md:h-24 md:w-24">
@@ -41,12 +56,16 @@ export default function MatchPage() {
           </div>
 
           <div className="relative z-10 h-32 w-32 overflow-hidden rounded-full border-8 border-background shadow-2xl md:h-48 md:w-48">
-            <img
-              src={matchedProfile.image}
-              alt={matchedProfile.name}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-            />
+            {matchedProfile.image ? (
+              <img
+                src={matchedProfile.image}
+                alt={matchedProfile.name}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="h-full w-full bg-secondary" />
+            )}
           </div>
         </motion.div>
 
@@ -56,7 +75,7 @@ export default function MatchPage() {
           transition={{ delay: 0.2 }}
           className="mb-6 text-5xl font-bold tracking-tight md:text-7xl"
         >
-          Это мэтч!
+          {t("match.its_a_match")}
         </motion.h1>
 
         <motion.p
@@ -65,8 +84,7 @@ export default function MatchPage() {
           transition={{ delay: 0.3 }}
           className="mb-12 max-w-lg text-xl text-muted-foreground"
         >
-          Вы и {matchedProfile.name} понравились друг другу. Самое время начать
-          общение.
+          {t("match.match_description", { name: matchedProfile.name })}
         </motion.p>
 
         <motion.div
@@ -77,25 +95,29 @@ export default function MatchPage() {
         >
           <Button
             size="lg"
-            className="h-14 flex-1 gap-2 rounded-2xl text-lg font-semibold"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg font-semibold"
             onClick={() => {
-              openChat(matchedProfile.id);
-              navigate("/chat");
+              navigate("/chat", {
+                state: {
+                  matchedProfile,
+                  matchId: state?.matchId ?? null,
+                  conversationId: state?.conversationId ?? null,
+                },
+              });
             }}
           >
             <MessageCircle className="size-5" />
-            Написать
+            {t("match.write_message")}
           </Button>
           <Button
             variant="outline"
             size="lg"
-            className="h-14 flex-1 rounded-2xl text-lg"
+            className="h-14 flex-1 min-h-12 rounded-2xl text-lg"
             onClick={() => {
-              closeMatch();
               navigate("/discovery");
             }}
           >
-            Продолжить
+            {t("common.continue")}
             <ArrowRight className="ml-2 size-5" />
           </Button>
         </motion.div>

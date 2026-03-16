@@ -137,8 +137,8 @@ class HardFilters(StrictModel):
 
 
 class ExclusionSet(StrictModel):
-    hard_exclude_user_ids: list[int] | None = Field(default=None, max_length=20000)
-    soft_seen_user_ids: list[int] | None = Field(default=None, max_length=20000)
+    hard_exclude_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
+    soft_seen_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
 
 
 class RecommendationContext(StrictModel):
@@ -152,9 +152,10 @@ class RecommendationContext(StrictModel):
 
 class RecommendationRequest(StrictModel):
     trace_id: UUID
-    request_user_id: int
-    limit: int = Field(default=12, ge=1, le=50)
+    request_user_id: str | int
+    limit: int = Field(default=12, ge=1, le=2000)
     strategy: Strategy = Strategy.balanced
+    candidate_user_ids: list[str | int] | None = Field(default=None, max_length=5000)
     hard_filters: HardFilters | None = None
     exclusion: ExclusionSet | None = None
     context: RecommendationContext
@@ -167,7 +168,8 @@ class ReasonSignal(StrictModel):
 
 
 class RecommendationCandidate(StrictModel):
-    candidate_user_id: int
+                                                                                                      
+    candidate_user_id: str | int
     score: float = Field(ge=0, le=1)
     score_components: dict[str, float] | None = None
     reason_signals: list[ReasonSignal] = Field(min_length=1, max_length=5)
@@ -181,14 +183,14 @@ class RecommendationResponse(StrictModel):
     features_version: str
     decision_mode: RecommendationDecisionMode
     warnings: list[str] = Field(default_factory=list, max_length=20)
-    candidates: list[RecommendationCandidate] = Field(default_factory=list, max_length=50)
+    candidates: list[RecommendationCandidate] = Field(default_factory=list, max_length=5000)
 
 
 class SwipeFeedbackRequest(StrictModel):
     trace_id: UUID
     event_id: UUID
-    actor_user_id: int
-    target_user_id: int
+    actor_user_id: str | int
+    target_user_id: str | int
     action: SwipeAction
     shown_rank: int | None = Field(default=None, ge=1, le=100)
     shown_score: float | None = Field(default=None, ge=0, le=1)
@@ -201,16 +203,16 @@ class MatchOutcomeRequest(StrictModel):
     trace_id: UUID
     event_id: UUID
     match_id: UUID
-    user_a_id: int
-    user_b_id: int
+    user_a_id: str | int
+    user_b_id: str | int
     outcome: MatchOutcome
     happened_at: datetime
 
 
 class CompatibilityExplanationRequest(StrictModel):
     trace_id: UUID
-    requester_user_id: int
-    candidate_user_id: int
+    requester_user_id: str | int
+    candidate_user_id: str | int
     channel: ExplanationChannel = ExplanationChannel.feed
     locale: str = "ru-RU"
     max_reasons: int = Field(default=3, ge=1, le=5)
@@ -225,7 +227,7 @@ class ExplanationReason(StrictModel):
 
 class CompatibilityExplanationResponse(StrictModel):
     trace_id: UUID
-    candidate_user_id: int
+    candidate_user_id: str | int
     privacy_level: PrivacyLevel
     reasons: list[ExplanationReason] = Field(min_length=1, max_length=5)
     privacy_checks: list[str] = Field(default_factory=list, max_length=10)
@@ -241,3 +243,24 @@ class ErrorResponse(StrictModel):
     message: str
     details: dict[str, Any] | None = None
     trace_id: UUID
+
+
+class UserProfileUpdateRequest(StrictModel):
+    trace_id: UUID
+    user_id: str | int
+    favorite_categories: list[str] = Field(min_length=1, max_length=15)
+    import_transactions: bool = Field(default=False, description="Флаг согласия на импорт банковских транзакций")
+    preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
+
+class RawTransaction(StrictModel):
+    transaction_id: str
+    merchant_nm: str
+    merchant_type_code: str | int
+    category_nm: str | None = None                                            
+    timestamp: datetime
+    amount: float = Field(default=0.0, ge=0)
+
+class TransactionSyncRequest(StrictModel):
+    trace_id: UUID
+    user_id: str | int
+    transactions: list[RawTransaction] = Field(min_length=1, max_length=1000)

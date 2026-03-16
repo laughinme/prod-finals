@@ -1,7 +1,7 @@
 from uuid import UUID
 
-PERMISSIONS_CACHE_TTL_SECONDS = 900 # 15 minutes
-ROLES_CACHE_TTL_SECONDS = 900 # 15 minutes
+PERMISSIONS_CACHE_TTL_SECONDS = 900 
+ROLES_CACHE_TTL_SECONDS = 900 
 
 
 def permissions_cache_key(user_id: UUID | str, version: int) -> str:

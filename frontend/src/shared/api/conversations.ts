@@ -1,0 +1,91 @@
+import axiosInstance from "./axiosInstance";
+
+export type MessageStatus = "sent" | "delivered" | "read";
+
+export interface MessageResponse {
+  message_id: string;
+  sender_user_id: string;
+  text: string;
+  created_at: string;
+  status: MessageStatus;
+}
+
+export interface ConversationMessagesResponse {
+  items: MessageResponse[];
+  next_cursor: string | null;
+}
+
+export interface ConversationRealtimeTokenResponse {
+  enabled: boolean;
+  channel: string | null;
+  token: string | null;
+  expires_at: string | null;
+}
+
+export type ConversationStatus =
+  | "active"
+  | "closed_by_user"
+  | "closed_by_block"
+  | "closed_by_report";
+
+export interface ConversationPeer {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export interface ConversationSafetyActions {
+  can_block: boolean;
+  can_report: boolean;
+}
+
+export interface ConversationResponse {
+  conversation_id: string;
+  match_id: string;
+  status: ConversationStatus;
+  peer: ConversationPeer;
+  safety_actions: ConversationSafetyActions;
+}
+
+export const conversationsApi = {
+  getConversation: async (conversationId: string): Promise<ConversationResponse> => {
+    const response = await axiosInstance.get<ConversationResponse>(
+      `/conversations/${conversationId}`,
+    );
+    return response.data;
+  },
+
+  getMessages: async (
+    conversationId: string,
+    cursor?: string,
+    limit: number = 50,
+  ): Promise<ConversationMessagesResponse> => {
+    const response = await axiosInstance.get<ConversationMessagesResponse>(
+      `/conversations/${conversationId}/messages`,
+      {
+        params: { cursor, limit },
+      },
+    );
+    return response.data;
+  },
+
+  sendMessage: async (
+    conversationId: string,
+    text: string,
+  ): Promise<MessageResponse> => {
+    const response = await axiosInstance.post<MessageResponse>(
+      `/conversations/${conversationId}/messages`,
+      { text },
+    );
+    return response.data;
+  },
+
+  getRealtimeToken: async (
+    conversationId: string,
+  ): Promise<ConversationRealtimeTokenResponse> => {
+    const response = await axiosInstance.get<ConversationRealtimeTokenResponse>(
+      `/conversations/${conversationId}/realtime-token`,
+    );
+    return response.data;
+  },
+};

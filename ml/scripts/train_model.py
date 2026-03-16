@@ -75,7 +75,7 @@ def _download_training_data(
     archive_member: str,
 ) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=timeout_sec) as response:  # noqa: S310
+    with urllib.request.urlopen(url, timeout=timeout_sec) as response:              
         payload = response.read()
         content_type = response.headers.get_content_type()
 
@@ -85,7 +85,7 @@ def _download_training_data(
             destination=destination,
             archive_member=archive_member,
         )
-        print(f"ZIP detected, extracted member: {selected_member} -> {destination}")
+        print(f"Зип, достаем: {selected_member} -> {destination}")
         return
 
     destination.write_bytes(payload)
@@ -150,13 +150,9 @@ def _resolve_upload_config(
     if missing:
         if upload_required:
             raise RuntimeError(
-                f"Model upload config is incomplete ({', '.join(missing)}) "
-                "while ML_MODEL_UPLOAD_REQUIRED=true."
+                f"ерорр ({', '.join(missing)}) "
+                "ML_MODEL_UPLOAD_REQUIRED=true."
             )
-        print(
-            "Model upload skipped: missing config -> "
-            + ", ".join(missing)
-        )
         return None
 
     return endpoint_url, region, access_key, secret_key, bucket, key

@@ -5,12 +5,26 @@ import type { User, UserPatchPayload } from "@/entities/user/model";
 export type UserDto = {
     id: string;
     email: string;
-    username: string | null;
+    first_name: string | null;
+    last_name: string | null;
     avatar_key?: string | null;
     avatar_url?: string | null;
     profile_pic_url?: string | null;
     bio?: string | null;
+    birth_date?: string | null;
+    gender?: string | null;
+    city?: { id: string; name: string } | null;
+    goal?: string | null;
+    looking_for_genders?: string[];
+    age_range?: { min: number; max: number } | null;
+    distance_km?: number | null;
+    interests?: string[];
+    import_transactions?: boolean;
     is_onboarded: boolean;
+    quiz_started: boolean;
+    has_approved_photo?: boolean;
+    can_like_profiles?: boolean;
+    can_be_shown_in_feed?: boolean;
     banned: boolean;
     role_slugs?: string[];
     roles?: string[];
@@ -19,8 +33,15 @@ export type UserDto = {
 };
 
 export type UserPatchPayloadDto = {
-    username?: string | null;
     bio?: string | null;
+    city_id?: string | null;
+    city?: string | null;
+    goal?: string | null;
+    looking_for_genders?: string[] | null;
+    age_range?: { min: number; max: number } | null;
+    distance_km?: number | null;
+    interests?: string[] | null;
+    import_transactions?: boolean | null;
 };
 
 type AvatarPresignRequestDto = {
@@ -69,6 +90,11 @@ const uploadToPresignedUrl = async (uploadUrl: string, file: File): Promise<void
 const confirmAvatarUpload = async (objectKey: string): Promise<User> => {
     const payload: AvatarConfirmRequestDto = { object_key: objectKey };
     const response = await apiProtected.post<UserDto>("/users/me/avatar/confirm", payload);
+    return toUser(response.data);
+};
+
+export const setDefaultProfilePicture = async (): Promise<User> => {
+    const response = await apiProtected.post<UserDto>("/users/me/avatar/default");
     return toUser(response.data);
 };
 

@@ -1,14 +1,18 @@
-import { motion, useMotionValue, useTransform, animate } from "motion/react";
-import { useDrag } from "@use-gesture/react";
+import { useCallback, useEffect, useRef } from "react";
 import type { MatchProfile } from "@/entities/match-profile/model";
 import { MatchProfileCard } from "@/entities/match-profile/ui";
+import { useNetworkStatus } from "@/shared/lib/network/useNetworkStatus";
+import { getPosition } from "./utils/get-position";
+import { clamp } from "./utils/clamp";
 
 interface SwipeableCardProps {
   profile: MatchProfile;
   isMobile: boolean;
-  onLike: () => void;
+  onLike: () => void | boolean | Promise<boolean | void>;
   onPass: () => void;
   onOpenReport: () => void;
+  onPrepareTestMatch?: () => void;
+  isPreparingTestMatch?: boolean;
   exitX: number;
 }
 
@@ -18,91 +22,275 @@ export function SwipeableCard({
   onLike,
   onPass,
   onOpenReport,
-  exitX,
+  onPrepareTestMatch,
+  isPreparingTestMatch = false,
 }: SwipeableCardProps) {
-  const x = useMotionValue(0);
-
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
-  const opacity = useTransform(
-    x,
-    [-200, -150, 0, 150, 200],
-    [0.5, 1, 1, 1, 0.5],
+  const { isBlockingConnectionIssue } = useNetworkStatus();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const likeBadgeRef = useRef<HTMLDivElement>(null);
+  const nopeBadgeRef = useRef<HTMLDivElement>(null);
+  const interactionRef = useRef<{ x: number; y: number } | undefined>(
+    undefined,
   );
+  const progressRef = useRef(0);
+  const frameRef = useRef<number | null>(null);
+  const passTimeoutRef = useRef<number | null>(null);
+  const pendingPositionRef = useRef<{ x: number; y: number } | null>(null);
 
-  const likeOpacity = useTransform(x, [50, 150], [0, 1]);
-  const nopeOpacity = useTransform(x, [-150, -50], [1, 0]);
+  const setBadgeOpacity = useCallback((progress: number) => {
+    const likeOpacity = clamp(progress, 0, 1);
+    const nopeOpacity = clamp(-progress, 0, 1);
 
-  const bind = useDrag(
-    ({ active, movement: [mx], velocity: [vx], direction: [dx] }) => {
-      if (active) {
-        x.set(mx);
-      } else {
-        const threshold = 100;
-        const swipeVelocity = 0.5;
+    if (likeBadgeRef.current) {
+      likeBadgeRef.current.style.opacity = `${likeOpacity}`;
+    }
 
-        const isSwipeLike = mx > threshold || (vx > swipeVelocity && dx > 0);
-        const isSwipePass = mx < -threshold || (vx > swipeVelocity && dx < 0);
+    if (nopeBadgeRef.current) {
+      nopeBadgeRef.current.style.opacity = `${nopeOpacity}`;
+    }
+  }, []);
 
-        if (isSwipeLike) {
-          onLike();
-        } else if (isSwipePass) {
-          onPass();
-        } else {
-          animate(x, 0, { type: "spring", stiffness: 300, damping: 25 });
-        }
+  const resetCardPosition = useCallback((animated = true) => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    card.style.transition = animated ? "transform 0.25s ease-out" : "none";
+    card.style.transform = "translate(0px, 0px) rotate(0deg)";
+    card.style.willChange = "auto";
+    progressRef.current = 0;
+    setBadgeOpacity(0);
+  }, [setBadgeOpacity]);
+
+  const cancelInteraction = useCallback((animated = true) => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    if (passTimeoutRef.current !== null) {
+      window.clearTimeout(passTimeoutRef.current);
+      passTimeoutRef.current = null;
+    }
+
+    interactionRef.current = undefined;
+    pendingPositionRef.current = null;
+    resetCardPosition(animated);
+  }, [resetCardPosition]);
+
+  const handleStart = useCallback(
+    (
+      e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
+    ) => {
+      if (isBlockingConnectionIssue) {
+        cancelInteraction(false);
+        return;
       }
+
+      const card = cardRef.current;
+      if (!card) return;
+
+      card.style.transition = "";
+      card.style.willChange = "transform";
+
+      const { x, y } = getPosition(e);
+      interactionRef.current = { x, y };
     },
-    {
-      axis: "x",
-      filterTaps: true,
-      preventScroll: true,
-    },
+    [cancelInteraction, isBlockingConnectionIssue],
   );
+
+  const handleMove = useCallback((e: TouchEvent | MouseEvent) => {
+    if (isBlockingConnectionIssue) {
+      cancelInteraction();
+      return;
+    }
+
+    if (!interactionRef.current) return;
+
+    pendingPositionRef.current = getPosition(e);
+
+    if (frameRef.current !== null) return;
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+
+      if (!interactionRef.current) return;
+      const card = cardRef.current;
+      const pendingPosition = pendingPositionRef.current;
+      if (!card) return;
+      if (!pendingPosition) return;
+
+      const { x, y } = pendingPosition;
+      const dx = (x - interactionRef.current.x) * 0.8;
+      const dy = (y - interactionRef.current.y) * 0.5;
+      const deg = (dx / 600) * -30;
+
+      card.style.transform = `translate(${dx}px, ${dy}px) rotate(${deg}deg)`;
+
+      const nextProgress = clamp(dx / 100, -1, 1);
+      progressRef.current = nextProgress;
+      setBadgeOpacity(nextProgress);
+    });
+  }, [cancelInteraction, isBlockingConnectionIssue, setBadgeOpacity]);
+
+  const handleEnd = useCallback(() => {
+    if (isBlockingConnectionIssue) {
+      cancelInteraction();
+      return;
+    }
+
+    if (!interactionRef.current) return;
+    const card = cardRef.current;
+    if (!card) return;
+
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    const progress = progressRef.current;
+    const isSelect = Math.abs(progress) === 1;
+    const isGood = progress === 1;
+
+    let currentX = 0;
+    let currentY = 0;
+    let currentRotate = 0;
+
+    const transformStr = card.style.transform;
+    const matchTranslateX = transformStr.match(/translate\(([^p]+)px/);
+    if (matchTranslateX) currentX = parseFloat(matchTranslateX[1]);
+    const matchTranslateY = transformStr.match(/px, ([^p]+)px\)/);
+    if (matchTranslateY) currentY = parseFloat(matchTranslateY[1]);
+    const matchRotate = transformStr.match(/rotate\(([^d]+)deg\)/);
+    if (matchRotate) currentRotate = parseFloat(matchRotate[1]);
+
+    interactionRef.current = undefined;
+    pendingPositionRef.current = null;
+    progressRef.current = 0;
+    setBadgeOpacity(0);
+
+    const animateCardOut = (direction: "left" | "right") => {
+      const dx = direction === "right"
+        ? window.innerWidth
+        : (window.innerWidth + card.getBoundingClientRect().width) * -1;
+
+      card.style.transition = "transform 0.3s ease-in-out";
+      card.style.transform = `translate(${currentX + dx}px, ${currentY}px) rotate(${currentRotate * 2}deg)`;
+      card.style.willChange = "auto";
+    };
+
+    if (isSelect) {
+      if (isGood) {
+        animateCardOut("right");
+        Promise.resolve(onLike())
+          .then((accepted) => {
+            if (accepted === false) {
+              resetCardPosition();
+              return;
+            }
+          })
+          .catch(() => {
+            resetCardPosition();
+          });
+      } else {
+        animateCardOut("left");
+        passTimeoutRef.current = window.setTimeout(() => {
+          passTimeoutRef.current = null;
+          onPass();
+        }, 300);
+      }
+      return;
+    }
+
+    resetCardPosition();
+  }, [
+    cancelInteraction,
+    isBlockingConnectionIssue,
+    onLike,
+    onPass,
+    resetCardPosition,
+    setBadgeOpacity,
+  ]);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("touchmove", handleMove);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchend", handleEnd);
+
+    return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+      if (passTimeoutRef.current !== null) {
+        window.clearTimeout(passTimeoutRef.current);
+      }
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchend", handleEnd);
+    };
+  }, [handleMove, handleEnd]);
+
+  useEffect(() => {
+    if (!isBlockingConnectionIssue) {
+      return;
+    }
+
+    cancelInteraction();
+  }, [cancelInteraction, isBlockingConnectionIssue]);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transition = "none";
+    card.style.transform = isMobile
+      ? "translateY(8px) scale(0.98)"
+      : "translateY(-24px) scale(0.97)";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.style.transition = "transform 0.3s ease-out";
+        card.style.transform = "translateY(0) scale(1)";
+      });
+    });
+  }, [profile.id, isMobile]);
 
   return (
-    <motion.div
-      {...(bind() as any)}
-      style={{
-        x,
-        rotate,
-        opacity,
-        touchAction: "pan-y",
-      }}
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{
-        x: exitX,
-        opacity: 0,
-        scale: 0.95,
-        transition: { duration: 0.2 },
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 25,
-      }}
-      className="absolute inset-x-4 z-10 mx-auto w-auto max-w-5xl cursor-grab active:cursor-grabbing md:inset-x-8"
-    >
-      <motion.div
-        style={{ opacity: likeOpacity }}
-        className="pointer-events-none absolute top-12 left-12 z-20 rounded-xl border-4 border-green-500 px-4 py-2 text-4xl font-black text-green-500 uppercase -rotate-15 md:top-20 md:left-20"
+    <div className="absolute inset-0 z-10 flex items-center justify-center px-2 md:px-8">
+      <div
+        ref={cardRef}
+        onTouchStart={handleStart}
+        onMouseDown={handleStart}
+        style={{
+          touchAction: isBlockingConnectionIssue ? "auto" : "none",
+        }}
+      className="relative w-full max-w-5xl cursor-grab select-none active:cursor-grabbing"
       >
-        LIKE
-      </motion.div>
-      <motion.div
-        style={{ opacity: nopeOpacity }}
-        className="pointer-events-none absolute top-12 right-12 z-20 rounded-xl border-4 border-red-500 px-4 py-2 text-4xl font-black text-red-500 uppercase rotate-15 md:top-20 md:right-20"
-      >
-        NOPE
-      </motion.div>
+        <div
+          ref={likeBadgeRef}
+          style={{ opacity: 0 }}
+          className="pointer-events-none absolute top-12 left-12 z-20 rounded-xl border-4 border-green-500 px-4 py-2 text-4xl font-black text-green-500 uppercase -rotate-15 md:top-20 md:left-20"
+        >
+          LIKE
+        </div>
+        <div
+          ref={nopeBadgeRef}
+          style={{ opacity: 0 }}
+          className="pointer-events-none absolute top-12 right-12 z-20 rounded-xl border-4 border-red-500 px-4 py-2 text-4xl font-black text-red-500 uppercase rotate-15 md:top-20 md:right-20"
+        >
+          NOPE
+        </div>
 
-      <MatchProfileCard
-        profile={profile}
-        isMobile={isMobile}
-        onPass={onPass}
-        onLike={onLike}
-        onOpenReport={onOpenReport}
-      />
-    </motion.div>
+        <MatchProfileCard
+          profile={profile}
+          isMobile={isMobile}
+          onPass={onPass}
+          onLike={onLike}
+          onOpenReport={onOpenReport}
+          onPrepareTestMatch={onPrepareTestMatch}
+          isPreparingTestMatch={isPreparingTestMatch}
+        />
+      </div>
+    </div>
   );
 }

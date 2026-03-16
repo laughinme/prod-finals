@@ -10,7 +10,6 @@ class Base(DeclarativeBase):
         return f"<{cls_name}({values})>"
     
     
-    # TODO: Add automatic pydantic schema generation
     
     # @classmethod
     # def pydantic_model(cls) -> type[BaseModel]:

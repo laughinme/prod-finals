@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
+from datetime import datetime, timezone
 from ml.service.auth import require_service_token
 from ml.service.runtime import MlRuntime
 from ml.service.schemas import (
+    AckStatus,
     AckResponse,
     CompatibilityExplanationRequest,
     CompatibilityExplanationResponse,
@@ -20,6 +21,8 @@ from ml.service.schemas import (
     RecommendationRequest,
     RecommendationResponse,
     SwipeFeedbackRequest,
+    UserProfileUpdateRequest,
+    TransactionSyncRequest
 )
 
 
@@ -174,11 +177,7 @@ async def post_swipe_feedback(payload: SwipeFeedbackRequest) -> AckResponse:
                 "trace_id": str(payload.trace_id),
             },
         )
-    return runtime.save_feedback_event(
-        event_id=payload.event_id,
-        trace_id=payload.trace_id,
-        event_type="swipe",
-    )
+    return runtime.process_swipe_feedback(payload)
 
 
 @app.post(
@@ -229,3 +228,90 @@ async def post_compatibility_explanation(
                 "trace_id": str(payload.trace_id),
             },
         ) from None
+
+
+@app.post(
+    "/v1/profile/favorites",
+    tags=["feedback"],
+    operation_id="postProfileFavorites",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
+async def post_update_favorites(payload: UserProfileUpdateRequest) -> AckResponse:
+    return runtime.update_user_profile_favorites(
+        user_id=payload.user_id,
+        favorite_categories=payload.favorite_categories,
+        trace_id=payload.trace_id,
+        preferred_hour=payload.preferred_activity_hour,
+        import_transactions=payload.import_transactions,
+    )
+
+
+@app.post(
+    "/v1/profile/preferences",
+    tags=["feedback"],
+    operation_id="postProfilePreferences",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
+async def post_update_preferences(payload: UserProfileUpdateRequest) -> AckResponse:
+    return await post_update_favorites(payload)
+
+
+@app.post(
+    "/v1/profiles/onboarding",
+    tags=["onboarding"],
+    operation_id="postOnboarding",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+)
+async def post_onboarding(
+    payload: UserProfileUpdateRequest,
+    background_tasks: BackgroundTasks
+) -> AckResponse:
+    runtime.update_user_profile_favorites(
+        user_id=payload.user_id,
+        favorite_categories=payload.favorite_categories,
+        trace_id=payload.trace_id,
+        preferred_hour=payload.preferred_activity_hour,
+        import_transactions=payload.import_transactions,
+    )
+    if payload.import_transactions:
+        transaction_task = getattr(runtime, "pull_and_process_user_transactions", None)
+        if callable(transaction_task):
+            background_tasks.add_task(
+                transaction_task,
+                user_id=payload.user_id,
+                trace_id=payload.trace_id,
+            )
+    return AckResponse(status=AckStatus.accepted, received_at=datetime.now(timezone.utc))
+
+@app.post(
+    "/v1/transactions/sync",
+    tags=["onboarding", "events"],
+    operation_id="postSyncTransactions",
+    response_model=AckResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_service_token)],
+)
+async def post_sync_transactions(
+    payload: TransactionSyncRequest, 
+    background_tasks: BackgroundTasks
+) -> AckResponse:
+    """Event-driven обновление профиля. ML-логика выполняется в фоне."""
+    
+                                                                       
+    background_tasks.add_task(
+        runtime.process_transactions_sync_background,
+        payload
+    )
+    
+    return AckResponse(
+        status=AckStatus.accepted, 
+        received_at=datetime.now(timezone.utc)
+    )
