@@ -61,12 +61,44 @@ const COMPAT_TEXT_MAP: Record<string, Record<ReasonStrength, string>> = {
 
 const RAW_COMPAT_TOKEN_PATTERN = /^(?:compat\.)?[a-z_]+(?:\.(?:high|medium|low))?$/i;
 const EN_REASON_TITLE_MAP: Record<string, string> = {
-  "strong profile signal": "Достаточно данных профиля",
+  "strong profile signal": "Совместимость профилей",
 };
 const EN_REASON_TEXT_MAP: Record<string, string> = {
   "the profile contains enough detail to support a more stable recommendation.":
-    "В анкете достаточно данных для уверенной рекомендации.",
+    "Найдены признаки совместимости по интересам и поведению.",
 };
+const HIDDEN_REASON_CODES = new Set(["profile_quality", "strong_profile_signal"]);
+
+function shouldHideReason(reason: MatchProfileExplanationReason): boolean {
+  const code = reason.code.trim().toLowerCase();
+  if (HIDDEN_REASON_CODES.has(code)) {
+    return true;
+  }
+
+  const title = reason.title.trim().toLowerCase();
+  if (title.includes("profile signal") || title.includes("данных профиля")) {
+    return true;
+  }
+
+  const text = reason.text.trim().toLowerCase();
+  return text.includes("enough detail to support") || text.includes("достаточно данных");
+}
+
+function filterReasonsForUi(
+  reasons: MatchProfileExplanationReason[],
+): MatchProfileExplanationReason[] {
+  return reasons.filter((reason) => !shouldHideReason(reason));
+}
+
+function getCategoryTags(profile: MatchProfile): string[] {
+  return Array.from(
+    new Set(
+      (profile.categoryBreakdown || [])
+        .map((entry) => entry.label?.trim())
+        .filter((label): label is string => Boolean(label && label !== "<none>" && label.toLowerCase() !== "unknown")),
+    ),
+  ).slice(0, 3);
+}
 
 function parseCompatToken(raw: string): { code: string; strength: ReasonStrength } | null {
   const normalized = raw.trim().toLowerCase();
@@ -123,24 +155,7 @@ function normalizeReasonText(reason: MatchProfileExplanationReason): string {
   }
 
   return COMPAT_TEXT_MAP[parsedFromText.code]?.[parsedFromText.strength]
-    ?? "Найдены признаки совместимости по анкете и поведению.";
-}
-
-function getExplanationTags(
-  reasons: MatchProfileExplanationReason[],
-  fallbackTags: string[],
-): string[] {
-  const nextTags = Array.from(
-    new Set(
-      reasons
-        .map((reason) => normalizeReasonTitle(reason))
-        .filter(Boolean),
-    ),
-  )
-    .filter(Boolean)
-    .slice(0, 3);
-
-  return nextTags.length > 0 ? nextTags : fallbackTags;
+    ?? "Найдены признаки совместимости по интересам и поведению.";
 }
 
 function getExplanationText(
@@ -192,22 +207,21 @@ export function useDiscoveryPage() {
     currentProfileSeenAtRef.current = currentProfileId ? Date.now() : null;
   }, [currentProfileId]);
 
+  const reasonsForUi = currentProfileExplanation
+    ? filterReasonsForUi(currentProfileExplanation.reasons)
+    : [];
+
   const currentProfile = baseCurrentProfile
     ? {
         ...baseCurrentProfile,
         explanation: baseCurrentProfile.explanation
-          || (currentProfileExplanation
+          || (reasonsForUi.length > 0
             ? getExplanationText(
-                currentProfileExplanation.reasons,
+                reasonsForUi,
                 baseCurrentProfile.explanation,
               )
             : ""),
-        tags: currentProfileExplanation
-          ? getExplanationTags(
-              currentProfileExplanation.reasons,
-              baseCurrentProfile.tags,
-            )
-          : baseCurrentProfile.tags,
+        tags: getCategoryTags(baseCurrentProfile),
       }
     : null;
 

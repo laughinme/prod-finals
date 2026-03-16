@@ -14,6 +14,7 @@ from .preview_text_generator import LlmCategoryPreviewGenerator
 def _get_preview_text_generator(
     enabled: bool,
     provider: str,
+    base_url: str,
     api_key: str,
     model: str,
     timeout_sec: float,
@@ -21,6 +22,7 @@ def _get_preview_text_generator(
     return LlmCategoryPreviewGenerator(
         enabled=enabled,
         provider=provider,
+        base_url=base_url,
         api_key=api_key,
         model=model,
         timeout_sec=timeout_sec,
@@ -31,6 +33,7 @@ def get_ml_facade(settings: Settings = Depends(get_settings)) -> MlFacade:
     preview_text_generator = _get_preview_text_generator(
         bool(settings.ML_PREVIEW_LLM_ENABLED),
         settings.ML_PREVIEW_LLM_PROVIDER,
+        settings.ML_PREVIEW_LLM_BASE_URL,
         settings.ML_PREVIEW_LLM_API_KEY,
         settings.ML_PREVIEW_LLM_MODEL,
         float(settings.ML_PREVIEW_LLM_TIMEOUT_SEC),

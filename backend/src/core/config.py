@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     ML_SERVICE_TOKEN: str = "dev-ml-token"
     ML_PREVIEW_LLM_ENABLED: bool = False
     ML_PREVIEW_LLM_PROVIDER: str = "huggingface"
+    ML_PREVIEW_LLM_BASE_URL: str = ""
     ML_PREVIEW_LLM_API_KEY: str = ""
     ML_PREVIEW_LLM_MODEL: str = "Qwen/Qwen2.5-0.5B-Instruct"
     ML_PREVIEW_LLM_TIMEOUT_SEC: float = 4.0

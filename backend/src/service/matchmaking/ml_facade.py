@@ -291,7 +291,7 @@ class MockMlFacade(MlFacade):
             CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
             CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
-            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "Найдены признаки совместимости по интересам и поведению.",
         }
         fallback_preview = (
             _category_preview_text(
@@ -461,8 +461,8 @@ class MockMlFacade(MlFacade):
                 0.81,
             ),
             CompatibilityReasonCode.PROFILE_QUALITY: (
-                "Достаточно данных профиля",
-                "В анкете достаточно данных для уверенной рекомендации.",
+                "Совместимость профилей",
+                "Найдены признаки совместимости по интересам и поведению.",
                 0.63,
             ),
         }
@@ -604,7 +604,7 @@ class HttpMlFacade(MlFacade):
             CompatibilityReasonCode.AGE_FIT: "Ваши ожидаемые возрастные диапазоны совпадают.",
             CompatibilityReasonCode.GOAL_FIT: "Вы ищете похожий формат отношений.",
             CompatibilityReasonCode.MUTUAL_PREFERENCE_FIT: "Ваши взаимные предпочтения хорошо совпадают.",
-            CompatibilityReasonCode.PROFILE_QUALITY: "Профиль даёт достаточно данных для уверенной рекомендации.",
+            CompatibilityReasonCode.PROFILE_QUALITY: "Найдены признаки совместимости по интересам и поведению.",
         }
         return preview_map[primary]
 
@@ -807,8 +807,8 @@ class HttpMlFacade(MlFacade):
             reasons.append(
                 CompatibilityReason(
                     code=CompatibilityReasonCode.PROFILE_QUALITY.value,
-                    title="Достаточно данных профиля",
-                    text="В анкете достаточно данных для уверенной рекомендации.",
+                    title="Совместимость профилей",
+                    text="Найдены признаки совместимости по интересам и поведению.",
                     confidence=0.63,
                 )
             )
