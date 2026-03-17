@@ -80,7 +80,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="flex h-[calc(100dvh-120px)] overflow-hidden bg-background md:h-[calc(100vh-64px)]">
+    <main className="flex h-[calc(100dvh-48px)] overflow-hidden bg-background md:h-[calc(100vh-64px)]">
       {isMobile ? (
         <AnimatePresence mode="wait" initial={false}>
           {showSidebar ? (

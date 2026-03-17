@@ -60,8 +60,8 @@ function writePersistedChatState(
 
   try {
     window.sessionStorage.setItem(storageKey, JSON.stringify(state));
-  } catch {
-    // Ignore storage access issues and keep chat state in memory only.
+  } catch (_error) {
+    void _error;
   }
 }
 

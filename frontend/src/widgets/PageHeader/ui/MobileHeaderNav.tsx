@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "motion/react";
 import { MessageCircle } from "lucide-react";
 
@@ -34,8 +34,9 @@ export function MobileHeaderNav({ navItems }: MobileHeaderNavProps) {
 }
 
 export function MobileFloatingChatButton({ navItems }: { navItems: NavItem[] }) {
+  const location = useLocation();
   const chatItem = navItems.find((item) => item.to === "/chat");
-  if (!chatItem) return null;
+  if (!chatItem || location.pathname.startsWith("/chat")) return null;
 
   return (
     <NavLink
