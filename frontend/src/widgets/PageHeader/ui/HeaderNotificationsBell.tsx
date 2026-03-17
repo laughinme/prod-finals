@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Bell, Heart, HeartHandshake, MessageCircle } from "lucide-react";
 
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 
 type HeaderNotificationsBellProps = {
@@ -117,7 +118,10 @@ export function HeaderNotificationsBell({
   compact = false,
 }: HeaderNotificationsBellProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const notificationsState = useMatchNotifications();
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const notifications = notificationsState?.notifications ?? [];
   const totalUnseenCount = notificationsState?.totalUnseenCount ?? 0;
@@ -135,17 +139,58 @@ export function HeaderNotificationsBell({
     };
   }, [notificationsState]);
 
+  const centerMobileDropdown = useCallback(() => {
+    if (!compact || !isMobile || !open) {
+      return;
+    }
+
+    const content = contentRef.current;
+    const wrapper = content?.parentElement;
+
+    if (!content || !wrapper) {
+      return;
+    }
+
+    const { top, width } = wrapper.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const horizontalPadding = 8;
+    const nextWidth = Math.min(width, viewportWidth - horizontalPadding * 2);
+    const nextLeft = Math.max(
+      horizontalPadding,
+      (viewportWidth - nextWidth) / 2,
+    );
+
+    wrapper.style.left = `${nextLeft}px`;
+    wrapper.style.top = `${Math.max(horizontalPadding, top)}px`;
+    wrapper.style.transform = "none";
+    wrapper.style.minWidth = "0";
+  }, [compact, isMobile, open]);
+
+  useEffect(() => {
+    if (!compact || !isMobile || !open) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(centerMobileDropdown);
+    window.addEventListener("resize", centerMobileDropdown);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", centerMobileDropdown);
+    };
+  }, [centerMobileDropdown, compact, isMobile, open]);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
             "relative inline-flex items-center justify-center rounded-full border border-border bg-background/80 text-foreground ring-offset-background transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            compact ? "h-9 w-9" : "h-11 w-11",
+            compact ? "h-9 w-9" : "h-9 w-9",
           )}
           aria-label={t("notifications.open_inbox")}
         >
-          <Bell className={cn(compact ? "size-4.5" : "size-5")} />
+          <Bell className={cn(compact ? "size-4.5" : "size-4.5")} />
           {totalUnseenCount > 0 ? (
             <span className="absolute -top-1 -right-1 inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground shadow-sm">
               {displayCount}
@@ -155,9 +200,12 @@ export function HeaderNotificationsBell({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
+        ref={contentRef}
         align="end"
+        collisionPadding={8}
+        onPlaced={centerMobileDropdown}
         sideOffset={10}
-        className="w-[23rem] rounded-3xl border-border/70 p-0 shadow-2xl"
+        className="w-[calc(100vw-1rem)] max-w-[23rem] rounded-3xl border-border/70 p-0 shadow-2xl"
       >
         <div className="px-4 pt-4 pb-3">
           <DropdownMenuLabel className="px-0 py-0">
