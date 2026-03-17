@@ -16,7 +16,7 @@ export function MatchNotificationModal({
 }: MatchNotificationModalProps) {
   useEffect(() => {
     if (!notification) return;
-    const timer = setTimeout(onLater, 2000);
+    const timer = setTimeout(onLater, 5000);
     return () => clearTimeout(timer);
   }, [notification?.notificationId]);
 
