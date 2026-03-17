@@ -63,17 +63,17 @@ def _build_favorite_categories(
     bootstrap_categories: list[str],
 ) -> list[str]:
     picked: list[str] = []
-    seen: set[str] = set()
 
     for raw_interest in profile.interests:
         candidate = str(raw_interest).strip()
         if not candidate:
             continue
-        normalized = candidate.lower()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
+        # Keep source ordering (including duplicates) to preserve preference intensity.
         picked.append(candidate)
+        if len(picked) >= 5:
+            return picked[:5]
+
+    seen = {item.lower() for item in picked}
 
     if bootstrap_categories:
         seed = _stable_seed(profile.ml_user_id)
@@ -350,6 +350,7 @@ async def _run(args: argparse.Namespace) -> int:
         _normalize_ml_user_id(profile.ml_user_id): profile for profile in users
     }
     backend_ids_normalized = set(users_by_normalized_id.keys())
+    deleted_orphans = 0
 
     async with httpx.AsyncClient(timeout=30.0) as qdrant_client:
         await _ensure_collection(
@@ -364,8 +365,6 @@ async def _run(args: argparse.Namespace) -> int:
             collection=args.collection,
             backend_ids_normalized=backend_ids_normalized,
         )
-
-        deleted_orphans = 0
         if args.delete_orphans and snapshot.orphan_point_ids:
             deleted_orphans = await _delete_orphans(
                 client=qdrant_client,
@@ -402,6 +401,7 @@ async def _run(args: argparse.Namespace) -> int:
             bootstrap_categories=bootstrap_categories,
         )
 
+    direct_upserted = 0
     async with httpx.AsyncClient(timeout=30.0) as qdrant_client:
         snapshot_after_ml = await _read_qdrant_snapshot(
             client=qdrant_client,
@@ -413,7 +413,6 @@ async def _run(args: argparse.Namespace) -> int:
         remaining_missing_ids = (
             backend_ids_normalized - snapshot_after_ml.normalized_party_ids
         )
-        direct_upserted = 0
         if remaining_missing_ids and args.direct_upsert_fallback:
             direct_upserted = await _direct_upsert_profiles(
                 client=qdrant_client,
@@ -439,9 +438,23 @@ async def _run(args: argparse.Namespace) -> int:
             backend_ids_normalized - snapshot_final.normalized_party_ids
         )
 
+    print(
+        "sync_summary "
+        f"users_total={len(users)} "
+        f"assigned_ml_ids={assigned} "
+        f"qdrant_points_before={snapshot.points_count} "
+        f"deleted_orphans={deleted_orphans} "
+        f"sync_target={len(users_to_sync)} "
+        f"ml_synced_ok={synced_ok} "
+        f"ml_synced_failed={synced_failed} "
+        f"direct_upserted={direct_upserted} "
+        f"remaining_missing={len(remaining_missing_ids)}"
+    )
+
     if synced_failed or remaining_missing_ids:
         if remaining_missing_ids:
             sample = sorted(list(remaining_missing_ids))[:10]
+            print(f"sync_missing_sample={','.join(sample)}")
         return 1
     return 0
 

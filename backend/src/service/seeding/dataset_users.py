@@ -14,9 +14,29 @@ from service.demo_accounts import DEMO_DATASET_INDEX_TO_KEY
 from .base import SeedContext
 
 _SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
-    "demo.food.a@tmatch.local": ("рестораны", "фаст_фуд", "супермаркеты"),
-    "demo.food.b@tmatch.local": ("супермаркеты", "фаст_фуд", "рестораны"),
-    "demo.style@tmatch.local": ("одежда_обувь", "развлечения", "транспорт"),
+    # Scenario presets control vector shape for demo accounts.
+    # food_a: strongest food affinity; food_b: mixed profile; style: lifestyle cluster.
+    "demo.food.a@tmatch.local": (
+        "рестораны",
+        "фаст_фуд",
+        "супермаркеты",
+        "рестораны",
+        "фаст_фуд",
+    ),
+    "demo.food.b@tmatch.local": (
+        "супермаркеты",
+        "фаст_фуд",
+        "рестораны",
+        "развлечения",
+        "транспорт",
+    ),
+    "demo.style@tmatch.local": (
+        "одежда_обувь",
+        "развлечения",
+        "транспорт",
+        "одежда_обувь",
+        "развлечения",
+    ),
     "demo.cold@tmatch.local": ("развлечения", "транспорт", "супермаркеты"),
 }
 

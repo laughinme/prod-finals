@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import os
 from pathlib import Path
+import re
+from typing import Any, Iterable
 from uuid import UUID, uuid5, NAMESPACE_DNS
 import joblib
 import pandas as pd
@@ -147,6 +149,11 @@ def _fallback_profile_vector(
     return [float(value) for value in vector]
 
 
+def _normalize_category_token(raw: str | object) -> str:
+    value = str(raw).strip().lower()
+    return re.sub(r"\W+", "_", value, flags=re.UNICODE).strip("_")
+
+
 class MlRuntime:
     def __init__(self, settings: RuntimeSettings | None = None) -> None:
         self._settings = settings or RuntimeSettings.from_env()
@@ -216,14 +223,28 @@ class MlRuntime:
 
             if self._has_artifacts:
                 raw_vector = np.zeros(len(self._features_list))
-                weight_per_cat = (
-                    1.0 / len(favorite_categories) if favorite_categories else 0
-                )
+                feature_index: dict[str, int] = {}
+                for index, name in enumerate(self._features_list):
+                    feature_index.setdefault(_normalize_category_token(name), index)
+                weighted_indices: set[int] = set()
+                total_weight = 0.0
 
-                for cat in favorite_categories:
-                    if cat in self._features_list:
-                        idx = self._features_list.index(cat)
-                        raw_vector[idx] = weight_per_cat
+                # Rank-aware weights preserve intensity differences between scenario accounts.
+                for rank, raw_category in enumerate(favorite_categories[:5], start=1):
+                    category = str(raw_category).strip()
+                    if not category:
+                        continue
+                    index = feature_index.get(_normalize_category_token(category))
+                    if index is None:
+                        continue
+                    weight = 1.0 / rank
+                    raw_vector[index] += weight
+                    weighted_indices.add(index)
+                    total_weight += weight
+
+                if total_weight > 0:
+                    for index in weighted_indices:
+                        raw_vector[index] = raw_vector[index] / total_weight
                 if "hour" in self._features_list:
                     hour_idx = self._features_list.index("hour")
                     raw_vector[hour_idx] = (
@@ -464,7 +485,12 @@ class MlRuntime:
         else:
             warnings.append("qdrant_unavailable")
 
-        if not candidates and self._pipeline is not None:  # холодныйстарт
+        if candidates:
+            top_score = max((candidate.score for candidate in candidates), default=0.0)
+            if top_score < 0.4:
+                warnings.append("low_signal_candidates")
+                decision_mode = RecommendationDecisionMode.fallback
+        elif self._pipeline is not None:  # холодныйстарт
             items, runtime_warnings, runtime_decision_mode = self._pipeline.recommend(
                 request_user_id=request.request_user_id,
                 limit=request.limit,
@@ -473,11 +499,6 @@ class MlRuntime:
                 strategy=request.strategy.value,
                 trace_seed=trace_seed,
             )
-            top_score = candidates[0].score if candidates else 0
-
-        if top_score < 0.4:
-            warnings.append("Плоъие данные")  # маллоданных
-            decision_mode = RecommendationDecisionMode.exploration
             warnings.extend(runtime_warnings)
             decision_mode = RecommendationDecisionMode(runtime_decision_mode)
 
@@ -500,13 +521,14 @@ class MlRuntime:
                     RecommendationCandidate(
                         candidate_user_id=item.candidate_user_id,
                         score=round(item.score, 4),
+                        score_components=None,
                         reason_signals=_reason_signals_by_score(
                             item.score, fallback_mode=fallback_mode
                         ),
                         policy_flags=policy_flags,
                     )
                 )
-        elif not candidates:
+        else:
             warnings.append("ranker_unavailable")
 
         return RecommendationResponse(
