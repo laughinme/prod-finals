@@ -16,7 +16,12 @@ import * as Sentry from "@sentry/react";
 
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import type { MatchProfile } from "@/entities/match-profile/model";
-import { useProfile, useSetDefaultAvatar, useUpdateProfile, useUploadAvatar } from "@/features/profile";
+import {
+  useProfile,
+  useSetDefaultAvatar,
+  useUpdateProfile,
+  useUploadAvatar,
+} from "@/features/profile";
 import { postOnboardingAnswers } from "@/shared/api/onboarding";
 import { Button } from "@/shared/components/ui/button";
 import { getAge } from "@/shared/lib/date";
@@ -45,6 +50,7 @@ function buildPreviewProfile(
     detailsAvailable: false,
     actions: null,
     source: "feed",
+    likedYou: false,
   };
 }
 
@@ -55,9 +61,12 @@ export function ProfilePreviewStep() {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: profile, isLoading } = useProfile();
-  const { mutateAsync: setDefaultAvatar, isPending: isDefaultPending } = useSetDefaultAvatar();
-  const { mutateAsync: uploadAvatar, isPending: isUploadPending } = useUploadAvatar();
-  const { mutateAsync: updateProfile, isPending: isBioPending } = useUpdateProfile();
+  const { mutateAsync: setDefaultAvatar, isPending: isDefaultPending } =
+    useSetDefaultAvatar();
+  const { mutateAsync: uploadAvatar, isPending: isUploadPending } =
+    useUploadAvatar();
+  const { mutateAsync: updateProfile, isPending: isBioPending } =
+    useUpdateProfile();
   const [bioDraft, setBioDraft] = useState("");
 
   useEffect(() => {
@@ -80,7 +89,10 @@ export function ProfilePreviewStep() {
     ? t(`profile.goal_${profile.goal}`, { defaultValue: profile.goal })
     : null;
   const tags = useMemo(
-    () => [goalLabel, ...((profile?.interests ?? []).slice(0, 4))].filter(Boolean) as string[],
+    () =>
+      [goalLabel, ...(profile?.interests ?? []).slice(0, 4)].filter(
+        Boolean,
+      ) as string[],
     [goalLabel, profile?.interests],
   );
   const previewProfile = useMemo(() => {
@@ -173,7 +185,9 @@ export function ProfilePreviewStep() {
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -224,7 +238,11 @@ export function ProfilePreviewStep() {
             className="w-full max-w-5xl"
           >
             <div className="relative">
-              <div className={isMobile ? "mx-auto max-w-[420px]" : "mx-auto max-w-5xl"}>
+              <div
+                className={
+                  isMobile ? "mx-auto max-w-[420px]" : "mx-auto max-w-5xl"
+                }
+              >
                 <MatchProfileCard
                   profile={previewProfile}
                   isMobile={isMobile}
@@ -252,27 +270,49 @@ export function ProfilePreviewStep() {
                         : "left-6 top-1/2 w-[calc(45%-3rem)] -translate-y-1/2",
                     ].join(" ")}
                   >
-                    <div className={[
-                      "pointer-events-auto w-full border border-white/15 bg-black/60 text-center text-white shadow-xl backdrop-blur-xl",
-                      isMobile ? "rounded-[1.6rem] p-4" : "rounded-[1.8rem] p-5",
-                    ].join(" ")}>
-                      <p className={[
-                        "font-semibold uppercase text-primary",
-                        isMobile ? "text-[10px] tracking-[0.22em]" : "text-[11px] tracking-[0.24em]",
-                      ].join(" ")}>
+                    <div
+                      className={[
+                        "pointer-events-auto w-full border border-white/15 bg-black/60 text-center text-white shadow-xl backdrop-blur-xl",
+                        isMobile
+                          ? "rounded-[1.6rem] p-4"
+                          : "rounded-[1.8rem] p-5",
+                      ].join(" ")}
+                    >
+                      <p
+                        className={[
+                          "font-semibold uppercase text-primary",
+                          isMobile
+                            ? "text-[10px] tracking-[0.22em]"
+                            : "text-[11px] tracking-[0.24em]",
+                        ].join(" ")}
+                      >
                         {t("profile.preview_photo_label")}
                       </p>
-                      <p className={[
-                        "text-white/80",
-                        isMobile ? "mt-2 text-[13px] leading-5" : "mt-3 text-sm leading-6",
-                      ].join(" ")}>
+                      <p
+                        className={[
+                          "text-white/80",
+                          isMobile
+                            ? "mt-2 text-[13px] leading-5"
+                            : "mt-3 text-sm leading-6",
+                        ].join(" ")}
+                      >
                         {t("profile.preview_photo_required")}
                       </p>
-                      <div className={isMobile ? "mt-4 flex flex-col gap-2.5" : "mt-5 flex flex-col gap-3"}>
+                      <div
+                        className={
+                          isMobile
+                            ? "mt-4 flex flex-col gap-2.5"
+                            : "mt-5 flex flex-col gap-3"
+                        }
+                      >
                         <Button
                           type="button"
                           size={isMobile ? "default" : "lg"}
-                          className={isMobile ? "h-11 w-full rounded-[1.1rem]" : "w-full rounded-2xl"}
+                          className={
+                            isMobile
+                              ? "h-11 w-full rounded-[1.1rem]"
+                              : "w-full rounded-2xl"
+                          }
                           disabled={isPhotoPending}
                           onClick={() => void handleSetDefaultAvatar()}
                         >
@@ -312,10 +352,12 @@ export function ProfilePreviewStep() {
               </AnimatePresence>
 
               {profile.hasApprovedPhoto ? (
-                <div className={[
-                  "absolute bottom-4 z-20 flex -translate-x-1/2 items-center gap-2",
-                  isMobile ? "left-1/2 px-4" : "left-[22.5%]",
-                ].join(" ")}>
+                <div
+                  className={[
+                    "absolute bottom-4 z-20 flex -translate-x-1/2 items-center gap-2",
+                    isMobile ? "left-1/2 px-4" : "left-[22.5%]",
+                  ].join(" ")}
+                >
                   <Button
                     type="button"
                     variant="secondary"
@@ -370,7 +412,9 @@ export function ProfilePreviewStep() {
                   type="button"
                   size="lg"
                   className="mt-4 h-14 w-full rounded-[1.2rem] text-base font-semibold shadow-[0_18px_40px_rgba(255,221,45,0.26)]"
-                  disabled={!canContinue || completePreview.isPending || isBioPending}
+                  disabled={
+                    !canContinue || completePreview.isPending || isBioPending
+                  }
                   onClick={() => void handleContinue()}
                 >
                   {completePreview.isPending || isBioPending ? (
