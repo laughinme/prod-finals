@@ -27,7 +27,7 @@ export type DemoAccount = {
   password: string;
   titleKey: string;
   scenarioKey: string;
-  categoriesKey: string;
+  categoriesKey?: string;
 };
 
 type LoginFormProps = Omit<ComponentProps<"div">, "onSubmit"> & {
@@ -197,16 +197,13 @@ export function LoginForm({
                                   {t(account.titleKey)}
                                 </span>
                                 <span className="block text-[11px] text-muted-foreground">
-                                  {account.email} / {account.password}
-                                </span>
-                                <span className="block text-[11px] text-muted-foreground">
-                                  {t("auth.demo_accounts_scenario_label")}:{" "}
                                   {t(account.scenarioKey)}
                                 </span>
-                                <span className="block text-[11px] text-muted-foreground">
-                                  {t("auth.demo_accounts_categories_label")}:{" "}
-                                  {t(account.categoriesKey)}
-                                </span>
+                                {account.categoriesKey ? (
+                                  <span className="block text-[11px] text-muted-foreground">
+                                    {t(account.categoriesKey)}
+                                  </span>
+                                ) : null}
                               </span>
                             </button>
                           ))}

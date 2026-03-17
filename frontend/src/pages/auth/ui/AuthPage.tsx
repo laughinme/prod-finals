@@ -49,7 +49,6 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "Admin12345!",
     titleKey: "auth.demo_account_admin_title",
     scenarioKey: "auth.demo_account_admin_scenario",
-    categoriesKey: "auth.demo_account_admin_categories",
   },
 ];
 
