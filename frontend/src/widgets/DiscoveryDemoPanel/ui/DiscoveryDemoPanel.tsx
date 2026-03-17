@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
-import { Button } from "@/shared/components/ui/button";
 
 export type DiscoveryDemoShortcut = {
   demoUserKey: string;
@@ -19,8 +18,6 @@ interface DiscoveryDemoPanelProps {
   activeDemoShortcutKey: string | null;
   onOpenShortcut: (key: string) => void;
   onCloseShortcut: () => void;
-  onResetShortcut?: (key: string) => void;
-  isResettingShortcut?: boolean;
 }
 
 export function DiscoveryDemoPanel({
@@ -28,8 +25,6 @@ export function DiscoveryDemoPanel({
   activeDemoShortcutKey,
   onOpenShortcut,
   onCloseShortcut,
-  onResetShortcut,
-  isResettingShortcut = false,
 }: DiscoveryDemoPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -164,21 +159,6 @@ export function DiscoveryDemoPanel({
                               </p>
                             </div>
                           </button>
-                          {shortcut.canResetPair ? (
-                            <Button
-                              type="button"
-                              variant={isActive ? "secondary" : "outline"}
-                              size="xs"
-                              className="mr-3 shrink-0 rounded-full"
-                              disabled={isResettingShortcut}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onResetShortcut?.(shortcut.demoUserKey);
-                              }}
-                            >
-                              {t("discovery.demo_panel_reset")}
-                            </Button>
-                          ) : null}
                         </div>
                       );
                     })}
