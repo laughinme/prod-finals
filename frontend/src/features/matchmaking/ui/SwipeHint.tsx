@@ -35,7 +35,7 @@ export function SwipeHint() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.35 }}
-          className="absolute inset-0 z-60 flex flex-col items-center justify-center bg-black/65 backdrop-blur-[3px]"
+          className="fixed inset-0 z-60 flex flex-col items-center justify-center bg-black/65 backdrop-blur-[3px]"
           onClick={() => setVisible(false)}
         >
           <div className="relative flex w-full max-w-145 items-center px-2 sm:px-4">

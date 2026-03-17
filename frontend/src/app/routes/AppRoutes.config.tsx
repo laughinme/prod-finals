@@ -167,7 +167,10 @@ export const routes: RouteObject[] = [
         element: <RequireIncompleteQuiz />,
         children: [{ path: "quiz", element: <QuizPage /> }],
       },
-      { path: "match", element: <MatchPage /> },
+      {
+        element: <RequireMatchmakingReady />,
+        children: [{ path: "match", element: <MatchPage /> }],
+      },
       {
         element: <HeaderLayout />,
         children: [
