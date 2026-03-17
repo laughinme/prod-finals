@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { Button } from "@/shared/components/ui/button";
 
 export type DiscoveryDemoShortcut = {
   demoUserKey: string;
@@ -10,6 +11,7 @@ export type DiscoveryDemoShortcut = {
   avatarUrl: string | null;
   bio: string | null;
   isCurrentUser: boolean;
+  canResetPair?: boolean;
 };
 
 interface DiscoveryDemoPanelProps {
@@ -17,6 +19,8 @@ interface DiscoveryDemoPanelProps {
   activeDemoShortcutKey: string | null;
   onOpenShortcut: (key: string) => void;
   onCloseShortcut: () => void;
+  onResetShortcut?: (key: string) => void;
+  isResettingShortcut?: boolean;
 }
 
 export function DiscoveryDemoPanel({
@@ -24,6 +28,8 @@ export function DiscoveryDemoPanel({
   activeDemoShortcutKey,
   onOpenShortcut,
   onCloseShortcut,
+  onResetShortcut,
+  isResettingShortcut = false,
 }: DiscoveryDemoPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
@@ -101,53 +107,79 @@ export function DiscoveryDemoPanel({
                     {demoShortcuts.map((shortcut) => {
                       const isActive = activeDemoShortcutKey === shortcut.demoUserKey;
                       return (
-                        <button
+                        <div
                           key={shortcut.demoUserKey}
-                          type="button"
-                          disabled={shortcut.isCurrentUser}
-                          onClick={() => {
-                            if (isActive) {
-                              onCloseShortcut();
-                            } else {
-                              onOpenShortcut(shortcut.demoUserKey);
-                            }
-                          }}
                           className={[
-                            "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition",
+                            "flex w-full items-center gap-2 rounded-2xl text-left transition",
                             shortcut.isCurrentUser
-                              ? "cursor-not-allowed bg-slate-50 text-slate-400"
+                              ? "bg-slate-50 text-slate-400"
                               : isActive
                                 ? "bg-slate-900 text-white shadow-[0_14px_30px_rgba(15,23,42,0.22)]"
-                                : "bg-slate-50 text-slate-700 hover:bg-slate-100",
+                                : "bg-slate-50 text-slate-700",
                           ].join(" ")}
                         >
-                          {shortcut.avatarUrl ? (
-                            <img
-                              src={shortcut.avatarUrl}
-                              alt={shortcut.displayName}
-                              className="size-11 rounded-2xl object-cover"
-                            />
-                          ) : (
-                            <div className="flex size-11 items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold">
-                              {shortcut.displayName.slice(0, 1)}
+                          <button
+                            type="button"
+                            disabled={shortcut.isCurrentUser}
+                            onClick={() => {
+                              if (isActive) {
+                                onCloseShortcut();
+                              } else {
+                                onOpenShortcut(shortcut.demoUserKey);
+                              }
+                            }}
+                            className={[
+                              "flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-3 text-left transition",
+                              shortcut.isCurrentUser
+                                ? "cursor-not-allowed"
+                                : isActive
+                                  ? "hover:bg-white/5"
+                                  : "hover:bg-slate-100",
+                            ].join(" ")}
+                          >
+                            {shortcut.avatarUrl ? (
+                              <img
+                                src={shortcut.avatarUrl}
+                                alt={shortcut.displayName}
+                                className="size-11 rounded-2xl object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-11 items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold">
+                                {shortcut.displayName.slice(0, 1)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold">
+                                {shortcut.displayName}
+                              </p>
+                              <p
+                                className={[
+                                  "truncate text-xs",
+                                  isActive ? "text-slate-300" : "text-slate-500",
+                                ].join(" ")}
+                              >
+                                {shortcut.isCurrentUser
+                                  ? t("discovery.demo_panel_you")
+                                  : shortcut.bio || t("discovery.demo_panel_open_card")}
+                              </p>
                             </div>
-                          )}
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">
-                              {shortcut.displayName}
-                            </p>
-                            <p
-                              className={[
-                                "truncate text-xs",
-                                isActive ? "text-slate-300" : "text-slate-500",
-                              ].join(" ")}
+                          </button>
+                          {shortcut.canResetPair ? (
+                            <Button
+                              type="button"
+                              variant={isActive ? "secondary" : "outline"}
+                              size="xs"
+                              className="mr-3 shrink-0 rounded-full"
+                              disabled={isResettingShortcut}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onResetShortcut?.(shortcut.demoUserKey);
+                              }}
                             >
-                              {shortcut.isCurrentUser
-                                ? t("discovery.demo_panel_you")
-                                : shortcut.bio || t("discovery.demo_panel_open_card")}
-                            </p>
-                          </div>
-                        </button>
+                              {t("discovery.demo_panel_reset")}
+                            </Button>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>

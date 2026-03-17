@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..conversations import Message
@@ -248,6 +248,24 @@ class NotificationInterface:
         if notification is not None:
             await self.session.delete(notification)
             await self.session.flush()
+
+    async def delete_like_notifications_for_pair_state(self, *, pair_state_id: UUID) -> None:
+        await self.session.execute(
+            delete(LikeNotification).where(LikeNotification.pair_state_id == pair_state_id)
+        )
+        await self.session.flush()
+
+    async def delete_match_notifications_for_match(self, *, match_id: UUID) -> None:
+        await self.session.execute(
+            delete(MatchNotification).where(MatchNotification.match_id == match_id)
+        )
+        await self.session.flush()
+
+    async def delete_message_notifications_for_conversation(self, *, conversation_id: UUID) -> None:
+        await self.session.execute(
+            delete(MessageNotification).where(MessageNotification.conversation_id == conversation_id)
+        )
+        await self.session.flush()
 
     async def list_like_notifications_with_likers(
         self,

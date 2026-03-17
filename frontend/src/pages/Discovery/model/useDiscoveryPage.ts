@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -19,14 +19,17 @@ import {
 import {
   getDemoFeedCard,
   getDemoFeedShortcuts,
+  postDemoFeedReset,
   type DemoFeedShortcutItemDto,
 } from "@/shared/api/feed";
 import {
+  FEED_QUERY_KEY,
   useFeed,
   useFeedExplanation,
   useFeedReaction,
   useFeedTestMatch,
 } from "@/features/matchmaking";
+import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
 import { useProfile, useSetDefaultAvatar, useUploadAvatar } from "@/features/profile";
 import { useBlockUser, useReportUser } from "@/features/safety";
 
@@ -46,6 +49,7 @@ export type DiscoveryDemoShortcut = {
   avatarUrl: string | null;
   bio: string | null;
   isCurrentUser: boolean;
+  canResetPair: boolean;
 };
 
 type ReasonStrength = "high" | "medium" | "low";
@@ -211,6 +215,7 @@ function toDiscoveryDemoShortcut(dto: DemoFeedShortcutItemDto): DiscoveryDemoSho
     avatarUrl: dto.avatar_url,
     bio: dto.bio,
     isCurrentUser: dto.is_current_user,
+    canResetPair: dto.can_reset_pair,
   };
 }
 
@@ -218,6 +223,7 @@ export function useDiscoveryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const routeState = location.state as DiscoveryLocationState;
   const { data: viewerProfile } = useProfile();
 
@@ -277,6 +283,10 @@ export function useDiscoveryPage() {
     },
     enabled: Boolean(activeDemoShortcutKey),
     retry: false,
+  });
+
+  const resetDemoPairMutation = useMutation({
+    mutationFn: postDemoFeedReset,
   });
 
   useEffect(() => {
@@ -612,6 +622,25 @@ export function useDiscoveryPage() {
     }
   };
 
+  const handleResetDemoPair = async (demoUserKey: string) => {
+    try {
+      await resetDemoPairMutation.mutateAsync(demoUserKey);
+      if (activeDemoShortcutKey === demoUserKey) {
+        setActiveDemoShortcutKey(null);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["feed", "demo-shortcuts"] }),
+        queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
+      toast.success(t("discovery.demo_panel_reset_success"));
+    } catch (e) {
+      Sentry.captureException(e);
+      toast.error(t("discovery.demo_panel_reset_error"));
+    }
+  };
+
   return {
     currentProfile,
     nextProfiles: (specialLikeProfile || demoShortcutProfile) ? profiles.slice(0, 2) : profiles.slice(1, 3),
@@ -620,6 +649,8 @@ export function useDiscoveryPage() {
     activeDemoShortcutKey,
     openDemoShortcut: (demoUserKey: string) => setActiveDemoShortcutKey(demoUserKey),
     closeDemoShortcut: () => setActiveDemoShortcutKey(null),
+    handleResetDemoPair,
+    isResettingDemoPair: resetDemoPairMutation.isPending,
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,
     isPhotoGatePending:

@@ -244,6 +244,7 @@ class OnboardingService(BaseDatingService):
         required_profile_step_key = user.required_profile_step_key
         if (
             required_profile_step_key == PROFILE_PREVIEW_STEP_KEY
+            and not user.onboarding_skipped
             and any(step_key not in completed_step_keys for step_key in pre_preview_step_keys)
         ):
             required_profile_step_key = None

@@ -2,7 +2,7 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from database.relational_db import RecommendationBatch, RecommendationItem, User
+from database.relational_db import Conversation, Match, RecommendationBatch, RecommendationItem, User
 from domain.dating import (
     AuditEntityType,
     CompatibilityCategoryScore,
@@ -12,6 +12,7 @@ from domain.dating import (
     CompatibilityReasonSignal,
     DemoFeedShortcutItem,
     DemoFeedShortcutListResponse,
+    DemoFeedResetResponse,
     DecisionMode,
     ExplanationRequest,
     FeedCandidate,
@@ -59,6 +60,7 @@ def _is_template_preview(text: str) -> bool:
 
 class FeedService(BaseDatingService):
     async def list_demo_shortcuts(self, user: User) -> DemoFeedShortcutListResponse:
+        can_reset_pair = self._can_reset_demo_pairs(user)
         items: list[DemoFeedShortcutItem] = []
         for account in DEMO_DATASET_ACCOUNTS:
             target = await self.user_repo.get_by_demo_user_key(account.demo_user_key)
@@ -71,6 +73,7 @@ class FeedService(BaseDatingService):
                     avatar_url=target.avatar_url,
                     bio=target.bio,
                     is_current_user=target.id == user.id,
+                    can_reset_pair=can_reset_pair and target.id != user.id,
                 )
             )
         return DemoFeedShortcutListResponse(items=items)
@@ -151,6 +154,77 @@ class FeedService(BaseDatingService):
         if not cards:
             raise FeedItemNotFoundError()
         return cards[0]
+
+    async def reset_demo_pair(
+        self,
+        *,
+        user: User,
+        demo_user_key: str,
+    ) -> DemoFeedResetResponse:
+        if not self._can_reset_demo_pairs(user):
+            raise FeedItemNotFoundError()
+
+        target = await self.user_repo.get_by_demo_user_key(demo_user_key)
+        if target is None or target.id == user.id:
+            raise FeedItemNotFoundError()
+
+        for actor_id, target_id in ((user.id, target.id), (target.id, user.id)):
+            block = await self.matchmaking_repo.get_block(
+                actor_user_id=actor_id,
+                target_user_id=target_id,
+            )
+            if block is not None:
+                await self.matchmaking_repo.delete_block(block)
+
+        pair_state = await self.matchmaking_repo.get_pair_state(user.id, target.id)
+        if pair_state is not None:
+            if pair_state.conversation_id:
+                await self.notification_repo.delete_message_notifications_for_conversation(
+                    conversation_id=pair_state.conversation_id,
+                )
+                await self.matchmaking_repo.delete_messages_for_conversation(
+                    conversation_id=pair_state.conversation_id,
+                )
+                conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
+                if conversation is not None:
+                    await self.matchmaking_repo.delete_conversation(conversation)
+
+            if pair_state.match_id:
+                await self.notification_repo.delete_match_notifications_for_match(
+                    match_id=pair_state.match_id,
+                )
+                match = await self.uow.session.get(Match, pair_state.match_id)
+                if match is not None:
+                    await self.matchmaking_repo.delete_match(match)
+
+            await self.notification_repo.delete_like_notifications_for_pair_state(
+                pair_state_id=pair_state.id,
+            )
+            await self.matchmaking_repo.reset_pair_state(pair_state)
+
+        await self.matchmaking_repo.reset_batch_for_date(
+            user_id=user.id,
+            batch_date=self.local_today(),
+        )
+        await self.matchmaking_repo.reset_batch_for_date(
+            user_id=target.id,
+            batch_date=self.local_today(),
+        )
+        await self.add_audit_event(
+            event_type="demo_pair_reset",
+            entity_type=AuditEntityType.USER,
+            entity_id=str(user.id),
+            actor_user_id=user.id,
+            payload={
+                "peer_user_id": str(target.id),
+                "demo_user_key": demo_user_key,
+            },
+        )
+        await self.uow.commit()
+        return DemoFeedResetResponse(
+            demo_user_key=demo_user_key,
+            target_user_id=target.id,
+        )
 
     async def get_feed(self, user: User, limit: int) -> FeedResponse:
         if not user.can_open_feed:
@@ -503,6 +577,10 @@ class FeedService(BaseDatingService):
                 prioritized.insert(0, prioritized.pop(index))
                 return prioritized
         return prioritized
+
+    @staticmethod
+    def _can_reset_demo_pairs(user: User) -> bool:
+        return bool(user.demo_user_key) or user.has_roles("admin")
 
     def _candidate_passes_filters(
         self,

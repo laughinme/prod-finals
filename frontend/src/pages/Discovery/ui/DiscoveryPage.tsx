@@ -1,8 +1,9 @@
 import { useEffect } from "react";
+
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { DiscoveryDemoPanel } from "@/widgets/DiscoveryDemoPanel";
 import { MatchmakingDeck } from "@/widgets/MatchmakingDeck";
 import { useDiscoveryPage } from "../model";
-import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 export default function DiscoveryPage() {
   const isMobile = useIsMobile();
@@ -23,6 +24,8 @@ export default function DiscoveryPage() {
         activeDemoShortcutKey={discovery.activeDemoShortcutKey}
         onOpenShortcut={discovery.openDemoShortcut}
         onCloseShortcut={discovery.closeDemoShortcut}
+        onResetShortcut={(key) => void discovery.handleResetDemoPair(key)}
+        isResettingShortcut={discovery.isResettingDemoPair}
       />
 
       <MatchmakingDeck

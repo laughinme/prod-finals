@@ -142,6 +142,33 @@ class MatchmakingInterface:
             select(Match).where(Match.user_low_id == low_id, Match.user_high_id == high_id)
         )
 
+    async def delete_match(self, match: Match) -> None:
+        await self.session.delete(match)
+        await self.session.flush()
+
+    async def delete_conversation(self, conversation: Conversation) -> None:
+        await self.session.delete(conversation)
+        await self.session.flush()
+
+    async def delete_messages_for_conversation(self, *, conversation_id: UUID) -> None:
+        await self.session.execute(
+            delete(Message).where(Message.conversation_id == conversation_id)
+        )
+        await self.session.flush()
+
+    async def reset_pair_state(self, pair_state: PairState) -> None:
+        pair_state.low_action = None
+        pair_state.high_action = None
+        pair_state.low_action_at = None
+        pair_state.high_action_at = None
+        pair_state.status = "none"
+        pair_state.cooldown_until = None
+        pair_state.blocked_by_user_id = None
+        pair_state.hidden_by_user_id = None
+        pair_state.match_id = None
+        pair_state.conversation_id = None
+        await self.session.flush()
+
     async def list_matches_for_user(self, user_id: UUID) -> list[tuple[Match, User, Conversation | None, Message | None]]:
         peer = aliased(User)
         last_message_at_subq = (

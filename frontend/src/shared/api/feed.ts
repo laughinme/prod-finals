@@ -100,10 +100,17 @@ export type DemoFeedShortcutItemDto = {
   avatar_url: string | null;
   bio: string | null;
   is_current_user: boolean;
+  can_reset_pair: boolean;
 };
 
 export type DemoFeedShortcutListResponseDto = {
   items: DemoFeedShortcutItemDto[];
+};
+
+export type DemoFeedResetResponseDto = {
+  status: string;
+  demo_user_key: string;
+  target_user_id: string;
 };
 
 export type CompatibilityReasonDto = {
@@ -188,6 +195,15 @@ export const getDemoFeedShortcuts = async (): Promise<DemoFeedShortcutListRespon
 export const getDemoFeedCard = async (demoUserKey: string): Promise<FeedCardDto> => {
   const response = await apiProtected.get<FeedCardDto>(
     `/feed/demo-shortcuts/${demoUserKey}/card`,
+  );
+  return response.data;
+};
+
+export const postDemoFeedReset = async (
+  demoUserKey: string,
+): Promise<DemoFeedResetResponseDto> => {
+  const response = await apiProtected.post<DemoFeedResetResponseDto>(
+    `/feed/demo-shortcuts/${demoUserKey}/reset`,
   );
   return response.data;
 };

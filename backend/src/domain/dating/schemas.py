@@ -173,10 +173,17 @@ class DemoFeedShortcutItem(BaseModel):
     avatar_url: str | None = None
     bio: str | None = None
     is_current_user: bool = False
+    can_reset_pair: bool = False
 
 
 class DemoFeedShortcutListResponse(BaseModel):
     items: list[DemoFeedShortcutItem] = Field(default_factory=list)
+
+
+class DemoFeedResetResponse(BaseModel):
+    status: str = "reset"
+    demo_user_key: str
+    target_user_id: UUID
 
 
 class FeedEmptyState(BaseModel):
