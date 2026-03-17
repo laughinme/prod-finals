@@ -21,12 +21,17 @@ from service.mock_identity import get_mock_identity_registry
 DEFAULT_COLLECTION = "user_profiles"
 DEFAULT_QDRANT_URL = "http://qdrant:6333"
 DEFAULT_FAVORITE_CATEGORIES = ("grocery", "cafe", "transport", "travel", "health")
+_SCENARIO_ONLY_CATEGORIES_BY_EMAIL: dict[str, tuple[str, ...]] = {
+    "demo.food.b@tmatch.local": ("одежда_обувь",),
+    "demo.cold@tmatch.local": ("супермаркеты",),
+}
 
 
 @dataclass(slots=True)
 class BackendUserProfile:
     user_id: UUID
     ml_user_id: str
+    email: str
     interests: list[str]
 
 
@@ -62,6 +67,11 @@ def _build_favorite_categories(
     profile: BackendUserProfile,
     bootstrap_categories: list[str],
 ) -> list[str]:
+    normalized_email = (profile.email or "").strip().lower()
+    scenario_categories = _SCENARIO_ONLY_CATEGORIES_BY_EMAIL.get(normalized_email)
+    if scenario_categories:
+        return list(scenario_categories)
+
     picked: list[str] = []
 
     for raw_interest in profile.interests:
@@ -147,6 +157,7 @@ async def _ensure_ml_user_ids() -> tuple[list[BackendUserProfile], int]:
                 BackendUserProfile(
                     user_id=user.id,
                     ml_user_id=str(user.service_user_id),
+                    email=(user.email or "").strip().lower(),
                     interests=interests,
                 )
             )
@@ -273,21 +284,20 @@ async def _direct_upsert_profiles(
         chunk = users_to_sync[start : start + batch_size]
         points = []
         for profile in chunk:
+            categories = _build_favorite_categories(
+                profile=profile,
+                bootstrap_categories=list(DEFAULT_FAVORITE_CATEGORIES),
+            )
             points.append(
                 {
                     "id": _point_id_for_ml_user_id(profile.ml_user_id),
                     "vector": _fallback_vector(profile, size=vector_size),
                     "payload": {
                         "party_rk": profile.ml_user_id,
-                        "favorite_categories": _build_favorite_categories(
-                            profile=profile,
-                            bootstrap_categories=list(DEFAULT_FAVORITE_CATEGORIES),
-                        ),
+                        "favorite_categories": categories,
                         "preferred_activity_hour": _preferred_hour(profile.ml_user_id),
                         "import_transactions_enabled": False,
-                        "top_cat": profile.interests[0]
-                        if profile.interests
-                        else "unknown",
+                        "top_cat": categories[0] if categories else "unknown",
                         "is_fallback_synced": True,
                     },
                 }

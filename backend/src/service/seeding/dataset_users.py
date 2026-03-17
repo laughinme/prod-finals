@@ -15,7 +15,7 @@ from .base import SeedContext
 
 _SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
     # Scenario presets control vector shape for demo accounts.
-    # food_a: strongest food affinity; food_b: mixed profile; style: lifestyle cluster.
+    # food_a: food cluster; food_b: single-category style; cold: single-category baseline.
     "demo.food.a@tmatch.local": (
         "рестораны",
         "фаст_фуд",
@@ -23,13 +23,7 @@ _SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
         "рестораны",
         "фаст_фуд",
     ),
-    "demo.food.b@tmatch.local": (
-        "супермаркеты",
-        "фаст_фуд",
-        "рестораны",
-        "развлечения",
-        "транспорт",
-    ),
+    "demo.food.b@tmatch.local": ("одежда_обувь",),
     "demo.style@tmatch.local": (
         "одежда_обувь",
         "развлечения",
@@ -37,7 +31,7 @@ _SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
         "одежда_обувь",
         "развлечения",
     ),
-    "demo.cold@tmatch.local": ("развлечения", "транспорт", "супермаркеты"),
+    "demo.cold@tmatch.local": ("супермаркеты",),
 }
 
 
