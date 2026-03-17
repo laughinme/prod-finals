@@ -217,6 +217,13 @@ export default function AuthPage(): ReactElement {
                 submitDisabled={!canSubmit}
                 errorMessage={errorMessage}
                 onSwitchToLogin={() => setMode("login")}
+                demoAccounts={DEMO_ACCOUNTS}
+                onDemoLogin={(account) =>
+                  void quickLogin({
+                    email: account.email,
+                    password: account.password,
+                  })
+                }
               />
             </motion.div>
           )}
