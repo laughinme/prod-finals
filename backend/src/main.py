@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def create_app(
     settings: Settings | None = None,
-    enable_rate_limiter: bool = True,
+    enable_rate_limiter: bool = False,
     check_db_on_startup: bool = True,
     enable_scheduler: bool | None = None,
 ) -> FastAPI:
