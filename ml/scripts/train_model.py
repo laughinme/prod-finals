@@ -5,25 +5,12 @@ import os
 from pathlib import Path
 import urllib.request
 import zipfile
-from ml.learn.evaluate import evaluate_model
+
 import boto3
 from botocore.config import Config
-import json
-import boto3
-from botocore.config import Config
-from dataclasses import asdict
-import artifact_path
-import artifact
+
 from ml.learn.model import artifact_to_json_bytes, train_profile_model
 from ml.learn.prepare_data import load_transactions_csv
-
-
-test_data_path = Path(os.getenv("ML_TEST_DATA_PATH", "/app/ml/data/test.csv"))
-test_transactions = load_transactions_csv(test_data_path) # Загрузка тестовых данных
-
-metrics = evaluate_model(artifact, test_transactions, k=5)
-metrics_path = artifact_path.parent / f"{artifact.model_version}_metrics.json"
-metrics_path.write_text(json.dumps(asdict(metrics)))
 
 
 def _as_bool(raw: str | None, default: bool) -> bool:
@@ -85,7 +72,7 @@ def _download_training_data(
     archive_member: str,
 ) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=timeout_sec) as response:              
+    with urllib.request.urlopen(url, timeout=timeout_sec) as response:  # noqa: S310
         payload = response.read()
         content_type = response.headers.get_content_type()
 
@@ -95,7 +82,7 @@ def _download_training_data(
             destination=destination,
             archive_member=archive_member,
         )
-        print(f"Зип, достаем: {selected_member} -> {destination}")
+        print(f"ZIP detected, extracted member: {selected_member} -> {destination}")
         return
 
     destination.write_bytes(payload)
@@ -160,9 +147,10 @@ def _resolve_upload_config(
     if missing:
         if upload_required:
             raise RuntimeError(
-                f"ерорр ({', '.join(missing)}) "
-                "ML_MODEL_UPLOAD_REQUIRED=true."
+                f"Model upload config is incomplete ({', '.join(missing)}) "
+                "while ML_MODEL_UPLOAD_REQUIRED=true."
             )
+        print("Model upload skipped: missing config -> " + ", ".join(missing))
         return None
 
     return endpoint_url, region, access_key, secret_key, bucket, key
