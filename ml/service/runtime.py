@@ -408,7 +408,7 @@ class MlRuntime:
             warnings.append("qdrant_unavailable")
 
                                                     
-        if not candidates and self._pipeline is not None:
+        if not candidates and self._pipeline is not None: #холодныйстарт
             items, runtime_warnings, runtime_decision_mode = self._pipeline.recommend(
                 request_user_id=request.request_user_id,
                 limit=request.limit,
@@ -417,6 +417,11 @@ class MlRuntime:
                 strategy=request.strategy.value,
                 trace_seed=trace_seed,
             )
+            top_score = candidates[0].score if candidates else 0
+
+        if top_score < 0.4:
+            warnings.append("Плоъие данные") #маллоданных
+            decision_mode = RecommendationDecisionMode.exploration
             warnings.extend(runtime_warnings)
             decision_mode = RecommendationDecisionMode(runtime_decision_mode)
 

@@ -5,13 +5,13 @@ import os
 from pathlib import Path
 import urllib.request
 import zipfile
-
 import boto3
 from botocore.config import Config
-
 from ml.learn.model import artifact_to_json_bytes, train_profile_model
 from ml.learn.prepare_data import load_transactions_csv
-
+import json
+import subprocess
+from datetime import datetime, timezone
 
 def _as_bool(raw: str | None, default: bool) -> bool:
     if raw is None:
@@ -240,6 +240,19 @@ def main() -> int:
         f"version={artifact.model_version}"
     )
     return 0
+def save_metadata(path: Path, metrics: dict):
+    metadata = {
+        "version": os.getenv("ML_MODEL_VERSION", "1.0.0"),
+        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
+        "features_version": os.getenv("ML_FEATURES_VERSION", "v1"),
+        "metrics": metrics,
+        "parameters": {
+            "sample_size": os.getenv("ML_SAMPLE_USER_COUNT")
+        }
+    }
+    with open(path / "metadata.json", "w") as f:
+        json.dump(metadata, f, indent=4)
 
 
 if __name__ == "__main__":
