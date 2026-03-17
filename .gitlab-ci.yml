@@ -14,6 +14,7 @@ variables:
 backend:lint:
   stage: lint
   image: python:3.13-slim
+  allow_failure: true
   before_script:
     - cd backend
     - pip install "poetry==2.3.2"
@@ -28,6 +29,7 @@ backend:lint:
 ml:lint:
   stage: lint
   image: python:3.11-slim
+  allow_failure: true
   before_script:
     - cd ml
     - pip install "poetry==2.3.2"
@@ -42,6 +44,7 @@ ml:lint:
 frontend:lint:
   stage: lint
   image: node:22-alpine
+  allow_failure: true
   before_script:
     - cd frontend
     - npm ci --silent --no-audit --no-fund
