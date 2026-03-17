@@ -17,7 +17,7 @@ def _profile(
 
 
 @pytest.mark.unit
-def test_demo_food_b_uses_single_style_category():
+def test_demo_food_b_uses_food_cluster_categories():
     profile = _profile(
         email="demo.food.b@tmatch.example.com",
         ml_user_id="food-b-id",
@@ -29,7 +29,13 @@ def test_demo_food_b_uses_single_style_category():
         bootstrap_categories=["travel", "transport", "health"],
     )
 
-    assert categories == ["одежда_обувь"]
+    assert categories == [
+        "супермаркеты",
+        "фаст_фуд",
+        "рестораны",
+        "супермаркеты",
+        "фаст_фуд",
+    ]
 
 
 @pytest.mark.unit
