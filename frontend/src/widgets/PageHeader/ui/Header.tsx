@@ -4,6 +4,7 @@ import { useNavItems } from "../model/useNavItems";
 import { Logo } from "./Logo";
 import { DesktopNav } from "./DesktopNav";
 import { MobileHeaderNav } from "./MobileHeaderNav";
+import { HeaderNotificationsBell } from "./HeaderNotificationsBell";
 
 export function Header() {
   const navItems = useNavItems();
@@ -19,6 +20,7 @@ export function Header() {
         <Logo />
         <DesktopNav navItems={navItems} />
         <div className="ml-auto flex items-center gap-2">
+          <HeaderNotificationsBell />
           <HeaderUserMenu />
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
 import { NavItem } from "../model/useNavItems";
 import { Logo } from "./Logo";
 import { useProfile } from "@/features/profile/model/useProfile";
+import { HeaderNotificationsBell } from "./HeaderNotificationsBell";
 
 interface MobileHeaderNavProps {
   navItems: NavItem[];
@@ -36,6 +37,7 @@ export function MobileHeaderNav({ navItems }: MobileHeaderNavProps) {
         {rightItems.map((item) => (
           <MobileNavTab key={item.to} item={item} />
         ))}
+        <HeaderNotificationsBell compact />
         <MobileProfileTab />
       </div>
     </div>

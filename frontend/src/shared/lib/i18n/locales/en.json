@@ -261,6 +261,22 @@
   "errors": {
     "failed_to_get_explanation": "Failed to get compatibility explanation for this card."
   },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Likes, matches, and messages in one place.",
+    "empty_title": "No notifications yet",
+    "empty_body": "When someone likes you, matches with you, or sends a message, it will appear here.",
+    "empty_subtitle": "Your activity inbox will appear here.",
+    "open_inbox": "Open notifications",
+    "unread_count": "{{count}} new",
+    "likes_short": "Likes: {{count}}",
+    "matches_short": "Matches: {{count}}",
+    "messages_short": "Messages: {{count}}",
+    "like_received": "Someone liked you",
+    "message_received": "New message",
+    "like_from": "{{name}} liked you",
+    "match_with": "Match with {{name}}"
+  },
   "admin": {
     "dashboard": {
       "badge": "Admin",

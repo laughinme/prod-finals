@@ -130,30 +130,36 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     });
   }, []);
 
-  const removeNotification = useCallback((notificationId: string) => {
-    setNotifications((prev) =>
-      prev.filter((notification) => notification.notificationId !== notificationId),
-    );
-  }, []);
+  const updateNotificationSeenState = useCallback(
+    (notificationId: string, seenAt: string) => {
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification.notificationId === notificationId
+            ? { ...notification, seenAt }
+            : notification,
+        ),
+      );
+    },
+    [],
+  );
 
   const markSeenByNotification = useCallback(
     async (notification: PersonalNotification) => {
       if (notification.seenAt) {
-        removeNotification(notification.notificationId);
         return;
       }
 
+      let result: { notification_id: string; seen_at: string };
       if (notification.kind === "match") {
-        await markMatchNotificationSeen(notification.notificationId);
+        result = await markMatchNotificationSeen(notification.notificationId);
       } else if (notification.kind === "like") {
-        await markLikeNotificationSeen(notification.notificationId);
+        result = await markLikeNotificationSeen(notification.notificationId);
       } else {
-        await markMessageNotificationSeen(notification.notificationId);
+        result = await markMessageNotificationSeen(notification.notificationId);
       }
-
-      removeNotification(notification.notificationId);
+      updateNotificationSeenState(result.notification_id, result.seen_at);
     },
-    [removeNotification],
+    [updateNotificationSeenState],
   );
 
   const markMatchAsSeen = useCallback(
@@ -169,12 +175,17 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     [markSeenByNotification, notifications],
   );
 
-  const currentNotification = notifications[0] ?? null;
+  const currentNotification =
+    notifications.find((item) => !item.seenAt) ?? null;
+  const totalUnseenCount = notifications.filter((item) => !item.seenAt).length;
   const unseenMatchCount = notifications.filter(
     (item) => item.kind === "match" && !item.seenAt,
   ).length;
   const unseenLikeCount = notifications.filter(
     (item) => item.kind === "like" && !item.seenAt,
+  ).length;
+  const unseenMessageCount = notifications.filter(
+    (item) => item.kind === "message" && !item.seenAt,
   ).length;
 
   const dismissCurrentNotification = useCallback(async () => {
@@ -190,7 +201,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       return;
     }
 
-    await markSeenByNotification(currentNotification);
+    if (!currentNotification.seenAt) {
+      await markSeenByNotification(currentNotification);
+    }
     void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
 
     if (currentNotification.kind === "match") {
@@ -237,6 +250,59 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     });
   }, [currentNotification, markSeenByNotification, navigate, queryClient]);
 
+  const openNotification = useCallback(
+    async (notification: PersonalNotification) => {
+      if (!notification.seenAt) {
+        await markSeenByNotification(notification);
+      }
+      void queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY });
+
+      if (notification.kind === "match") {
+        navigate("/match", {
+          state: {
+            matchedProfile: {
+              id: notification.peer.userId,
+              candidateUserId: notification.peer.userId,
+              name: notification.peer.displayName,
+              age: null,
+              image: notification.peer.avatarUrl,
+              bio: "",
+              matchScore: 0,
+              categoryBreakdown: [],
+              tags: [],
+              explanation: "",
+              location: "",
+              reasonCodes: [],
+              detailsAvailable: false,
+              actions: null,
+              source: "feed",
+            },
+            matchId: notification.matchId,
+            conversationId: notification.conversationId,
+          },
+        });
+        return;
+      }
+
+      if (notification.kind === "message") {
+        navigate(`/chat?match=${notification.matchId}`, {
+          state: {
+            matchId: notification.matchId,
+            conversationId: notification.conversationId,
+          },
+        });
+        return;
+      }
+
+      navigate("/discovery", {
+        state: {
+          likeNotificationId: notification.notificationId,
+        },
+      });
+    },
+    [markSeenByNotification, navigate, queryClient],
+  );
+
   useEffect(() => {
     if (!auth?.user) {
       clientRef.current?.disconnect();
@@ -251,9 +317,9 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     const bootstrap = async () => {
       try {
         const [matches, likes, messages] = await Promise.all([
-          getMatchNotifications(true, 20),
-          getLikeNotifications(true, 20),
-          getMessageNotifications(true, 20),
+          getMatchNotifications(false, 30),
+          getLikeNotifications(false, 30),
+          getMessageNotifications(false, 30),
         ]);
         if (!cancelled) {
           mergeNotifications([
@@ -388,23 +454,33 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
   const value = useMemo(
     () => ({
+      notifications,
       currentNotification,
+      totalUnseenCount,
       unseenMatchCount,
       unseenLikeCount,
+      unseenMessageCount,
       isRealtimeEnabled,
       realtimeClient: clientRef.current,
       dismissCurrentNotification,
       openCurrentNotification,
+      openNotification,
+      markNotificationSeen: markSeenByNotification,
       markMatchAsSeen,
     }),
     [
+      notifications,
       currentNotification,
       dismissCurrentNotification,
       isRealtimeEnabled,
       markMatchAsSeen,
+      markSeenByNotification,
+      openNotification,
       openCurrentNotification,
       unseenLikeCount,
+      unseenMessageCount,
       unseenMatchCount,
+      totalUnseenCount,
     ],
   );
 

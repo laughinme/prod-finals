@@ -260,6 +260,22 @@
   "errors": {
     "failed_to_get_explanation": "Не удалось получить описание совместимости для этой карточки."
   },
+  "notifications": {
+    "title": "Уведомления",
+    "subtitle": "Лайки, мэтчи и сообщения в одном месте.",
+    "empty_title": "Пока уведомлений нет",
+    "empty_body": "Когда вам поставят лайк, случится мэтч или придет сообщение, это появится здесь.",
+    "empty_subtitle": "Здесь будет ваш inbox по активности.",
+    "open_inbox": "Открыть уведомления",
+    "unread_count": "{{count}} новых",
+    "likes_short": "Лайки: {{count}}",
+    "matches_short": "Мэтчи: {{count}}",
+    "messages_short": "Сообщения: {{count}}",
+    "like_received": "Вам поставили лайк",
+    "message_received": "Новое сообщение",
+    "like_from": "{{name}} поставил(а) вам лайк",
+    "match_with": "Мэтч с {{name}}"
+  },
   "admin": {
     "dashboard": {
       "badge": "Admin",
