@@ -240,7 +240,7 @@ export function ChatWindow({
               }
             }}
             placeholder={t("chat.write_message_placeholder")}
-            className="min-h-11 max-h-35 flex-1 resize-none rounded-2xl border border-transparent bg-secondary px-4 py-3 text-sm leading-relaxed outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:min-h-14 md:max-h-45 md:py-4 md:text-[15px]"
+            className="min-h-11 max-h-35 flex-1 resize-none rounded-2xl border border-transparent bg-secondary px-4 py-3 text-base leading-relaxed outline-none transition-all focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary md:min-h-14 md:max-h-45 md:py-4 md:text-[15px]"
           />
           <Button
             size="icon"
