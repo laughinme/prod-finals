@@ -64,6 +64,13 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallback: "/index.html",
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/ml\//,
+            /^\/docs(?:\/|$)/,
+            /^\/redoc(?:\/|$)/,
+            /^\/openapi\.json$/,
+          ],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp}"],
           runtimeCaching: [
             {
