@@ -255,7 +255,7 @@ with httpx.Client(timeout=30) as client:
         "strategy": "balanced",
         "context": {
             "request_ts": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-            "client": "script",
+            "client": "ios",
             "decision_policy": "daily_batch",
         },
     }
