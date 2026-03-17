@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion } from "motion/react";
 
 import { useAuth } from "@/entities/auth";
-import { useProfile } from "@/features/profile";
+import { useProfile, PreferencesEditor } from "@/features/profile";
+import { BlockedUsersList } from "@/features/safety";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
-
-import { ProfileSkeleton } from "./components/ProfileSkeleton";
 import {
   ProfileNavigation,
   type ProfileTab,
-} from "./components/ProfileNavigation";
-import { ProfileBanner } from "./components/ProfileBanner";
-import { FiltersTab } from "./components/FiltersTab";
-import { ProfileTabContent } from "./components/ProfileTabContent";
-import { BlockedUsersTab } from "./components/BlockedUsersTab";
+} from "@/widgets/ProfileNavigation";
+import { ProfileBanner } from "@/widgets/ProfileBanner";
+import { ProfileInfoCard } from "@/widgets/ProfileInfoCard";
+import { ProfileSkeleton } from "@/widgets/ProfileInfoCard";
 
 export default function ProfilePage() {
   const { t } = useTranslation();
@@ -50,11 +49,20 @@ export default function ProfilePage() {
           <div className="flex gap-6">
             <div className="min-w-0 flex-1">
               {activeTab === "filters" && (
-                <FiltersTab profile={profile} mobileTabBar={mobileTabBar} />
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                >
+                  {mobileTabBar}
+                  <div className="mt-4 md:mt-0 md:pt-16">
+                    <PreferencesEditor profile={profile} />
+                  </div>
+                </motion.div>
               )}
 
               {activeTab === "profile" && (
-                <ProfileTabContent
+                <ProfileInfoCard
                   profile={profile}
                   isMobile={isMobile}
                   mobileTabBar={mobileTabBar}
@@ -62,7 +70,7 @@ export default function ProfilePage() {
               )}
 
               {activeTab === "blocked" && (
-                <BlockedUsersTab mobileTabBar={mobileTabBar} />
+                <BlockedUsersList mobileTabBar={mobileTabBar} />
               )}
             </div>
 

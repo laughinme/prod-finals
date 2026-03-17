@@ -38,6 +38,7 @@ export function ProfilePreview({ profile, isMobile }: ProfilePreviewProps) {
     detailsAvailable: false,
     actions: null,
     source: "feed",
+    likedYou: false,
   } satisfies MatchProfile;
 
   return (

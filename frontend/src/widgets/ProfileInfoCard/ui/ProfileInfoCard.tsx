@@ -4,7 +4,7 @@ import type { User } from "@/entities/user/model";
 import { ProfileInfo } from "./ProfileInfo";
 import { ProfilePreview } from "./ProfilePreview";
 
-interface ProfileTabContentProps {
+interface ProfileInfoCardProps {
   profile: User;
   isMobile: boolean;
   mobileTabBar: React.ReactNode;
@@ -27,11 +27,11 @@ const item = {
   },
 } as const;
 
-export function ProfileTabContent({
+export function ProfileInfoCard({
   profile,
   isMobile,
   mobileTabBar,
-}: ProfileTabContentProps) {
+}: ProfileInfoCardProps) {
   return (
     <>
       <motion.div

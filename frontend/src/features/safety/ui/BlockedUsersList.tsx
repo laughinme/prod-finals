@@ -5,13 +5,14 @@ import { useTranslation } from "react-i18next";
 import { ProfileImageFallback } from "@/shared/components/ui/profile-image-fallback";
 import { Button } from "@/shared/components/ui/button";
 import { formatDate } from "@/shared/lib/date";
-import { useBlockedUsers, useUnblockUser } from "@/features/safety";
+import { useBlockedUsers } from "../model/useBlockedUsers";
+import { useUnblockUser } from "../model/useUnblockUser";
 
-interface BlockedUsersTabProps {
+interface BlockedUsersListProps {
   mobileTabBar: React.ReactNode;
 }
 
-export function BlockedUsersTab({ mobileTabBar }: BlockedUsersTabProps) {
+export function BlockedUsersList({ mobileTabBar }: BlockedUsersListProps) {
   const { t, i18n } = useTranslation();
   const { data, isLoading, isError } = useBlockedUsers();
   const unblockMutation = useUnblockUser();
