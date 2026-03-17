@@ -6,6 +6,7 @@ from core.crypto import hash_password
 from database.relational_db import RolesInterface, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
 from domain.dating.category_catalog import CategoryDefinition, pick_category_keys
+from sqlalchemy.exc import IntegrityError
 from service.mock_identity import MockIdentityRegistry
 from service.avatar_assets import load_dataset_avatar_asset
 from service.demo_accounts import DEMO_DATASET_INDEX_TO_KEY
@@ -50,12 +51,20 @@ class DatasetUsersSeedTask:
                 user = await user_repo.get_by_email(profile.email)
 
             if user is None:
-                user = User(
-                    email=profile.email,
-                    password_hash=password_hash,
-                )
-                await user_repo.add(user)
-                await context.uow.session.flush()
+                try:
+                    async with context.uow.session.begin_nested():
+                        user = User(
+                            email=profile.email,
+                            password_hash=password_hash,
+                        )
+                        await user_repo.add(user)
+                        await context.uow.session.flush()
+                except IntegrityError:
+                    user = await user_repo.get_by_service_user_id(profile.service_user_id)
+                    if user is None:
+                        user = await user_repo.get_by_email(profile.email)
+                    if user is None:
+                        raise
 
             user.service_user_id = profile.service_user_id
             user.email = profile.email
