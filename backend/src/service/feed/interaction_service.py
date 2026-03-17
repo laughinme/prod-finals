@@ -4,7 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from core.errors import ForbiddenError
-from database.relational_db import Conversation, InteractionEvent, Match, PairState, RecommendationItem, User
+from database.relational_db import (
+    Conversation,
+    InteractionEvent,
+    Match,
+    PairState,
+    RecommendationItem,
+    User,
+)
 from domain.dating import (
     AuditEntityType,
     ConversationStatus,
@@ -17,7 +24,11 @@ from domain.dating import (
     MatchStatus,
     SafetySourceContext,
 )
-from domain.notifications import LikeReceivedEventPayload, MatchCreatedEventPayload, NotificationPeer
+from domain.notifications import (
+    LikeReceivedEventPayload,
+    MatchCreatedEventPayload,
+    NotificationPeer,
+)
 
 from service.matchmaking import (
     BaseDatingService,
@@ -46,7 +57,9 @@ class InteractionService(BaseDatingService):
         if item.processed_at is not None:
             raise FeedItemAlreadyProcessedError()
 
-        pair_state = await self.matchmaking_repo.get_or_create_pair_state(user.id, item.target_user_id)
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(
+            user.id, item.target_user_id
+        )
         now = self.now()
         actor_slot = "low" if pair_state.user_low_id == user.id else "high"
 
@@ -104,7 +117,9 @@ class InteractionService(BaseDatingService):
         )
         batch = await self.matchmaking_repo.get_recommendation_batch(item.batch_id)
         decision_mode = batch.decision_mode if batch is not None else None
-        pair_state = await self.matchmaking_repo.get_or_create_pair_state(user.id, item.target_user_id)
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(
+            user.id, item.target_user_id
+        )
         if existing is not None or item.processed_at is not None:
             return self._existing_reaction_response(item, pair_state)
 
@@ -128,7 +143,10 @@ class InteractionService(BaseDatingService):
         like_notification_payload = None
         like_notification_user_id = None
         result = FeedReactionResult.LIKED
-        if payload.action == FeedAction.LIKE and counterpart_action == FeedAction.LIKE.value:
+        if (
+            payload.action == FeedAction.LIKE
+            and counterpart_action == FeedAction.LIKE.value
+        ):
             match, conversation, match_created = await self._ensure_match(
                 user.id,
                 item.target_user_id,
@@ -143,7 +161,10 @@ class InteractionService(BaseDatingService):
                 user_id=user.id,
                 liker_user_id=item.target_user_id,
             )
-            notification_payload, notification_user_id = await self._build_match_notification(
+            (
+                notification_payload,
+                notification_user_id,
+            ) = await self._build_match_notification(
                 actor=user,
                 peer_user_id=item.target_user_id,
                 match=match,
@@ -168,7 +189,10 @@ class InteractionService(BaseDatingService):
         elif payload.action == FeedAction.LIKE:
             pair_state.status = "one_way_like"
             result = FeedReactionResult.LIKED
-            like_notification_payload, like_notification_user_id = await self._build_like_notification(
+            (
+                like_notification_payload,
+                like_notification_user_id,
+            ) = await self._build_like_notification(
                 actor=user,
                 peer_user_id=item.target_user_id,
                 pair_state=pair_state,
@@ -218,7 +242,9 @@ class InteractionService(BaseDatingService):
         )
         target_user = await self.user_repo.get_by_id(item.target_user_id)
         actor_ml_id = user.service_user_id or str(user.id)
-        target_ml_id = (target_user.service_user_id if target_user else None) or str(item.target_user_id)
+        target_ml_id = (target_user.service_user_id if target_user else None) or str(
+            item.target_user_id
+        )
         await self.add_outbox_event(
             topic="ml.interactions.swipe",
             payload={
@@ -250,7 +276,9 @@ class InteractionService(BaseDatingService):
                 serve_item_id=serve_item_id,
                 owner_user_id=user.id,
             )
-            latest_pair_state = await self.matchmaking_repo.get_pair_state(user.id, item.target_user_id)
+            latest_pair_state = await self.matchmaking_repo.get_pair_state(
+                user.id, item.target_user_id
+            )
             if latest_item is not None and latest_pair_state is not None:
                 return self._existing_reaction_response(latest_item, latest_pair_state)
             raise
@@ -259,13 +287,18 @@ class InteractionService(BaseDatingService):
                 user_id=notification_user_id,
                 payload=notification_payload,
             )
-        if like_notification_payload is not None and like_notification_user_id is not None:
+        if (
+            like_notification_payload is not None
+            and like_notification_user_id is not None
+        ):
             await self.realtime_service.publish_like_received(
                 user_id=like_notification_user_id,
                 payload=like_notification_payload,
             )
 
-        return FeedReactionResponse(result=result, match=match_link, next_card_hint="next_available")
+        return FeedReactionResponse(
+            result=result, match=match_link, next_card_hint="next_available"
+        )
 
     async def _build_match_notification(
         self,
@@ -332,11 +365,16 @@ class InteractionService(BaseDatingService):
             )
             if conversation is None:
                 conversation = await self.matchmaking_repo.add(
-                    Conversation(match_id=existing.id, status=ConversationStatus.ACTIVE.value)
+                    Conversation(
+                        match_id=existing.id, status=ConversationStatus.ACTIVE.value
+                    )
                 )
                 existing.conversation_id = conversation.id
                 await self.uow.session.flush()
-            if existing.source_decision_mode is None and source_decision_mode is not None:
+            if (
+                existing.source_decision_mode is None
+                and source_decision_mode is not None
+            ):
                 existing.source_decision_mode = source_decision_mode
                 await self.uow.session.flush()
             return existing, conversation, False
@@ -363,14 +401,27 @@ class InteractionService(BaseDatingService):
         pair_state: PairState,
     ) -> FeedReactionResponse:
         action = item.reaction_action or pair_state.low_action or pair_state.high_action
-        if action == FeedAction.LIKE.value and pair_state.match_id and pair_state.conversation_id:
+        if (
+            action == FeedAction.LIKE.value
+            and pair_state.match_id
+            and pair_state.conversation_id
+        ):
             return FeedReactionResponse(
                 result=FeedReactionResult.MATCHED,
-                match=MatchLink(match_id=pair_state.match_id, conversation_id=pair_state.conversation_id),
+                match=MatchLink(
+                    match_id=pair_state.match_id,
+                    conversation_id=pair_state.conversation_id,
+                ),
                 next_card_hint="next_available",
             )
         if action == FeedAction.PASS.value:
-            return FeedReactionResponse(result=FeedReactionResult.PASSED, next_card_hint="next_available")
+            return FeedReactionResponse(
+                result=FeedReactionResult.PASSED, next_card_hint="next_available"
+            )
         if action == FeedAction.HIDE.value:
-            return FeedReactionResponse(result=FeedReactionResult.HIDDEN, next_card_hint="next_available")
-        return FeedReactionResponse(result=FeedReactionResult.LIKED, next_card_hint="next_available")
+            return FeedReactionResponse(
+                result=FeedReactionResult.HIDDEN, next_card_hint="next_available"
+            )
+        return FeedReactionResponse(
+            result=FeedReactionResult.LIKED, next_card_hint="next_available"
+        )

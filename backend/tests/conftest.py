@@ -25,7 +25,10 @@ if str(SRC_DIR) not in sys.path:
 
 os.environ.setdefault("APP_STAGE", "dev")
 os.environ.setdefault("DEBUG", "true")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://postgres:secret@localhost:5439/templatepg_test")
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:secret@localhost:5439/templatepg_test",
+)
 os.environ.setdefault("REDIS_URL", "redis://localhost:6380/9")
 os.environ.setdefault("STORAGE_ENDPOINT_INTERNAL", "http://localhost:9002")
 os.environ.setdefault("STORAGE_ENDPOINT_PUBLIC", "http://localhost:9002")
@@ -53,7 +56,9 @@ async def _wait_for_redis(redis: Redis, attempts: int = 30, delay: float = 1.0) 
         except Exception as exc:
             last_error = exc
             await asyncio.sleep(delay)
-    raise RuntimeError("Could not connect to redis for integration tests") from last_error
+    raise RuntimeError(
+        "Could not connect to redis for integration tests"
+    ) from last_error
 
 
 async def _wait_for_minio(attempts: int = 30, delay: float = 1.0) -> None:
@@ -76,12 +81,8 @@ async def _wait_for_minio(attempts: int = 30, delay: float = 1.0) -> None:
     last_error = None
     for _ in range(attempts):
         try:
-            await asyncio.to_thread(
-                lambda: client.head_bucket(Bucket=public_bucket)
-            )
-            await asyncio.to_thread(
-                lambda: client.head_bucket(Bucket=private_bucket)
-            )
+            await asyncio.to_thread(lambda: client.head_bucket(Bucket=public_bucket))
+            await asyncio.to_thread(lambda: client.head_bucket(Bucket=private_bucket))
             return
         except ClientError as exc:
             last_error = exc
@@ -90,7 +91,9 @@ async def _wait_for_minio(attempts: int = 30, delay: float = 1.0) -> None:
             last_error = exc
             await asyncio.sleep(delay)
 
-    raise RuntimeError("Could not connect to minio for integration tests") from last_error
+    raise RuntimeError(
+        "Could not connect to minio for integration tests"
+    ) from last_error
 
 
 @pytest.fixture(scope="session")
@@ -115,7 +118,9 @@ def _migrate_database() -> None:
             last_error = exc
             time.sleep(1)
 
-    raise RuntimeError("Failed to apply migrations for integration tests") from last_error
+    raise RuntimeError(
+        "Failed to apply migrations for integration tests"
+    ) from last_error
 
 
 @pytest_asyncio.fixture
@@ -140,12 +145,15 @@ async def _integration_state(
     await dispose_engine()
     engine = get_engine()
     async with engine.begin() as conn:
-        await conn.execute(text("TRUNCATE TABLE user_roles, users RESTART IDENTITY CASCADE"))
+        await conn.execute(
+            text("TRUNCATE TABLE user_roles, users RESTART IDENTITY CASCADE")
+        )
 
     await redis_client.flushdb()
     yield
     await redis_client.flushdb()
     await dispose_engine()
+
 
 @pytest_asyncio.fixture
 async def app(
@@ -172,5 +180,7 @@ async def app(
 @pytest_asyncio.fixture
 async def client(app) -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as api_client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as api_client:
         yield api_client

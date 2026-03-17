@@ -10,18 +10,18 @@ class Language(Base):
     code: Mapped[str] = mapped_column(String(2), primary_key=True)
     name_ru: Mapped[str] = mapped_column(String, nullable=False)
     name_en: Mapped[str] = mapped_column(String, nullable=False)
-    
+
     __table_args__ = (
         Index(
-            'languages_name_ru_trgm',
-            'name_ru',
-            postgresql_using='gin',
-            postgresql_ops={'name_ru': 'gin_trgm_ops'}
+            "languages_name_ru_trgm",
+            "name_ru",
+            postgresql_using="gin",
+            postgresql_ops={"name_ru": "gin_trgm_ops"},
         ),
         Index(
-            'languages_name_en_trgm',
-            'name_en',
-            postgresql_using='gin',
-            postgresql_ops={'name_en': 'gin_trgm_ops'}
+            "languages_name_en_trgm",
+            "name_en",
+            postgresql_using="gin",
+            postgresql_ops={"name_en": "gin_trgm_ops"},
         ),
     )

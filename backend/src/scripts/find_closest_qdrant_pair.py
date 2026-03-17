@@ -141,7 +141,9 @@ async def _load_db_users() -> dict[str, DbUser]:
         ml_user_id = _normalize_ml_user_id(service_user_id)
         if not ml_user_id:
             continue
-        full_name = " ".join(part.strip() for part in (first_name, last_name) if part and part.strip()).strip()
+        full_name = " ".join(
+            part.strip() for part in (first_name, last_name) if part and part.strip()
+        ).strip()
         users[ml_user_id] = DbUser(email=email, full_name=full_name)
     return users
 
@@ -161,7 +163,10 @@ async def _fetch_ml_ranks(
         "limit": limit,
         "strategy": strategy,
         "context": {
-            "request_ts": dt.datetime.now(dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+            "request_ts": dt.datetime.now(dt.UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
             "client": "web",
             "decision_policy": "daily_batch",
         },
@@ -173,7 +178,9 @@ async def _fetch_ml_ranks(
     )
     if response.status_code >= 400:
         preview = response.text[:500].replace("\n", " ")
-        raise RuntimeError(f"ML recommendations failed with status={response.status_code}: {preview}")
+        raise RuntimeError(
+            f"ML recommendations failed with status={response.status_code}: {preview}"
+        )
 
     body = response.json()
     candidates = body.get("candidates") or []
@@ -187,8 +194,12 @@ async def _fetch_ml_ranks(
 
 async def _run(args: argparse.Namespace) -> int:
     settings = get_settings()
-    ml_service_url = (args.ml_service_url or settings.ML_SERVICE_URL or "http://ml-service:8080").strip()
-    ml_service_token = (args.ml_service_token or settings.ML_SERVICE_TOKEN or "").strip()
+    ml_service_url = (
+        args.ml_service_url or settings.ML_SERVICE_URL or "http://ml-service:8080"
+    ).strip()
+    ml_service_token = (
+        args.ml_service_token or settings.ML_SERVICE_TOKEN or ""
+    ).strip()
 
     if not ml_service_token:
         print("ML_SERVICE_TOKEN is empty. Set token in env or pass --ml-service-token.")
@@ -277,18 +288,30 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Find two closest Qdrant users that mutually appear in ML recommendations.",
     )
-    parser.add_argument("--qdrant-url", default=DEFAULT_QDRANT_URL, help="Qdrant base URL")
-    parser.add_argument("--collection", default=DEFAULT_COLLECTION, help="Qdrant collection name")
-    parser.add_argument("--ml-service-url", default="", help="ML service URL (defaults to settings)")
-    parser.add_argument("--ml-service-token", default="", help="ML service token (defaults to settings)")
-    parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="Recommendation limit per user")
+    parser.add_argument(
+        "--qdrant-url", default=DEFAULT_QDRANT_URL, help="Qdrant base URL"
+    )
+    parser.add_argument(
+        "--collection", default=DEFAULT_COLLECTION, help="Qdrant collection name"
+    )
+    parser.add_argument(
+        "--ml-service-url", default="", help="ML service URL (defaults to settings)"
+    )
+    parser.add_argument(
+        "--ml-service-token", default="", help="ML service token (defaults to settings)"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=DEFAULT_LIMIT, help="Recommendation limit per user"
+    )
     parser.add_argument(
         "--scan-top-pairs",
         type=int,
         default=DEFAULT_SCAN_TOP_PAIRS,
         help="How many closest Qdrant pairs to scan",
     )
-    parser.add_argument("--strategy", default="balanced", help="ML recommendation strategy")
+    parser.add_argument(
+        "--strategy", default="balanced", help="ML recommendation strategy"
+    )
     return parser
 
 

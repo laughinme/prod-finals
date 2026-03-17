@@ -67,7 +67,11 @@ class UserPatch(BaseModel):
         if self.looking_for_genders is not None:
             self.looking_for_genders = list(dict.fromkeys(self.looking_for_genders))
         if self.interests is not None:
-            self.interests = list(dict.fromkeys(item.strip() for item in self.interests if item and item.strip()))
+            self.interests = list(
+                dict.fromkeys(
+                    item.strip() for item in self.interests if item and item.strip()
+                )
+            )
         return self
 
 

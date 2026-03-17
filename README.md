@@ -15,8 +15,11 @@
 - ML OpenAPI (локально): <http://localhost:8081/openapi.json>
 - ML API спецификация в репо: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
 - Публичный API контракт (backend): [`docs/public-api-final.yaml`](docs/public-api-final.yaml)
-- Демо юзер login: mock-user-0003@example.com Password: DemoPass123!
-- Демо админ login: admin@example.com Password: DemoPass123!
+- Демо login: `demo.food.a@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.food.b@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.style@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.cold@tmatch.local` / `DemoPass123!`
+- Админ login: `admin@demo.local` / `Admin12345!`
 
 ## E2E пользовательский путь
 
@@ -65,6 +68,18 @@ docker compose up -d
 - backend: <http://localhost:8080/api/docs>
 - ml-service: <http://localhost:8081/docs>
 - qdrant: <http://localhost:6333/dashboard>
+
+## Линт и форматирование
+
+```bash
+make format
+make format-check
+make lint
+```
+
+- `make format` — автоформат backend/ml и автофикс eslint во frontend.
+- `make format-check` — проверка форматирования Python-кода без изменений файлов.
+- `make lint` — общий линт backend/ml/frontend.
 
 ## Прод деплой
 

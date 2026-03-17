@@ -103,6 +103,13 @@ _LAST_NAMES_BY_GENDER: dict[str, tuple[str, ...]] = {
 
 _DEFAULT_INTERESTS: tuple[str, ...] = ("coffee", "music", "travel")
 
+_SCENARIO_EMAIL_BY_DATASET_INDEX: dict[int, str] = {
+    1: "demo.food.a@tmatch.local",
+    2: "demo.food.b@tmatch.local",
+    3: "demo.style@tmatch.local",
+    4: "demo.cold@tmatch.local",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class MockIdentityProfile:
@@ -123,7 +130,9 @@ class DatasetUserProfile(MockIdentityProfile):
 
 class MockIdentityRegistry:
     def __init__(self, dataset_user_ids: Iterable[str]) -> None:
-        normalized_ids = [str(item).strip() for item in dataset_user_ids if str(item).strip()]
+        normalized_ids = [
+            str(item).strip() for item in dataset_user_ids if str(item).strip()
+        ]
         if not normalized_ids:
             raise ValueError("Mock identity dataset is empty")
         self._dataset_user_ids = tuple(dict.fromkeys(normalized_ids))
@@ -161,12 +170,15 @@ class MockIdentityRegistry:
             is_dataset_user=False,
         )
 
-    def _build_dataset_profile(self, *, index: int, service_user_id: str) -> DatasetUserProfile:
+    def _build_dataset_profile(
+        self, *, index: int, service_user_id: str
+    ) -> DatasetUserProfile:
         local_part = f"mock-user-{index:04d}"
+        email = _SCENARIO_EMAIL_BY_DATASET_INDEX.get(index, f"{local_part}@example.com")
         profile = self._build_profile(
             seed_key=f"dataset:{service_user_id}",
             service_user_id=service_user_id,
-            email=f"{local_part}@example.com",
+            email=email,
             is_dataset_user=True,
         )
         return DatasetUserProfile(

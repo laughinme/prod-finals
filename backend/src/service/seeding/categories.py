@@ -19,4 +19,3 @@ class PreferenceCategoriesSeedTask:
         repo = PreferenceCategoryInterface(context.uow.session)
         await repo.upsert_definitions(list(self.categories))
         await context.uow.session.flush()
-

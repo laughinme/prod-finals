@@ -47,7 +47,9 @@ class RealtimeService:
         if not self.is_enabled:
             return RealtimeConnectionResponse(enabled=False)
 
-        expires_at = datetime.now(UTC) + timedelta(seconds=self.settings.CENTRIFUGO_TOKEN_TTL_SEC)
+        expires_at = datetime.now(UTC) + timedelta(
+            seconds=self.settings.CENTRIFUGO_TOKEN_TTL_SEC
+        )
         channel = self.build_personal_channel(user_id=user_id)
         token = jwt.encode(
             {
@@ -75,7 +77,9 @@ class RealtimeService:
         if not self.is_enabled:
             return RealtimeSubscriptionResponse(enabled=False)
 
-        expires_at = datetime.now(UTC) + timedelta(seconds=self.settings.CENTRIFUGO_TOKEN_TTL_SEC)
+        expires_at = datetime.now(UTC) + timedelta(
+            seconds=self.settings.CENTRIFUGO_TOKEN_TTL_SEC
+        )
         token = jwt.encode(
             {
                 "sub": str(user_id),
@@ -92,7 +96,9 @@ class RealtimeService:
             expires_at=expires_at,
         )
 
-    async def publish_match_created(self, *, user_id, payload: MatchCreatedEventPayload) -> None:
+    async def publish_match_created(
+        self, *, user_id, payload: MatchCreatedEventPayload
+    ) -> None:
         await self._publish_personal_event(
             user_id=user_id,
             event_type="match_created",
@@ -100,7 +106,9 @@ class RealtimeService:
             log_label="match_created",
         )
 
-    async def publish_like_received(self, *, user_id, payload: LikeReceivedEventPayload) -> None:
+    async def publish_like_received(
+        self, *, user_id, payload: LikeReceivedEventPayload
+    ) -> None:
         await self._publish_personal_event(
             user_id=user_id,
             event_type="like_received",
@@ -108,7 +116,9 @@ class RealtimeService:
             log_label="like_received",
         )
 
-    async def publish_message_received(self, *, user_id, payload: MessageReceivedEventPayload) -> None:
+    async def publish_message_received(
+        self, *, user_id, payload: MessageReceivedEventPayload
+    ) -> None:
         await self._publish_personal_event(
             user_id=user_id,
             event_type="message_received",
@@ -136,7 +146,9 @@ class RealtimeService:
         try:
             await asyncio.to_thread(self._post_publication, publication)
         except (OSError, urllib_error.URLError, urllib_error.HTTPError) as exc:
-            logger.warning("Failed to publish realtime %s notification: %s", log_label, exc)
+            logger.warning(
+                "Failed to publish realtime %s notification: %s", log_label, exc
+            )
 
     async def publish_message_created(
         self,

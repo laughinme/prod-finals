@@ -20,11 +20,15 @@ class AdminUserSeedTask:
         role_repo = RolesInterface(context.uow.session)
         roles = await role_repo.get_by_slugs([DEFAULT_ROLE.value, "admin"])
         if len(roles) != 2:
-            raise RuntimeError("Default member/admin roles are missing from the database")
+            raise RuntimeError(
+                "Default member/admin roles are missing from the database"
+            )
 
         member_role, admin_role = roles
-        password_hash = await hash_password(context.settings.MOCK_USER_SEED_PASSWORD)
-        profile = self.registry.registration_profile(email="admin@example.com")
+        password_hash = await hash_password(context.settings.DEMO_ADMIN_PASSWORD)
+        profile = self.registry.registration_profile(
+            email=context.settings.DEMO_ADMIN_EMAIL
+        )
 
         user = await user_repo.get_by_service_user_id(profile.service_user_id)
         if user is None:

@@ -22,4 +22,6 @@ async def get_audit_events(
     entity_id: str | None = Query(None, min_length=1),
     limit: int = Query(50, ge=1, le=200),
 ) -> AuditEventsResponse:
-    return await svc.list_events(AuditEventsQuery(entity_type=entity_type, entity_id=entity_id, limit=limit))
+    return await svc.list_events(
+        AuditEventsQuery(entity_type=entity_type, entity_id=entity_id, limit=limit)
+    )

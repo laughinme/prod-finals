@@ -23,12 +23,20 @@ from domain.notifications import (
     RealtimeSubscriptionResponse,
 )
 
-from service.matchmaking import BaseDatingService, ConversationNotFoundError, ConversationUnavailableError
+from service.matchmaking import (
+    BaseDatingService,
+    ConversationNotFoundError,
+    ConversationUnavailableError,
+)
 
 
 class ConversationService(BaseDatingService):
-    async def get_conversation(self, *, user: User, conversation_id) -> ConversationResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+    async def get_conversation(
+        self, *, user: User, conversation_id
+    ) -> ConversationResponse:
+        row = await self.matchmaking_repo.get_conversation_for_user(
+            conversation_id=conversation_id, user_id=user.id
+        )
         if row is None:
             raise ConversationNotFoundError()
         conversation, match, peer = row
@@ -58,7 +66,9 @@ class ConversationService(BaseDatingService):
         cursor: str | None,
         limit: int,
     ) -> ConversationMessagesResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+        row = await self.matchmaking_repo.get_conversation_for_user(
+            conversation_id=conversation_id, user_id=user.id
+        )
         if row is None:
             raise ConversationNotFoundError()
         try:
@@ -101,12 +111,16 @@ class ConversationService(BaseDatingService):
         user: User,
         conversation_id,
     ) -> RealtimeSubscriptionResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+        row = await self.matchmaking_repo.get_conversation_for_user(
+            conversation_id=conversation_id, user_id=user.id
+        )
         if row is None:
             raise ConversationNotFoundError()
         return self.realtime_service.build_subscription_response(
             user_id=user.id,
-            channel=self.realtime_service.build_conversation_channel(conversation_id=conversation_id),
+            channel=self.realtime_service.build_conversation_channel(
+                conversation_id=conversation_id
+            ),
         )
 
     async def send_message(
@@ -116,7 +130,9 @@ class ConversationService(BaseDatingService):
         conversation_id,
         payload: SendMessageRequest,
     ) -> MessageResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+        row = await self.matchmaking_repo.get_conversation_for_user(
+            conversation_id=conversation_id, user_id=user.id
+        )
         if row is None:
             raise ConversationNotFoundError()
         conversation, match, peer = row
@@ -127,12 +143,20 @@ class ConversationService(BaseDatingService):
             limit=100,
         )
         is_first_message = len(existing_messages) == 0
-        has_prior_message_from_user = any(message.sender_user_id == user.id for message in existing_messages)
+        has_prior_message_from_user = any(
+            message.sender_user_id == user.id for message in existing_messages
+        )
         first_peer_message = next(
-            (message for message in existing_messages if message.sender_user_id != user.id),
+            (
+                message
+                for message in existing_messages
+                if message.sender_user_id != user.id
+            ),
             None,
         )
-        is_first_reply = not has_prior_message_from_user and first_peer_message is not None
+        is_first_reply = (
+            not has_prior_message_from_user and first_peer_message is not None
+        )
         reply_within_24h = (
             is_first_reply
             and first_peer_message is not None
@@ -247,8 +271,12 @@ class ConversationService(BaseDatingService):
         )
         return response
 
-    async def get_icebreakers(self, *, user: User, conversation_id) -> IcebreakersResponse:
-        row = await self.matchmaking_repo.get_conversation_for_user(conversation_id=conversation_id, user_id=user.id)
+    async def get_icebreakers(
+        self, *, user: User, conversation_id
+    ) -> IcebreakersResponse:
+        row = await self.matchmaking_repo.get_conversation_for_user(
+            conversation_id=conversation_id, user_id=user.id
+        )
         if row is None:
             raise ConversationNotFoundError()
         _conversation, _match, peer = row
@@ -257,9 +285,20 @@ class ConversationService(BaseDatingService):
             candidate=await self._build_feed_context(peer),
         )
 
-    async def send_icebreaker(self, *, user: User, conversation_id, icebreaker_id: str) -> MessageResponse:
-        icebreakers = await self.get_icebreakers(user=user, conversation_id=conversation_id)
-        item = next((icebreaker for icebreaker in icebreakers.items if icebreaker.icebreaker_id == icebreaker_id), None)
+    async def send_icebreaker(
+        self, *, user: User, conversation_id, icebreaker_id: str
+    ) -> MessageResponse:
+        icebreakers = await self.get_icebreakers(
+            user=user, conversation_id=conversation_id
+        )
+        item = next(
+            (
+                icebreaker
+                for icebreaker in icebreakers.items
+                if icebreaker.icebreaker_id == icebreaker_id
+            ),
+            None,
+        )
         if item is None:
             raise BadRequestError("Unknown icebreaker")
         return await self.send_message(

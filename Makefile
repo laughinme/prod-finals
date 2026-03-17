@@ -1,7 +1,12 @@
-.PHONY: backend-install backend-lint backend-test-unit backend-test-integration test-up test-down \
-	up down logs smoke-backend
+.PHONY: backend-install backend-lint backend-format backend-format-check backend-test-unit \
+	ml-install ml-lint ml-format ml-format-check \
+	frontend-install frontend-lint frontend-format \
+	format format-check lint \
+	backend-test-integration test-up test-down up down logs smoke-backend
 
 BACKEND_DIR := backend
+ML_DIR := ml
+FRONTEND_DIR := frontend
 TEST_COMPOSE_FILE := docker-compose.test.yml
 TEST_COMPOSE_PROJECT := monolith-template-test
 COMPOSE_FILE := docker-compose.yml
@@ -13,8 +18,35 @@ backend-install:
 backend-lint:
 	cd $(BACKEND_DIR) && poetry run ruff check src tests --select E9,F63,F7
 
+backend-format:
+	cd $(BACKEND_DIR) && poetry run ruff format src tests
+
+backend-format-check:
+	cd $(BACKEND_DIR) && poetry run ruff format --check src tests
+
 backend-test-unit:
 	cd $(BACKEND_DIR) && poetry run pytest -m unit -q
+
+ml-install:
+	cd $(ML_DIR) && poetry install --with dev --no-root
+
+ml-lint:
+	cd $(ML_DIR) && poetry run ruff check .
+
+ml-format:
+	cd $(ML_DIR) && poetry run ruff format .
+
+ml-format-check:
+	cd $(ML_DIR) && poetry run ruff format --check .
+
+frontend-install:
+	cd $(FRONTEND_DIR) && npm ci --silent --no-audit --no-fund
+
+frontend-lint:
+	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-format:
+	cd $(FRONTEND_DIR) && npm run lint -- --fix
 
 test-up:
 	docker compose -p $(TEST_COMPOSE_PROJECT) -f $(TEST_COMPOSE_FILE) up -d
@@ -41,5 +73,11 @@ logs:
 
 down:
 	docker compose -p $(COMPOSE_PROJECT) -f $(COMPOSE_FILE) down --remove-orphans
+
+format: backend-format ml-format frontend-format
+
+format-check: backend-format-check ml-format-check
+
+lint: backend-lint ml-lint frontend-lint
 
 smoke-backend: backend-test-unit backend-test-integration

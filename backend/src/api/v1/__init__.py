@@ -14,8 +14,8 @@ def get_v1_router() -> APIRouter:
     from .realtime import get_realtime_router
     from .safety import get_safety_router
     from .admins import get_admins_router
-    
-    router = APIRouter(prefix='/v1')
+
+    router = APIRouter(prefix="/v1")
 
     router.include_router(get_auth_routers())
     router.include_router(get_users_router())
@@ -29,5 +29,5 @@ def get_v1_router() -> APIRouter:
     router.include_router(get_audit_router())
     router.include_router(get_misc_router())
     router.include_router(get_admins_router())
-    
+
     return router

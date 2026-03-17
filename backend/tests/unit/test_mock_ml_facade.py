@@ -3,7 +3,12 @@ from uuid import uuid4
 
 import pytest
 
-from domain.dating import AgeRange, ExplanationRequest, FeedCandidateContext, SearchPreferences
+from domain.dating import (
+    AgeRange,
+    ExplanationRequest,
+    FeedCandidateContext,
+    SearchPreferences,
+)
 from domain.dating.category_catalog import load_category_definitions
 from service.matchmaking.ml_facade import HttpMlFacade, MockMlFacade
 
@@ -70,7 +75,9 @@ async def test_mock_ml_facade_prefers_better_matching_candidate():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_http_ml_facade_connection_status_accepts_boolean_health_checks(monkeypatch):
+async def test_http_ml_facade_connection_status_accepts_boolean_health_checks(
+    monkeypatch,
+):
     class FakeResponse:
         def raise_for_status(self):
             return None
@@ -98,7 +105,9 @@ async def test_http_ml_facade_connection_status_accepts_boolean_health_checks(mo
         async def get(self, *args, **kwargs):
             return FakeResponse()
 
-    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        "service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient
+    )
 
     facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
 
@@ -150,7 +159,7 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
                                 "code": "activity_overlap",
                                 "strength": "high",
                                 "confidence": 0.93,
-                            }
+                            },
                         ],
                     }
                 ],
@@ -169,7 +178,9 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
         async def post(self, *args, **kwargs):
             return FakeResponse()
 
-    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        "service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient
+    )
 
     facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
     ranked = await facade.rank(requester, [candidate], limit=1)
@@ -178,7 +189,10 @@ async def test_http_ml_facade_exposes_specific_category_reason(monkeypatch):
     assert ranked.decision_mode.value == "model"
     assert preview.preview.startswith("Сильное совпадение по интересам:")
     assert "category_fit" in preview.reason_codes
-    assert any(signal.label.startswith("Совпадает интерес:") for signal in preview.reason_signals)
+    assert any(
+        signal.label.startswith("Совпадает интерес:")
+        for signal in preview.reason_signals
+    )
     assert preview.category_breakdown[0].label == category.label
 
 
@@ -190,10 +204,18 @@ async def test_http_ml_facade_diversifies_top_category_order(monkeypatch):
         ml_user_id="requester-ml",
         display_name="Requester",
     )
-    candidate_a = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-a", display_name="A")
-    candidate_b = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-b", display_name="B")
-    candidate_c = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-c", display_name="C")
-    candidate_d = FeedCandidateContext(user_id=uuid4(), ml_user_id="cand-d", display_name="D")
+    candidate_a = FeedCandidateContext(
+        user_id=uuid4(), ml_user_id="cand-a", display_name="A"
+    )
+    candidate_b = FeedCandidateContext(
+        user_id=uuid4(), ml_user_id="cand-b", display_name="B"
+    )
+    candidate_c = FeedCandidateContext(
+        user_id=uuid4(), ml_user_id="cand-c", display_name="C"
+    )
+    candidate_d = FeedCandidateContext(
+        user_id=uuid4(), ml_user_id="cand-d", display_name="D"
+    )
 
     class FakeResponse:
         def raise_for_status(self):
@@ -207,25 +229,49 @@ async def test_http_ml_facade_diversifies_top_category_order(monkeypatch):
                         "candidate_user_id": "cand-a",
                         "score": 0.99,
                         "score_components": {"supermarkets": 1.0},
-                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                        "reason_signals": [
+                            {
+                                "code": "activity_overlap",
+                                "strength": "high",
+                                "confidence": 0.9,
+                            }
+                        ],
                     },
                     {
                         "candidate_user_id": "cand-b",
                         "score": 0.98,
                         "score_components": {"supermarkets": 1.0},
-                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                        "reason_signals": [
+                            {
+                                "code": "activity_overlap",
+                                "strength": "high",
+                                "confidence": 0.9,
+                            }
+                        ],
                     },
                     {
                         "candidate_user_id": "cand-c",
                         "score": 0.97,
                         "score_components": {"restaurants": 1.0},
-                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                        "reason_signals": [
+                            {
+                                "code": "activity_overlap",
+                                "strength": "high",
+                                "confidence": 0.9,
+                            }
+                        ],
                     },
                     {
                         "candidate_user_id": "cand-d",
                         "score": 0.96,
                         "score_components": {"supermarkets": 1.0},
-                        "reason_signals": [{"code": "activity_overlap", "strength": "high", "confidence": 0.9}],
+                        "reason_signals": [
+                            {
+                                "code": "activity_overlap",
+                                "strength": "high",
+                                "confidence": 0.9,
+                            }
+                        ],
                     },
                 ],
             }
@@ -243,10 +289,14 @@ async def test_http_ml_facade_diversifies_top_category_order(monkeypatch):
         async def post(self, *args, **kwargs):
             return FakeResponse()
 
-    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        "service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient
+    )
 
     facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
-    ranked = await facade.rank(requester, [candidate_a, candidate_b, candidate_c, candidate_d], limit=4)
+    ranked = await facade.rank(
+        requester, [candidate_a, candidate_b, candidate_c, candidate_d], limit=4
+    )
     ordered_ids = [str(item.candidate_user_id) for item in ranked.candidates]
 
     assert ranked.decision_mode.value == "model"
@@ -301,7 +351,9 @@ async def test_http_ml_facade_explain_maps_template_keys_to_human_text(monkeypat
         async def post(self, *args, **kwargs):
             return FakeResponse()
 
-    monkeypatch.setattr("service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        "service.matchmaking.ml_facade.httpx.AsyncClient", FakeAsyncClient
+    )
 
     facade = HttpMlFacade(base_url="http://ml-service:8080", service_token="test-token")
     response = await facade.explain(

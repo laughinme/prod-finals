@@ -13,6 +13,13 @@ from service.demo_accounts import DEMO_DATASET_INDEX_TO_KEY
 
 from .base import SeedContext
 
+_SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
+    "demo.food.a@tmatch.local": ("рестораны", "фаст_фуд", "супермаркеты"),
+    "demo.food.b@tmatch.local": ("супермаркеты", "фаст_фуд", "рестораны"),
+    "demo.style@tmatch.local": ("одежда_обувь", "развлечения", "транспорт"),
+    "demo.cold@tmatch.local": ("развлечения", "транспорт", "супермаркеты"),
+}
+
 
 class DatasetUsersSeedTask:
     name = "dataset_users"
@@ -60,7 +67,9 @@ class DatasetUsersSeedTask:
                         await user_repo.add(user)
                         await context.uow.session.flush()
                 except IntegrityError:
-                    user = await user_repo.get_by_service_user_id(profile.service_user_id)
+                    user = await user_repo.get_by_service_user_id(
+                        profile.service_user_id
+                    )
                     if user is None:
                         user = await user_repo.get_by_email(profile.email)
                     if user is None:
@@ -83,11 +92,17 @@ class DatasetUsersSeedTask:
             user.age_range_max = None
             user.distance_km = None
             user.goal = None
-            user.interests = pick_category_keys(
-                f"dataset-interests:{profile.service_user_id}",
-                min_items=3,
-                max_items=min(5, len(self.category_definitions) or 5),
+            scenario_interests = _SCENARIO_INTERESTS_BY_EMAIL.get(
+                (profile.email or "").strip().lower()
             )
+            if scenario_interests is not None:
+                user.interests = list(scenario_interests)
+            else:
+                user.interests = pick_category_keys(
+                    f"dataset-interests:{profile.service_user_id}",
+                    min_items=3,
+                    max_items=min(5, len(self.category_definitions) or 5),
+                )
             user.avatar_status = "approved"
             user.avatar_rejection_reason = None
 

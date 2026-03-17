@@ -1,4 +1,9 @@
-from core.errors import BadRequestError, ConflictError, NotFoundError, UnprocessableEntityError
+from core.errors import (
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    UnprocessableEntityError,
+)
 
 
 class OnboardingNotReadyError(ConflictError):

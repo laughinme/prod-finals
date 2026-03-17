@@ -17,7 +17,7 @@ from .user_service import UserService
 
 async def get_user_service(
     uow: UoW = Depends(get_uow),
-    redis = Depends(get_redis),
+    redis=Depends(get_redis),
     media_storage: MediaStorageService = Depends(get_media_storage_service),
     ml_facade: MlFacade = Depends(get_ml_facade),
 ) -> UserService:

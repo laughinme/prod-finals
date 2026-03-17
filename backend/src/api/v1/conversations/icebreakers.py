@@ -36,4 +36,6 @@ async def send_conversation_icebreaker(
     user: Annotated[User, Depends(auth_user)] = ...,
     svc: Annotated[ConversationService, Depends(get_conversation_service)] = ...,
 ) -> MessageResponse:
-    return await svc.send_icebreaker(user=user, conversation_id=conversation_id, icebreaker_id=icebreaker_id)
+    return await svc.send_icebreaker(
+        user=user, conversation_id=conversation_id, icebreaker_id=icebreaker_id
+    )

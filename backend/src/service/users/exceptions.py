@@ -1,4 +1,9 @@
-from core.errors import BadRequestError, NotFoundError, PayloadTooLargeError, UnauthorizedError
+from core.errors import (
+    BadRequestError,
+    NotFoundError,
+    PayloadTooLargeError,
+    UnauthorizedError,
+)
 
 
 class NotAuthenticated(UnauthorizedError):
@@ -11,7 +16,9 @@ class UnsupportedAvatarContentTypeError(BadRequestError):
 
     def __init__(self, allowed: list[str]) -> None:
         allowed_list = ", ".join(sorted(allowed))
-        super().__init__(detail=f"Unsupported avatar content type. Allowed: {allowed_list}")
+        super().__init__(
+            detail=f"Unsupported avatar content type. Allowed: {allowed_list}"
+        )
 
 
 class InvalidAvatarObjectKeyError(BadRequestError):

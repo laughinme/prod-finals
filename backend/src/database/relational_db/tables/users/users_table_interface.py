@@ -13,11 +13,11 @@ from ..roles import Role, UserRole
 class UserInterface:
     def __init__(self, session: AsyncSession):
         self.session = session
-    
+
     async def add(self, user: User) -> User:
         self.session.add(user)
         return user
-    
+
     async def get_by_id(self, id: UUID | str) -> User | None:
         stmt = (
             select(User)
@@ -25,16 +25,16 @@ class UserInterface:
             .where(User.id == id)
         )
         user = await self.session.scalar(stmt)
-        
+
         return user
-    
+
     async def get_by_email(self, email: EmailStr) -> User | None:
         user = await self.session.scalar(
             select(User)
             .options(selectinload(User.roles), selectinload(User.city))
             .where(User.email == email)
         )
-        
+
         return user
 
     async def get_by_demo_user_key(self, demo_user_key: str) -> User | None:
@@ -78,9 +78,7 @@ class UserInterface:
         cursor_created_at: datetime | None = None,
         cursor_id: UUID | None = None,
     ) -> list[User]:
-        stmt = select(User).options(
-            selectinload(User.roles)
-        )
+        stmt = select(User).options(selectinload(User.roles))
 
         if banned is not None:
             stmt = stmt.where(User.banned == banned)
@@ -108,34 +106,24 @@ class UserInterface:
         return list(rows.all())
 
     async def assign_roles(self, user: User, roles: list[Role]) -> User:
-        await self.session.execute(
-            delete(UserRole).where(UserRole.user_id == user.id)
-        )
-        
+        await self.session.execute(delete(UserRole).where(UserRole.user_id == user.id))
+
         if roles:
-            role_data = [
-                {"user_id": user.id, "role_id": role.id} 
-                for role in roles
-            ]
-            await self.session.execute(
-                insert(UserRole).values(role_data)
-            )
-        
+            role_data = [{"user_id": user.id, "role_id": role.id} for role in roles]
+            await self.session.execute(insert(UserRole).values(role_data))
+
         await self.session.flush()
         return user
 
     async def registrations_by_days(self, days: int):
-        day = func.date_trunc('day', User.created_at)
+        day = func.date_trunc("day", User.created_at)
         result = await self.session.execute(
-            select(
-                day.label('day'),
-                func.count(func.distinct(User.id)).label('count')
-            )
+            select(day.label("day"), func.count(func.distinct(User.id)).label("count"))
             .group_by(day)
             .order_by(day)
             .where(User.created_at >= datetime.now(UTC) - timedelta(days=days))
         )
-        
+
         return result.mappings().all()
 
     async def count_users(
@@ -154,9 +142,6 @@ class UserInterface:
         return int(result or 0)
 
     async def count_registered_since(self, since: datetime) -> int:
-        stmt = (
-            select(func.count(User.id))
-            .where(User.created_at >= since)
-        )
+        stmt = select(func.count(User.id)).where(User.created_at >= since)
         result = await self.session.scalar(stmt)
         return int(result or 0)

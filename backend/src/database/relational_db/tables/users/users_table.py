@@ -3,7 +3,18 @@ from urllib.parse import quote
 from uuid import UUID, uuid4
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, String, Text, Uuid
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    JSON,
+    String,
+    Text,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.config import get_settings
@@ -19,19 +30,29 @@ if TYPE_CHECKING:
 class User(TimestampMixin, Base):
     __tablename__ = "users"
 
-    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), default=uuid4, primary_key=True)
-    service_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
-    is_dataset_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    
+    id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), default=uuid4, primary_key=True
+    )
+    service_user_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True
+    )
+    is_dataset_user: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+    confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     first_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     avatar_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    avatar_rejection_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_rejection_reason: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     bio: Mapped[str | None] = mapped_column(String(500), nullable=True)
     city_id: Mapped[str | None] = mapped_column(
@@ -40,16 +61,24 @@ class User(TimestampMixin, Base):
         nullable=True,
     )
     gender: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    looking_for_genders: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    looking_for_genders: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     age_range_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     age_range_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     distance_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
     interests: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    quiz_started: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    quiz_started: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     quiz_current_step_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    onboarding_skipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    demo_user_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    onboarding_skipped: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    demo_user_key: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True
+    )
 
     is_onboarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     banned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -59,13 +88,13 @@ class User(TimestampMixin, Base):
 
     __table_args__ = (
         Index(
-            'users_email_trgm',
-            'email',
-            postgresql_using='gin',
-            postgresql_ops={'email': 'gin_trgm_ops'}
+            "users_email_trgm",
+            "email",
+            postgresql_using="gin",
+            postgresql_ops={"email": "gin_trgm_ops"},
         ),
     )
-    
+
     roles: Mapped[list["Role"]] = relationship(  # pyright: ignore
         "Role",
         secondary="user_roles",
@@ -73,7 +102,7 @@ class User(TimestampMixin, Base):
         lazy="selectin",
     )
     city: Mapped["City | None"] = relationship("City", lazy="selectin")
-    
+
     @property
     def role_slugs(self) -> list[str]:
         return [role.slug for role in self.roles]
@@ -141,7 +170,10 @@ class User(TimestampMixin, Base):
 
     @property
     def has_approved_photo(self) -> bool:
-        return bool(self.avatar_key and self.avatar_moderation_status == AvatarModerationStatus.APPROVED.value)
+        return bool(
+            self.avatar_key
+            and self.avatar_moderation_status == AvatarModerationStatus.APPROVED.value
+        )
 
     @property
     def can_like_profiles(self) -> bool:

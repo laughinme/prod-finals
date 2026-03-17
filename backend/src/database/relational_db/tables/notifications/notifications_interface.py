@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..conversations import Message
 from ..users import User
-from .notifications_table import LikeNotification, MatchNotification, MessageNotification
+from .notifications_table import (
+    LikeNotification,
+    MatchNotification,
+    MessageNotification,
+)
 
 
 class NotificationInterface:
@@ -21,7 +25,9 @@ class NotificationInterface:
         conversation_id: UUID,
         peer_user_id: UUID,
     ) -> MatchNotification:
-        notification = await self.get_match_notification(user_id=user_id, match_id=match_id)
+        notification = await self.get_match_notification(
+            user_id=user_id, match_id=match_id
+        )
         if notification is None:
             notification = MatchNotification(
                 user_id=user_id,
@@ -184,7 +190,10 @@ class NotificationInterface:
                 MessageNotification.conversation_id == conversation_id,
                 MessageNotification.read_at.is_(None),
             )
-            .values(read_at=read_at, seen_at=func.coalesce(MessageNotification.seen_at, read_at))
+            .values(
+                read_at=read_at,
+                seen_at=func.coalesce(MessageNotification.seen_at, read_at),
+            )
         )
         await self.session.flush()
         return int(result.rowcount or 0)
@@ -212,7 +221,9 @@ class NotificationInterface:
             await self.session.flush()
         return notification
 
-    async def get_like_notification(self, *, user_id: UUID, notification_id: UUID) -> LikeNotification | None:
+    async def get_like_notification(
+        self, *, user_id: UUID, notification_id: UUID
+    ) -> LikeNotification | None:
         return await self.session.scalar(
             select(LikeNotification).where(
                 LikeNotification.id == notification_id,
@@ -249,9 +260,13 @@ class NotificationInterface:
             await self.session.delete(notification)
             await self.session.flush()
 
-    async def delete_like_notifications_for_pair_state(self, *, pair_state_id: UUID) -> None:
+    async def delete_like_notifications_for_pair_state(
+        self, *, pair_state_id: UUID
+    ) -> None:
         await self.session.execute(
-            delete(LikeNotification).where(LikeNotification.pair_state_id == pair_state_id)
+            delete(LikeNotification).where(
+                LikeNotification.pair_state_id == pair_state_id
+            )
         )
         await self.session.flush()
 
@@ -261,9 +276,13 @@ class NotificationInterface:
         )
         await self.session.flush()
 
-    async def delete_message_notifications_for_conversation(self, *, conversation_id: UUID) -> None:
+    async def delete_message_notifications_for_conversation(
+        self, *, conversation_id: UUID
+    ) -> None:
         await self.session.execute(
-            delete(MessageNotification).where(MessageNotification.conversation_id == conversation_id)
+            delete(MessageNotification).where(
+                MessageNotification.conversation_id == conversation_id
+            )
         )
         await self.session.flush()
 
@@ -316,7 +335,9 @@ class NotificationInterface:
         notification_id: UUID,
         seen_at: datetime,
     ) -> LikeNotification | None:
-        notification = await self.get_like_notification(user_id=user_id, notification_id=notification_id)
+        notification = await self.get_like_notification(
+            user_id=user_id, notification_id=notification_id
+        )
         if notification is None:
             return None
         if notification.seen_at is None:

@@ -18,7 +18,11 @@ class Transaction:
 
 def _parse_timestamp(raw: Any) -> datetime:
     if isinstance(raw, datetime):
-        return raw.astimezone(timezone.utc) if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+        return (
+            raw.astimezone(timezone.utc)
+            if raw.tzinfo
+            else raw.replace(tzinfo=timezone.utc)
+        )
 
     value = str(raw).strip()
     if not value:
@@ -40,7 +44,7 @@ def transaction_from_mapping(row: Mapping[str, Any]) -> Transaction:
     user_id = str(row.get("party_rk", "")).strip()
     if not user_id:
         raise ValueError("party_rk is required.")
-        
+
     if user_id.isdigit():
         user_id = f"user-{user_id}"
 

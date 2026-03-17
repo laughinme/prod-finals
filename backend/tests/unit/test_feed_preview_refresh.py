@@ -42,15 +42,23 @@ class _FakeMlFacade:
 def test_is_template_preview_detects_known_fallbacks():
     assert _is_template_preview("Ваш общий интерес — «Развлечения».") is True
     assert _is_template_preview("Хорошее совпадение по интересам: «Транспорт».") is True
-    assert _is_template_preview("Найдены признаки совместимости по интересам и поведению.") is True
-    assert _is_template_preview("Вам легко договориться о формате встреч и досуга.") is False
+    assert (
+        _is_template_preview("Найдены признаки совместимости по интересам и поведению.")
+        is True
+    )
+    assert (
+        _is_template_preview("Вам легко договориться о формате встреч и досуга.")
+        is False
+    )
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_refresh_template_previews_replaces_fallback_text():
     service = FeedService.__new__(FeedService)
-    service.ml_facade = _FakeMlFacade("Вам легко находить общий ритм встреч и интересов.")
+    service.ml_facade = _FakeMlFacade(
+        "Вам легко находить общий ритм встреч и интересов."
+    )
 
     item = SimpleNamespace(
         id=uuid4(),
@@ -60,7 +68,11 @@ async def test_refresh_template_previews_replaces_fallback_text():
         reason_codes=["category_fit"],
         reason_signals=[],
         category_breakdown=[
-            {"category_key": "entertainment", "label": "Развлечения", "score_percent": 93}
+            {
+                "category_key": "entertainment",
+                "label": "Развлечения",
+                "score_percent": 93,
+            }
         ],
     )
 

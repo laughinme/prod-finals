@@ -13,6 +13,7 @@ import json
 import subprocess
 from datetime import datetime, timezone
 
+
 def _as_bool(raw: str | None, default: bool) -> bool:
     if raw is None:
         return default
@@ -126,14 +127,20 @@ def _resolve_upload_config(
 
     raw_endpoint = _first_env_value("ML_MODEL_S3_ENDPOINT", "STORAGE_ENDPOINT_INTERNAL")
     secure_env = os.getenv("ML_MODEL_S3_SECURE")
-    secure = _as_bool(secure_env, default=True) if secure_env is not None else not raw_endpoint.startswith("http://")
+    secure = (
+        _as_bool(secure_env, default=True)
+        if secure_env is not None
+        else not raw_endpoint.startswith("http://")
+    )
     endpoint_url = _normalize_endpoint_url(raw_endpoint, secure=secure)
 
     explicit_key = _first_env_value("ML_MODEL_S3_KEY")
     prefix = os.getenv("ML_MODEL_S3_PREFIX", "ml-models").strip().strip("/")
     key = explicit_key.lstrip("/") if explicit_key else ""
     if not key:
-        model_filename = f"{model_version}.json" if model_version else artifact_path.name
+        model_filename = (
+            f"{model_version}.json" if model_version else artifact_path.name
+        )
         key = f"{prefix}/{model_filename}" if prefix else model_filename
 
     missing: list[str] = []
@@ -191,7 +198,9 @@ def main() -> int:
     data_url = os.getenv("ML_TRAIN_DATA_URL", "").strip()
     data_path = Path(os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv"))
     archive_member = os.getenv("ML_TRAIN_ARCHIVE_MEMBER", "").strip()
-    artifact_path = Path(os.getenv("ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json"))
+    artifact_path = Path(
+        os.getenv("ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json")
+    )
     timeout_sec = int(os.getenv("ML_TRAIN_DOWNLOAD_TIMEOUT_SEC", "120"))
     required = _as_bool(os.getenv("ML_TRAIN_REQUIRED"), default=False)
 
@@ -221,7 +230,9 @@ def main() -> int:
     artifact_path.write_bytes(artifact_payload)
     print(f"Model artifact saved to: {artifact_path}")
 
-    upload_config = _resolve_upload_config(model_version=artifact.model_version, artifact_path=artifact_path)
+    upload_config = _resolve_upload_config(
+        model_version=artifact.model_version, artifact_path=artifact_path
+    )
     if upload_config is not None:
         endpoint_url, region, access_key, secret_key, bucket, key = upload_config
         model_uri = _upload_artifact(

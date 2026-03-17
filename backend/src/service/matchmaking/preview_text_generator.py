@@ -122,16 +122,24 @@ class LlmCategoryPreviewGenerator:
         models_to_try = self._ordered_models()
         if not models_to_try:
             if not self._generation_disabled:
-                logger.warning("HF preview generation disabled: no available inference models")
+                logger.warning(
+                    "HF preview generation disabled: no available inference models"
+                )
             self._generation_disabled = True
             return None
 
         all_hard_unavailable = True
         for model_name in models_to_try:
-            generated, status_code = await self._call_huggingface_model(model_name=model_name, prompt=prompt)
+            generated, status_code = await self._call_huggingface_model(
+                model_name=model_name, prompt=prompt
+            )
             if generated:
                 if model_name != self._model:
-                    logger.info("HF preview generation switched model from %s to %s", self._model, model_name)
+                    logger.info(
+                        "HF preview generation switched model from %s to %s",
+                        self._model,
+                        model_name,
+                    )
                 self._model = model_name
                 self._generation_disabled = False
                 return generated
@@ -142,7 +150,9 @@ class LlmCategoryPreviewGenerator:
 
         if all_hard_unavailable and models_to_try:
             if not self._generation_disabled:
-                logger.warning("HF preview generation disabled: all configured models returned 404/410")
+                logger.warning(
+                    "HF preview generation disabled: all configured models returned 404/410"
+                )
             self._generation_disabled = True
         return None
 
@@ -153,7 +163,10 @@ class LlmCategoryPreviewGenerator:
         score_band: ScoreBand,
     ) -> str | None:
         if not self._base_url:
-            logger.warning("LLM preview provider %s requires ML_PREVIEW_LLM_BASE_URL", self._provider)
+            logger.warning(
+                "LLM preview provider %s requires ML_PREVIEW_LLM_BASE_URL",
+                self._provider,
+            )
             self._generation_disabled = True
             return None
 
@@ -193,7 +206,9 @@ class LlmCategoryPreviewGenerator:
         for attempt in (1, 2):
             try:
                 async with httpx.AsyncClient(timeout=timeout) as client:
-                    response = await client.post(endpoint, json=payload, headers=headers)
+                    response = await client.post(
+                        endpoint, json=payload, headers=headers
+                    )
                 break
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 # Transport glitches are transient: do not disable provider globally.
@@ -208,7 +223,12 @@ class LlmCategoryPreviewGenerator:
                     return None
                 await asyncio.sleep(0.15)
             except Exception as exc:  # pragma: no cover - network/runtime safety
-                logger.warning("%s preview generation failed (%s): %r", self._provider, type(exc).__name__, exc)
+                logger.warning(
+                    "%s preview generation failed (%s): %r",
+                    self._provider,
+                    type(exc).__name__,
+                    exc,
+                )
                 return None
 
         if response is None:
@@ -223,14 +243,18 @@ class LlmCategoryPreviewGenerator:
                 body_preview,
             )
             if response.status_code in {401, 403}:
-                logger.warning("%s preview generation disabled due to auth error", self._provider)
+                logger.warning(
+                    "%s preview generation disabled due to auth error", self._provider
+                )
                 self._generation_disabled = True
             return None
 
         try:
             raw = response.json()
         except ValueError:
-            logger.warning("%s preview generation returned non-JSON response", self._provider)
+            logger.warning(
+                "%s preview generation returned non-JSON response", self._provider
+            )
             return None
         if not isinstance(raw, dict):
             logger.warning("%s preview generation malformed response", self._provider)
@@ -267,7 +291,9 @@ class LlmCategoryPreviewGenerator:
         ordered.extend(model for model in self._fallback_models if model not in ordered)
         return [model for model in ordered if model not in self._unavailable_models]
 
-    async def _call_huggingface_model(self, *, model_name: str, prompt: str) -> tuple[str | None, int | None]:
+    async def _call_huggingface_model(
+        self, *, model_name: str, prompt: str
+    ) -> tuple[str | None, int | None]:
         endpoints = [
             f"https://router.huggingface.co/hf-inference/models/{model_name}",
             f"https://api-inference.huggingface.co/models/{model_name}",
@@ -290,7 +316,9 @@ class LlmCategoryPreviewGenerator:
             async with httpx.AsyncClient(timeout=self._timeout_sec) as client:
                 last_status: int | None = None
                 for idx, endpoint in enumerate(endpoints):
-                    response = await client.post(endpoint, json=payload, headers=headers)
+                    response = await client.post(
+                        endpoint, json=payload, headers=headers
+                    )
                     last_status = response.status_code
                     if response.status_code in {404, 410} and idx < len(endpoints) - 1:
                         continue
@@ -303,7 +331,9 @@ class LlmCategoryPreviewGenerator:
                                 response.status_code,
                             )
                         else:
-                            body_preview = response.text.strip().replace("\n", " ")[:160]
+                            body_preview = response.text.strip().replace("\n", " ")[
+                                :160
+                            ]
                             logger.warning(
                                 "HF preview generation failed with status %s for model %s: %s",
                                 response.status_code,
@@ -329,7 +359,9 @@ class LlmCategoryPreviewGenerator:
 
                 return None, last_status
         except Exception as exc:  # pragma: no cover - network/runtime safety
-            logger.warning("HF preview generation failed for model %s: %s", model_name, exc)
+            logger.warning(
+                "HF preview generation failed for model %s: %s", model_name, exc
+            )
             return None, None
 
     def _sanitize_generated_text(self, text: str | None) -> str | None:
@@ -337,7 +369,9 @@ class LlmCategoryPreviewGenerator:
             return None
 
         normalized = re.sub(r"\s+", " ", text).strip().strip("\"'`")
-        normalized = re.sub(r"^(?:ответ|response)\s*[:\-]\s*", "", normalized, flags=re.IGNORECASE)
+        normalized = re.sub(
+            r"^(?:ответ|response)\s*[:\-]\s*", "", normalized, flags=re.IGNORECASE
+        )
         normalized = normalized.strip()
 
         if not normalized:

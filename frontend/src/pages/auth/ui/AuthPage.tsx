@@ -10,43 +10,46 @@ import type { DemoAccount } from "@/features/auth";
 
 type Mode = "login" | "register";
 
-const DEMO_PASSWORD = "DemoPass123!";
-
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    key: "tid",
-    email: "mock-user-0001@example.com",
-    titleKey: "auth.login_with_tid_mock",
+    key: "food_a",
+    email: "demo.food.a@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_food_a_title",
+    scenarioKey: "auth.demo_account_food_a_scenario",
+    categoriesKey: "auth.demo_account_food_a_categories",
   },
   {
-    key: "dataset_a",
-    email: "mock-user-0001@example.com",
-    titleKey: "auth.demo_account_dataset_a_title",
+    key: "food_b",
+    email: "demo.food.b@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_food_b_title",
+    scenarioKey: "auth.demo_account_food_b_scenario",
+    categoriesKey: "auth.demo_account_food_b_categories",
   },
   {
-    key: "dataset_b",
-    email: "mock-user-0002@example.com",
-    titleKey: "auth.demo_account_dataset_b_title",
+    key: "style",
+    email: "demo.style@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_style_title",
+    scenarioKey: "auth.demo_account_style_scenario",
+    categoriesKey: "auth.demo_account_style_categories",
   },
   {
-    key: "dataset_c",
-    email: "mock-user-0003@example.com",
-    titleKey: "auth.demo_account_dataset_c_title",
-  },
-  {
-    key: "dataset_d",
-    email: "mock-user-0004@example.com",
-    titleKey: "auth.demo_account_dataset_d_title",
-  },
-  {
-    key: "dataset_e",
-    email: "mock-user-0005@example.com",
-    titleKey: "auth.demo_account_dataset_e_title",
+    key: "cold",
+    email: "demo.cold@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_cold_title",
+    scenarioKey: "auth.demo_account_cold_scenario",
+    categoriesKey: "auth.demo_account_cold_categories",
   },
   {
     key: "admin",
-    email: "admin@example.com",
+    email: "admin@demo.local",
+    password: "Admin12345!",
     titleKey: "auth.demo_account_admin_title",
+    scenarioKey: "auth.demo_account_admin_scenario",
+    categoriesKey: "auth.demo_account_admin_categories",
   },
 ];
 
@@ -190,7 +193,7 @@ export default function AuthPage(): ReactElement {
                 onDemoLogin={(account) =>
                   void quickLogin({
                     email: account.email,
-                    password: DEMO_PASSWORD,
+                    password: account.password,
                   })
                 }
               />

@@ -25,14 +25,11 @@ class ModerationReportNotFoundError(NotFoundError):
 
 class ModerationService(BaseDatingService):
     async def get_report_summary(self) -> ModerationReportSummary:
-        counts_stmt = (
-            select(Report.review_status, func.count(Report.id))
-            .group_by(Report.review_status)
+        counts_stmt = select(Report.review_status, func.count(Report.id)).group_by(
+            Report.review_status
         )
         rows = await self.uow.session.execute(counts_stmt)
-        counts_by_status = {
-            str(status): count for status, count in rows.all()
-        }
+        counts_by_status = {str(status): count for status, count in rows.all()}
         banned_targets = await self.uow.session.scalar(
             select(func.count(func.distinct(Report.target_user_id)))
             .join(User, User.id == Report.target_user_id)
@@ -41,9 +38,15 @@ class ModerationService(BaseDatingService):
         total_reports = await self.uow.session.scalar(select(func.count(Report.id)))
         return ModerationReportSummary(
             total_reports=int(total_reports or 0),
-            pending_reports=int(counts_by_status.get(ModerationReportStatus.PENDING.value, 0)),
-            resolved_reports=int(counts_by_status.get(ModerationReportStatus.RESOLVED.value, 0)),
-            dismissed_reports=int(counts_by_status.get(ModerationReportStatus.DISMISSED.value, 0)),
+            pending_reports=int(
+                counts_by_status.get(ModerationReportStatus.PENDING.value, 0)
+            ),
+            resolved_reports=int(
+                counts_by_status.get(ModerationReportStatus.RESOLVED.value, 0)
+            ),
+            dismissed_reports=int(
+                counts_by_status.get(ModerationReportStatus.DISMISSED.value, 0)
+            ),
             banned_targets=int(banned_targets or 0),
         )
 
@@ -53,14 +56,18 @@ class ModerationService(BaseDatingService):
         status: ModerationReportStatus | None,
         limit: int,
     ) -> ModerationReportListResponse:
-        stmt: Select = select(Report).order_by(
-            case(
-                (Report.review_status == ModerationReportStatus.PENDING.value, 0),
-                (Report.review_status == ModerationReportStatus.RESOLVED.value, 1),
-                else_=2,
-            ),
-            Report.created_at.desc(),
-        ).limit(limit)
+        stmt: Select = (
+            select(Report)
+            .order_by(
+                case(
+                    (Report.review_status == ModerationReportStatus.PENDING.value, 0),
+                    (Report.review_status == ModerationReportStatus.RESOLVED.value, 1),
+                    else_=2,
+                ),
+                Report.created_at.desc(),
+            )
+            .limit(limit)
+        )
         if status is not None:
             stmt = stmt.where(Report.review_status == status.value)
         rows = await self.uow.session.scalars(stmt)
@@ -116,7 +123,9 @@ class ModerationService(BaseDatingService):
             report=(await self._serialize_reports([report]))[0]
         )
 
-    async def _serialize_reports(self, reports: list[Report]) -> list[ModerationReportItem]:
+    async def _serialize_reports(
+        self, reports: list[Report]
+    ) -> list[ModerationReportItem]:
         if not reports:
             return []
 
@@ -143,7 +152,8 @@ class ModerationService(BaseDatingService):
         for report in reports:
             reviewer = (
                 to_user_ref(report.reviewer_user_id)
-                if report.reviewer_user_id is not None and report.reviewer_user_id in users_by_id
+                if report.reviewer_user_id is not None
+                and report.reviewer_user_id in users_by_id
                 else None
             )
             items.append(

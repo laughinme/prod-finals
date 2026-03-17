@@ -6,6 +6,7 @@ class UserShare(BaseModel):
     """
     User schema making possible to share other users public profile data.
     """
+
     id: UUID = Field(...)
     first_name: str | None = Field(None, description="User first name")
     last_name: str | None = Field(None, description="User last name")

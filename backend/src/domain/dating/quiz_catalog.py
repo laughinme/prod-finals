@@ -19,7 +19,9 @@ _QUIZ_STEPS = [
         required_for_feed=False,
         max_answers=5,
         options=[
-            OnboardingStepOption(value="goal:serious_relationship", label="Серьезные отношения"),
+            OnboardingStepOption(
+                value="goal:serious_relationship", label="Серьезные отношения"
+            ),
             OnboardingStepOption(value="goal:casual_dates", label="Легкое общение"),
             OnboardingStepOption(value="goal:new_friends", label="Новые друзья"),
             OnboardingStepOption(value="audience:male", label="Мужчины"),
@@ -60,9 +62,7 @@ _PROFILE_PREVIEW_STEP = OnboardingStep(
 )
 
 _OPTION_LABELS = {
-    option.value: option.label
-    for step in _QUIZ_STEPS
-    for option in step.options
+    option.value: option.label for step in _QUIZ_STEPS for option in step.options
 }
 
 

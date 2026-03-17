@@ -19,12 +19,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("service_user_id", sa.String(length=64), nullable=True))
+    op.add_column(
+        "users", sa.Column("service_user_id", sa.String(length=64), nullable=True)
+    )
     op.add_column(
         "users",
-        sa.Column("interests", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")),
+        sa.Column(
+            "interests", sa.JSON(), nullable=False, server_default=sa.text("'[]'::json")
+        ),
     )
-    op.create_unique_constraint("uq_users_service_user_id", "users", ["service_user_id"])
+    op.create_unique_constraint(
+        "uq_users_service_user_id", "users", ["service_user_id"]
+    )
 
 
 def downgrade() -> None:

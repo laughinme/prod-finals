@@ -11,7 +11,18 @@
         reverse_proxy centrifugo:8000
     }
 
-    handle_path /ml/* {
+    handle /ml/* {
+        uri strip_prefix /ml
+        reverse_proxy ml-service:8080
+    }
+
+    @ml_docs path /docs /docs/*
+    handle @ml_docs {
+        reverse_proxy ml-service:8080
+    }
+
+    @ml_redoc path /redoc /redoc/*
+    handle @ml_redoc {
         reverse_proxy ml-service:8080
     }
 

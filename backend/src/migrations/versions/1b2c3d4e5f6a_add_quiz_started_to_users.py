@@ -18,7 +18,12 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "users",
-        sa.Column("quiz_started", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "quiz_started",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
     )
     op.execute(
         """

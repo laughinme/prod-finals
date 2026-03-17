@@ -18,7 +18,9 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "recommendation_items",
-        sa.Column("reason_signals", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+        sa.Column(
+            "reason_signals", sa.JSON(), nullable=False, server_default=sa.text("'[]'")
+        ),
     )
     op.alter_column("recommendation_items", "reason_signals", server_default=None)
 

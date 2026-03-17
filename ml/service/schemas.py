@@ -137,7 +137,9 @@ class HardFilters(StrictModel):
 
 
 class ExclusionSet(StrictModel):
-    hard_exclude_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
+    hard_exclude_user_ids: list[str | int] | None = Field(
+        default=None, max_length=20000
+    )
     soft_seen_user_ids: list[str | int] | None = Field(default=None, max_length=20000)
 
 
@@ -168,7 +170,6 @@ class ReasonSignal(StrictModel):
 
 
 class RecommendationCandidate(StrictModel):
-                                                                                                      
     candidate_user_id: str | int
     score: float = Field(ge=0, le=1)
     score_components: dict[str, float] | None = None
@@ -183,7 +184,9 @@ class RecommendationResponse(StrictModel):
     features_version: str
     decision_mode: RecommendationDecisionMode
     warnings: list[str] = Field(default_factory=list, max_length=20)
-    candidates: list[RecommendationCandidate] = Field(default_factory=list, max_length=5000)
+    candidates: list[RecommendationCandidate] = Field(
+        default_factory=list, max_length=5000
+    )
 
 
 class SwipeFeedbackRequest(StrictModel):
@@ -249,16 +252,20 @@ class UserProfileUpdateRequest(StrictModel):
     trace_id: UUID
     user_id: str | int
     favorite_categories: list[str] = Field(min_length=1, max_length=15)
-    import_transactions: bool = Field(default=False, description="Флаг согласия на импорт банковских транзакций")
+    import_transactions: bool = Field(
+        default=False, description="Флаг согласия на импорт банковских транзакций"
+    )
     preferred_activity_hour: float | None = Field(default=None, ge=0, le=23)
+
 
 class RawTransaction(StrictModel):
     transaction_id: str
     merchant_nm: str
     merchant_type_code: str | int
-    category_nm: str | None = None                                            
+    category_nm: str | None = None
     timestamp: datetime
     amount: float = Field(default=0.0, ge=0)
+
 
 class TransactionSyncRequest(StrictModel):
     trace_id: UUID

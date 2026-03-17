@@ -91,7 +91,8 @@ class StatService:
                 segment_rows = [
                     row
                     for row in rows
-                    if row.user_source == source.value and row.decision_mode == mode.value
+                    if row.user_source == source.value
+                    and row.decision_mode == mode.value
                 ]
                 by_segment.append(
                     self._build_segment_summary(
@@ -164,14 +165,18 @@ class StatService:
             feed_hide=sum(row.feed_hide for row in rows),
             match_created=sum(row.match_created for row in rows),
             chat_first_message_sent=sum(row.chat_first_message_sent for row in rows),
-            chat_first_reply_received=sum(row.chat_first_reply_received for row in rows),
+            chat_first_reply_received=sum(
+                row.chat_first_reply_received for row in rows
+            ),
             match_closed=sum(row.match_closed for row in rows),
             user_blocked=sum(row.user_blocked for row in rows),
             user_reported=sum(row.user_reported for row in rows),
         )
 
     def _build_conversions(self, counts: FunnelCounts) -> FunnelConversionRates:
-        negative_outcomes = counts.match_closed + counts.user_blocked + counts.user_reported
+        negative_outcomes = (
+            counts.match_closed + counts.user_blocked + counts.user_reported
+        )
         return FunnelConversionRates(
             like_rate=self._ratio(counts.feed_like, counts.feed_served),
             match_rate_from_likes=self._ratio(counts.match_created, counts.feed_like),
@@ -183,7 +188,9 @@ class StatService:
                 counts.chat_first_reply_received,
                 counts.chat_first_message_sent,
             ),
-            negative_outcome_rate_from_matches=self._ratio(negative_outcomes, counts.match_created),
+            negative_outcome_rate_from_matches=self._ratio(
+                negative_outcomes, counts.match_created
+            ),
         )
 
     def _ratio(self, numerator: int, denominator: int) -> float:

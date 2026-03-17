@@ -3,7 +3,10 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.config import Settings, get_settings
-from service.matchmaking import dispatch_ml_match_outcome_events, dispatch_ml_swipe_events
+from service.matchmaking import (
+    dispatch_ml_match_outcome_events,
+    dispatch_ml_swipe_events,
+)
 
 logger = logging.getLogger(__name__)
 

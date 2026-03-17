@@ -1,7 +1,8 @@
 from typing import Generic, TypeVar, Any, Self
 from pydantic import BaseModel, Field, TypeAdapter
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class CursorPage(BaseModel, Generic[T]):
     items: list[T] = Field(...)

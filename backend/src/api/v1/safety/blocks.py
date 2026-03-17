@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, status
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.dating import BlockListResponse, BlockRequest, BlockResponse, UnblockResponse
+from domain.dating import (
+    BlockListResponse,
+    BlockRequest,
+    BlockResponse,
+    UnblockResponse,
+)
 from service.safety import SafetyService, get_safety_service
 
 router = APIRouter()

@@ -8,7 +8,11 @@ def get_onboarding_router() -> APIRouter:
     from .skip import router as skip_router
     from .state import router as state_router
 
-    router = APIRouter(prefix="/onboarding", tags=["Onboarding"], responses={401: {"description": "Not authorized"}})
+    router = APIRouter(
+        prefix="/onboarding",
+        tags=["Onboarding"],
+        responses={401: {"description": "Not authorized"}},
+    )
     router.include_router(config_router)
     router.include_router(state_router)
     router.include_router(answers_router)

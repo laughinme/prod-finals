@@ -39,6 +39,8 @@ from .schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+
 @dataclass(slots=True)
 class RuntimeSettings:
     sample_user_count: int
@@ -57,11 +59,16 @@ class RuntimeSettings:
             sample_transactions_per_user=int(os.getenv("ML_SAMPLE_TX_PER_USER", "20")),
             sample_seed=int(os.getenv("ML_SAMPLE_SEED", "42")),
             features_version=os.getenv("ML_FEATURES_VERSION", "features_v1"),
-            max_feedback_events_in_memory=int(os.getenv("ML_MAX_FEEDBACK_EVENTS", "10000")),
-            model_artifact_path=os.getenv("ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json"),
+            max_feedback_events_in_memory=int(
+                os.getenv("ML_MAX_FEEDBACK_EVENTS", "10000")
+            ),
+            model_artifact_path=os.getenv(
+                "ML_MODEL_ARTIFACT_PATH", "/app/ml/artifacts/model.json"
+            ),
             qdrant_url=os.getenv("QDRANT_URL", "http://qdrant:6333"),
             data_path=os.getenv("ML_TRAIN_DATA_PATH", "/app/ml/data/train.csv"),
         )
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -162,27 +169,31 @@ class MlRuntime:
         except Exception as exc:
             self._pipeline = None
             if self._startup_error:
-                self._startup_error = f"{self._startup_error}; pipeline init failed: {exc}"
+                self._startup_error = (
+                    f"{self._startup_error}; pipeline init failed: {exc}"
+                )
             else:
                 self._startup_error = f"Pipeline init failed: {exc}"
+
     def _load_inference_artifacts(self):
-        models_dir = Path("/app/ml/models") 
+        models_dir = Path("/app/ml/models")
         try:
             self._scaler = joblib.load(models_dir / "scaler.joblib")
             self._features_list = joblib.load(models_dir / "features_list.joblib")
-            
+
             self._catboost = CatBoostClassifier()
-            self._catboost.load_model(models_dir / "imputer.cbm") 
+            self._catboost.load_model(models_dir / "imputer.cbm")
             self._has_artifacts = True
             print("Артифакты окак")
         except Exception as e:
             self._has_artifacts = False
             self._startup_error = f"Artifacts not found: {e}"
             print("ошибка кот")
+
     def update_user_profile_favorites(
-        self, 
-        user_id: str | int, 
-        favorite_categories: list[str], 
+        self,
+        user_id: str | int,
+        favorite_categories: list[str],
         trace_id: UUID,
         preferred_hour: float | None = None,
         import_transactions: bool = False,
@@ -199,11 +210,15 @@ class MlRuntime:
                 with_payload=True,
             )
             existing_vector = existing_points[0].vector if existing_points else None
-            existing_payload = dict(existing_points[0].payload or {}) if existing_points else {}
+            existing_payload = (
+                dict(existing_points[0].payload or {}) if existing_points else {}
+            )
 
             if self._has_artifacts:
                 raw_vector = np.zeros(len(self._features_list))
-                weight_per_cat = 1.0 / len(favorite_categories) if favorite_categories else 0
+                weight_per_cat = (
+                    1.0 / len(favorite_categories) if favorite_categories else 0
+                )
 
                 for cat in favorite_categories:
                     if cat in self._features_list:
@@ -211,19 +226,32 @@ class MlRuntime:
                         raw_vector[idx] = weight_per_cat
                 if "hour" in self._features_list:
                     hour_idx = self._features_list.index("hour")
-                    raw_vector[hour_idx] = preferred_hour if preferred_hour is not None else 14.0
+                    raw_vector[hour_idx] = (
+                        preferred_hour if preferred_hour is not None else 14.0
+                    )
                 scaled_vector = self._scaler.transform([raw_vector])[0]
 
-                if import_transactions and existing_vector is not None and existing_payload.get("is_warm"):
+                if (
+                    import_transactions
+                    and existing_vector is not None
+                    and existing_payload.get("is_warm")
+                ):
                     blended_vector = [
                         float((0.35 * cold_value) + (0.65 * warm_value))
-                        for cold_value, warm_value in zip(scaled_vector, existing_vector)
+                        for cold_value, warm_value in zip(
+                            scaled_vector, existing_vector
+                        )
                     ]
                     norm = np.linalg.norm(blended_vector)
                     if norm > 0:
-                        scaled_vector = np.array([float(value / norm) for value in blended_vector], dtype=float)
+                        scaled_vector = np.array(
+                            [float(value / norm) for value in blended_vector],
+                            dtype=float,
+                        )
             else:
-                vector_size = len(existing_vector) if existing_vector is not None else 35
+                vector_size = (
+                    len(existing_vector) if existing_vector is not None else 35
+                )
                 scaled_vector = _fallback_profile_vector(
                     favorite_categories=favorite_categories,
                     preferred_hour=preferred_hour,
@@ -235,26 +263,38 @@ class MlRuntime:
                 points=[
                     PointStruct(
                         id=user_uuid,
-                        vector=scaled_vector.tolist() if hasattr(scaled_vector, "tolist") else list(scaled_vector),
+                        vector=scaled_vector.tolist()
+                        if hasattr(scaled_vector, "tolist")
+                        else list(scaled_vector),
                         payload={
                             "party_rk": str(user_id),
-                            "is_warm": bool(import_transactions and existing_payload.get("is_warm")),
+                            "is_warm": bool(
+                                import_transactions and existing_payload.get("is_warm")
+                            ),
                             "favorite_categories": list(favorite_categories),
-                            "preferred_activity_hour": preferred_hour if preferred_hour is not None else 14.0,
+                            "preferred_activity_hour": preferred_hour
+                            if preferred_hour is not None
+                            else 14.0,
                             "import_transactions_enabled": bool(import_transactions),
-                            "top_cat": favorite_categories[0] if favorite_categories else existing_payload.get("top_cat", "unknown"),
-                            "transactions_count": existing_payload.get("transactions_count", 0),
-                            "updated_at": _utcnow().isoformat()
-                        }
+                            "top_cat": favorite_categories[0]
+                            if favorite_categories
+                            else existing_payload.get("top_cat", "unknown"),
+                            "transactions_count": existing_payload.get(
+                                "transactions_count", 0
+                            ),
+                            "updated_at": _utcnow().isoformat(),
+                        },
                     )
-                ]
+                ],
             )
             print(f"[{trace_id}] ъолодный стартr {user_id}")
         except Exception as exc:
             self._startup_error = f"Profile sync degraded: {exc}"
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
+
     def process_transactions_sync_background(self, payload: Any):
-        from ml.service.schemas import TransactionSyncRequest 
+        from ml.service.schemas import TransactionSyncRequest
+
         request: TransactionSyncRequest = payload
 
         if not self._has_artifacts or self._qdrant_client is None:
@@ -263,16 +303,18 @@ class MlRuntime:
         user_id_str = str(request.user_id)
 
         df = pd.DataFrame([t.model_dump() for t in request.transactions])
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df['hour'] = df['timestamp'].dt.hour
-        df['day_of_week'] = df['timestamp'].dt.dayofweek
-        predict_df = df[df['category_nm'].isna() | (df['category_nm'] == '')].copy()
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df["hour"] = df["timestamp"].dt.hour
+        df["day_of_week"] = df["timestamp"].dt.dayofweek
+        predict_df = df[df["category_nm"].isna() | (df["category_nm"] == "")].copy()
         if not predict_df.empty:
-            preds = self._catboost.predict(predict_df[['merchant_type_code', 'merchant_nm', 'hour', 'day_of_week']])
-            df.loc[predict_df.index, 'category_nm'] = preds.flatten()
-        cat_counts = df['category_nm'].value_counts()
+            preds = self._catboost.predict(
+                predict_df[["merchant_type_code", "merchant_nm", "hour", "day_of_week"]]
+            )
+            df.loc[predict_df.index, "category_nm"] = preds.flatten()
+        cat_counts = df["category_nm"].value_counts()
         total = cat_counts.sum()
-        
+
         raw_vector = np.zeros(len(self._features_list))
         for cat, count in cat_counts.items():
             if cat in self._features_list:
@@ -280,11 +322,15 @@ class MlRuntime:
                 raw_vector[idx] = count / total if total > 0 else 0
         if "hour" in self._features_list:
             hour_idx = self._features_list.index("hour")
-            raw_vector[hour_idx] = df['hour'].mean()
+            raw_vector[hour_idx] = df["hour"].mean()
         scaled_vector = self._scaler.transform([raw_vector])[0]
         user_uuid = _string_to_uuid(_normalize_user_id(request.user_id))
-        
-        top_cat = df['category_nm'].mode().iloc[0] if not df['category_nm'].empty else "unknown"
+
+        top_cat = (
+            df["category_nm"].mode().iloc[0]
+            if not df["category_nm"].empty
+            else "unknown"
+        )
 
         self._qdrant_client.upsert(
             collection_name="user_profiles",
@@ -294,18 +340,19 @@ class MlRuntime:
                     vector=scaled_vector.tolist(),
                     payload={
                         "party_rk": user_id_str,
-                        "is_warm": True, 
+                        "is_warm": True,
                         "top_cat": top_cat,
                         "transactions_count": len(df),
-                        "updated_at": _utcnow().isoformat()
-                    }
+                        "updated_at": _utcnow().isoformat(),
+                    },
                 )
-            ]
+            ],
         )
         print(f"[{request.trace_id}] синхрон {user_id_str}")
 
-    def pull_and_process_user_transactions(self, *, user_id: str | int, trace_id: UUID) -> None:
-                                                                                            
+    def pull_and_process_user_transactions(
+        self, *, user_id: str | int, trace_id: UUID
+    ) -> None:
         print(f"[{trace_id}] скип транз {user_id}")
 
     def _build_pipeline(self) -> ModelPipeline:
@@ -340,7 +387,11 @@ class MlRuntime:
             if self._startup_error:
                 warnings.append("ranker_init_failed")
 
-        if is_ready and self._pipeline is not None and self._pipeline.known_user_count < 50:
+        if (
+            is_ready
+            and self._pipeline is not None
+            and self._pipeline.known_user_count < 50
+        ):
             status = MlStatus.degraded
             warnings.append("candidate_pool_low")
 
@@ -364,7 +415,9 @@ class MlRuntime:
 
     def recommend(self, request: RecommendationRequest) -> RecommendationResponse:
         trace_seed = request.trace_id.int % (2**32)
-        hard_exclude = request.exclusion.hard_exclude_user_ids if request.exclusion else []
+        hard_exclude = (
+            request.exclusion.hard_exclude_user_ids if request.exclusion else []
+        )
         soft_seen = request.exclusion.soft_seen_user_ids if request.exclusion else []
         soft_seen_set = {_normalize_user_id(user_id) for user_id in (soft_seen or [])}
         candidate_pool_ids = (
@@ -389,7 +442,9 @@ class MlRuntime:
             if qdrant_candidates:
                 decision_mode = RecommendationDecisionMode.model
                 for item in qdrant_candidates:
-                    is_soft_seen = _normalize_user_id(item.candidate_user_id) in soft_seen_set
+                    is_soft_seen = (
+                        _normalize_user_id(item.candidate_user_id) in soft_seen_set
+                    )
                     policy_flags = []
                     if is_soft_seen:
                         policy_flags.append("cooldown_candidate")
@@ -398,7 +453,9 @@ class MlRuntime:
                             candidate_user_id=item.candidate_user_id,
                             score=round(item.score, 4),
                             score_components=item.score_components,
-                            reason_signals=_reason_signals_by_score(item.score, fallback_mode=False),
+                            reason_signals=_reason_signals_by_score(
+                                item.score, fallback_mode=False
+                            ),
                             policy_flags=policy_flags,
                         )
                     )
@@ -407,8 +464,7 @@ class MlRuntime:
         else:
             warnings.append("qdrant_unavailable")
 
-                                                    
-        if not candidates and self._pipeline is not None: #холодныйстарт
+        if not candidates and self._pipeline is not None:  # холодныйстарт
             items, runtime_warnings, runtime_decision_mode = self._pipeline.recommend(
                 request_user_id=request.request_user_id,
                 limit=request.limit,
@@ -420,14 +476,17 @@ class MlRuntime:
             top_score = candidates[0].score if candidates else 0
 
         if top_score < 0.4:
-            warnings.append("Плоъие данные") #маллоданных
+            warnings.append("Плоъие данные")  # маллоданных
             decision_mode = RecommendationDecisionMode.exploration
             warnings.extend(runtime_warnings)
             decision_mode = RecommendationDecisionMode(runtime_decision_mode)
 
             for item in items:
                 normalized_candidate_id = _normalize_user_id(item.candidate_user_id)
-                if candidate_pool_ids is not None and normalized_candidate_id not in candidate_pool_ids:
+                if (
+                    candidate_pool_ids is not None
+                    and normalized_candidate_id not in candidate_pool_ids
+                ):
                     continue
                 is_soft_seen = normalized_candidate_id in soft_seen_set
                 fallback_mode = decision_mode == RecommendationDecisionMode.fallback
@@ -441,7 +500,9 @@ class MlRuntime:
                     RecommendationCandidate(
                         candidate_user_id=item.candidate_user_id,
                         score=round(item.score, 4),
-                        reason_signals=_reason_signals_by_score(item.score, fallback_mode=fallback_mode),
+                        reason_signals=_reason_signals_by_score(
+                            item.score, fallback_mode=fallback_mode
+                        ),
                         policy_flags=policy_flags,
                     )
                 )
@@ -493,7 +554,9 @@ class MlRuntime:
             ],
         )
 
-    def save_feedback_event(self, *, event_id: UUID, trace_id: UUID, event_type: str) -> AckResponse:
+    def save_feedback_event(
+        self, *, event_id: UUID, trace_id: UUID, event_type: str
+    ) -> AckResponse:
         self._feedback_events.append(
             {
                 "event_id": str(event_id),
@@ -516,7 +579,6 @@ class MlRuntime:
         trace_seed: int,
     ) -> list[RecommendationCandidate]:
         try:
-                                          
             user_id_str = _string_to_uuid(_normalize_user_id(request_user_id))
             user_points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
@@ -525,13 +587,15 @@ class MlRuntime:
                 with_payload=True,
             )
             if not user_points:
-                return []                                   
+                return []
             user_vector = user_points[0].vector
             user_payload = dict(user_points[0].payload or {})
 
-                                    
-            exclude_ids = {_string_to_uuid(_normalize_user_id(uid)) for uid in hard_exclude_user_ids}
-            exclude_ids.add(user_id_str)                         
+            exclude_ids = {
+                _string_to_uuid(_normalize_user_id(uid))
+                for uid in hard_exclude_user_ids
+            }
+            exclude_ids.add(user_id_str)
             allowed_ids = [_normalize_user_id(uid) for uid in candidate_user_ids]
             query_filter = None
             if allowed_ids:
@@ -544,7 +608,6 @@ class MlRuntime:
                     ]
                 )
 
-                                     
             search_limit = (
                 max(limit * 3, min(max(len(allowed_ids), limit), 2000))
                 if allowed_ids
@@ -554,7 +617,7 @@ class MlRuntime:
                 collection_name="user_profiles",
                 query=user_vector,
                 query_filter=query_filter,
-                limit=search_limit,                                
+                limit=search_limit,
                 with_payload=True,
                 with_vectors=True,
             )
@@ -563,35 +626,42 @@ class MlRuntime:
             for hit in search_result.points:
                 if hit.id in exclude_ids:
                     continue
-                                                                         
-                                                                                          
+
                 candidate_user_id = hit.payload.get("party_rk", str(hit.id))
-                                                                                    
-                                                                                 
+
                 score = (float(hit.score) + 1.0) / 2.0
-                                     
+
                 if strategy == "high_precision":
                     score = min(1.0, score + 0.03)
                 elif strategy == "exploration":
                     score = max(0.0, score - 0.05)
-                           
-                if _normalize_user_id(candidate_user_id) in {_normalize_user_id(uid) for uid in soft_seen_user_ids}:
+
+                if _normalize_user_id(candidate_user_id) in {
+                    _normalize_user_id(uid) for uid in soft_seen_user_ids
+                }:
                     score = max(0.0, score - 0.15)
-                                                    
+
                 from .schemas import RecommendationCandidate
-                items.append(RecommendationCandidate(
-                    candidate_user_id=candidate_user_id, 
-                    score=score,
-                    score_components=self._build_score_components(
-                        requester_vector=user_vector,
-                        candidate_vector=hit.vector,
-                        fallback_top_cat=hit.payload.get("top_cat") if hit.payload else None,
-                        requester_payload=user_payload,
-                        candidate_payload=dict(hit.payload or {}),
-                    ),
-                    reason_signals=_reason_signals_by_score(score, fallback_mode=False),
-                    policy_flags=[]
-                ))
+
+                items.append(
+                    RecommendationCandidate(
+                        candidate_user_id=candidate_user_id,
+                        score=score,
+                        score_components=self._build_score_components(
+                            requester_vector=user_vector,
+                            candidate_vector=hit.vector,
+                            fallback_top_cat=hit.payload.get("top_cat")
+                            if hit.payload
+                            else None,
+                            requester_payload=user_payload,
+                            candidate_payload=dict(hit.payload or {}),
+                        ),
+                        reason_signals=_reason_signals_by_score(
+                            score, fallback_mode=False
+                        ),
+                        policy_flags=[],
+                    )
+                )
                 if len(items) >= limit:
                     break
 
@@ -620,7 +690,9 @@ class MlRuntime:
                 for item in ((candidate_payload or {}).get("favorite_categories") or [])
                 if str(item).strip()
             ]
-            overlap = [item for item in candidate_categories if item in requester_categories]
+            overlap = [
+                item for item in candidate_categories if item in requester_categories
+            ]
             if overlap:
                 weight = round(1.0 / len(overlap), 4)
                 return {item: weight for item in overlap[:5]}
@@ -645,82 +717,86 @@ class MlRuntime:
 
         ranked = sorted(components, key=lambda item: item[1], reverse=True)[:5]
         total = sum(score for _, score in ranked) or 1.0
-        return {
-            key: round(score / total, 4)
-            for key, score in ranked
-        }
+        return {key: round(score / total, 4) for key, score in ranked}
 
     def process_swipe_feedback(self, payload: SwipeFeedbackRequest) -> AckResponse:
-                           
         self.save_feedback_event(
             event_id=payload.event_id,
             trace_id=payload.trace_id,
             event_type="swipe",
         )
-        
-                                                          
+
         if payload.action in ("like", "pass") and self._qdrant_client is not None:
-            self._update_user_vector_on_swipe(payload.actor_user_id, payload.target_user_id, payload.action, payload.trace_id)
-        
+            self._update_user_vector_on_swipe(
+                payload.actor_user_id,
+                payload.target_user_id,
+                payload.action,
+                payload.trace_id,
+            )
+
         return AckResponse(status=AckStatus.accepted, received_at=_utcnow())
 
-    def _update_user_vector_on_swipe(self, actor_user_id: str | int, target_user_id: str | int, action: str, trace_id: UUID) -> None:
+    def _update_user_vector_on_swipe(
+        self,
+        actor_user_id: str | int,
+        target_user_id: str | int,
+        action: str,
+        trace_id: UUID,
+    ) -> None:
         try:
             actor_id = _string_to_uuid(str(actor_user_id))
             target_id = _string_to_uuid(str(target_user_id))
-            
-                                               
+
             points = self._qdrant_client.retrieve(
                 collection_name="user_profiles",
                 ids=[actor_id, target_id],
                 with_vectors=True,
-                with_payload=True 
+                with_payload=True,
             )
-            
+
             if len(points) != 2:
-                print(f"[{trace_id}] Не найдены векторы для юзеров {actor_user_id} и {target_user_id}")
+                print(
+                    f"[{trace_id}] Не найдены векторы для юзеров {actor_user_id} и {target_user_id}"
+                )
                 return
-            
+
             actor_vector, target_vector, actor_payload = None, None, None
             for point in points:
                 if point.id == actor_id:
                     actor_vector = point.vector
-                    actor_payload = point.payload                           
+                    actor_payload = point.payload
                 elif point.id == target_id:
                     target_vector = point.vector
-            
+
             if actor_vector is None or target_vector is None:
                 return
-            
-                                                                      
+
             alpha = 0.1
-            
+
             if action == "like":
-                                                        
                 new_vector = [
                     actor + alpha * target
                     for actor, target in zip(actor_vector, target_vector)
                 ]
                 print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} приблизился к {target_user_id} (like)"
             else:
-                                              
                 new_vector = [
                     actor - alpha * target
                     for actor, target in zip(actor_vector, target_vector)
                 ]
                 print_msg = f"[{trace_id}] Вектор обновлен! Юзер {actor_user_id} отдалился от {target_user_id} (pass)"
-            
-                          
+
             norm = np.linalg.norm(new_vector)
             if norm > 0:
-                new_vector = [float(x / norm) for x in new_vector]                            
-            
-                                             
+                new_vector = [float(x / norm) for x in new_vector]
+
             self._qdrant_client.upsert(
                 collection_name="user_profiles",
-                points=[PointStruct(id=actor_id, vector=new_vector, payload=actor_payload)]
+                points=[
+                    PointStruct(id=actor_id, vector=new_vector, payload=actor_payload)
+                ],
             )
             print(print_msg)
-            
+
         except Exception as exc:
             print(f"[{trace_id}] Ошибка обновления вектора: {exc}")

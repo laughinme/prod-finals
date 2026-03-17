@@ -2,7 +2,13 @@ import logging
 from datetime import date
 from uuid import UUID
 
-from database.relational_db import Conversation, Match, RecommendationBatch, RecommendationItem, User
+from database.relational_db import (
+    Conversation,
+    Match,
+    RecommendationBatch,
+    RecommendationItem,
+    User,
+)
 from domain.dating import (
     AuditEntityType,
     CompatibilityCategoryScore,
@@ -25,7 +31,11 @@ from domain.dating import (
     RankedCandidate,
 )
 
-from service.matchmaking import BaseDatingService, FeedItemNotFoundError, _age_for_birth_date
+from service.matchmaking import (
+    BaseDatingService,
+    FeedItemNotFoundError,
+    _age_for_birth_date,
+)
 from service.demo_accounts import DEMO_DATASET_ACCOUNTS, DEMO_FEED_PAIR_BY_EMAIL
 from service.matchmaking.reason_signals import build_preview_reason_signals
 from service.matchmaking.random_mix import apply_random_mix, get_random_mix_state
@@ -140,7 +150,9 @@ class FeedService(BaseDatingService):
                 preview=preview.preview,
                 reason_codes=preview.reason_codes,
                 reason_signals=[entry.model_dump() for entry in preview.reason_signals],
-                category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
+                category_breakdown=[
+                    entry.model_dump() for entry in preview.category_breakdown
+                ],
             )
         )
         batch.daily_limit = max(batch.daily_limit, len(existing_items) + 1)
@@ -185,7 +197,9 @@ class FeedService(BaseDatingService):
                 await self.matchmaking_repo.delete_messages_for_conversation(
                     conversation_id=pair_state.conversation_id,
                 )
-                conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
+                conversation = await self.uow.session.get(
+                    Conversation, pair_state.conversation_id
+                )
                 if conversation is not None:
                     await self.matchmaking_repo.delete_conversation(conversation)
 
@@ -242,7 +256,9 @@ class FeedService(BaseDatingService):
             )
             if batch is None:
                 batch = await self._create_batch(user)
-            liked_you_target_ids = await self._list_liked_you_target_ids(user_id=user.id)
+            liked_you_target_ids = await self._list_liked_you_target_ids(
+                user_id=user.id
+            )
             await self._sync_liked_you_candidates_into_batch(
                 user=user,
                 batch=batch,
@@ -270,7 +286,9 @@ class FeedService(BaseDatingService):
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
-                empty_state=self.ml_facade.empty_state(FeedEmptyStateCode.CANDIDATE_POOL_LOW),
+                empty_state=self.ml_facade.empty_state(
+                    FeedEmptyStateCode.CANDIDATE_POOL_LOW
+                ),
                 cards=[],
             )
 
@@ -281,7 +299,9 @@ class FeedService(BaseDatingService):
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
-                empty_state=self.ml_facade.empty_state(FeedEmptyStateCode.NO_MORE_CANDIDATES_TODAY),
+                empty_state=self.ml_facade.empty_state(
+                    FeedEmptyStateCode.NO_MORE_CANDIDATES_TODAY
+                ),
                 cards=[],
             )
 
@@ -299,7 +319,9 @@ class FeedService(BaseDatingService):
                 batch_id=batch.id,
                 generated_at=batch.created_at,
                 expires_at=batch.expires_at,
-                empty_state=self.ml_facade.empty_state(FeedEmptyStateCode.SAFETY_FILTERED_ALL),
+                empty_state=self.ml_facade.empty_state(
+                    FeedEmptyStateCode.SAFETY_FILTERED_ALL
+                ),
                 cards=[],
             )
 
@@ -330,7 +352,9 @@ class FeedService(BaseDatingService):
             cards=cards,
         )
 
-    async def get_explanation(self, user: User, serve_item_id) -> CompatibilityExplanationResponse:
+    async def get_explanation(
+        self, user: User, serve_item_id
+    ) -> CompatibilityExplanationResponse:
         item = await self.matchmaking_repo.get_recommendation_item_for_user(
             serve_item_id=serve_item_id,
             owner_user_id=user.id,
@@ -349,7 +373,10 @@ class FeedService(BaseDatingService):
             entity_type=AuditEntityType.FEED_ITEM,
             entity_id=str(item.id),
             actor_user_id=user.id,
-            payload={"target_user_id": str(item.target_user_id), "decision_mode": decision_mode},
+            payload={
+                "target_user_id": str(item.target_user_id),
+                "decision_mode": decision_mode,
+            },
         )
         await self.increment_funnel_counter(
             actor=user,
@@ -367,12 +394,18 @@ class FeedService(BaseDatingService):
         )
 
     async def _create_batch(self, user: User) -> RecommendationBatch:
-        excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+        excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(
+            user.id
+        )
         requester_context = await self._build_feed_context(user)
-        await self._ensure_requester_ml_profile(user=user, requester_context=requester_context)
+        await self._ensure_requester_ml_profile(
+            user=user, requester_context=requester_context
+        )
         all_candidates = [
             candidate
-            for candidate in await self.matchmaking_repo.list_feed_candidates(requester_id=user.id)
+            for candidate in await self.matchmaking_repo.list_feed_candidates(
+                requester_id=user.id
+            )
             if candidate.id not in excluded_ids
             and candidate.can_be_shown_in_feed
             and self._candidate_passes_filters(
@@ -383,7 +416,10 @@ class FeedService(BaseDatingService):
 
         ranked = await self.ml_facade.rank(
             requester=requester_context,
-            candidates=[await self._build_feed_context(candidate) for candidate in all_candidates],
+            candidates=[
+                await self._build_feed_context(candidate)
+                for candidate in all_candidates
+            ],
             limit=len(all_candidates),
         )
         ranked_candidates = self._prioritize_demo_counterpart(
@@ -422,8 +458,12 @@ class FeedService(BaseDatingService):
                     ),
                     preview=preview.preview,
                     reason_codes=preview.reason_codes,
-                    reason_signals=[entry.model_dump() for entry in preview.reason_signals],
-                    category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
+                    reason_signals=[
+                        entry.model_dump() for entry in preview.reason_signals
+                    ],
+                    category_breakdown=[
+                        entry.model_dump() for entry in preview.category_breakdown
+                    ],
                 )
             )
 
@@ -431,7 +471,9 @@ class FeedService(BaseDatingService):
         return batch
 
     async def _list_liked_you_target_ids(self, *, user_id: UUID) -> list[UUID]:
-        return await self.notification_repo.list_active_like_liker_user_ids(user_id=user_id, limit=100)
+        return await self.notification_repo.list_active_like_liker_user_ids(
+            user_id=user_id, limit=100
+        )
 
     async def _sync_liked_you_candidates_into_batch(
         self,
@@ -445,11 +487,15 @@ class FeedService(BaseDatingService):
 
         existing_items = await self.matchmaking_repo.list_batch_items(batch.id)
         existing_target_ids = {item.target_user_id for item in existing_items}
-        excluded_target_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+        excluded_target_ids = (
+            await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+        )
         missing_target_ids = [
             target_id
             for target_id in liked_you_target_ids
-            if target_id not in existing_target_ids and target_id not in excluded_target_ids and target_id != user.id
+            if target_id not in existing_target_ids
+            and target_id not in excluded_target_ids
+            and target_id != user.id
         ]
         if not missing_target_ids:
             return
@@ -467,7 +513,9 @@ class FeedService(BaseDatingService):
             return
 
         requester_context = await self._build_feed_context(user)
-        candidate_contexts = [await self._build_feed_context(candidate) for candidate in candidates]
+        candidate_contexts = [
+            await self._build_feed_context(candidate) for candidate in candidates
+        ]
         ranked = await self.ml_facade.rank(
             requester=requester_context,
             candidates=candidate_contexts,
@@ -498,8 +546,12 @@ class FeedService(BaseDatingService):
                     ),
                     preview=preview.preview,
                     reason_codes=preview.reason_codes,
-                    reason_signals=[entry.model_dump() for entry in preview.reason_signals],
-                    category_breakdown=[entry.model_dump() for entry in preview.category_breakdown],
+                    reason_signals=[
+                        entry.model_dump() for entry in preview.reason_signals
+                    ],
+                    category_breakdown=[
+                        entry.model_dump() for entry in preview.category_breakdown
+                    ],
                 )
             )
 
@@ -539,7 +591,10 @@ class FeedService(BaseDatingService):
                 step_key="import_transactions",
             )
             import_transactions = (
-                str((import_transactions_answer.answers or ["false"])[0]).strip().lower() == "true"
+                str((import_transactions_answer.answers or ["false"])[0])
+                .strip()
+                .lower()
+                == "true"
                 if import_transactions_answer is not None
                 else False
             )
@@ -550,7 +605,9 @@ class FeedService(BaseDatingService):
                 import_transactions=import_transactions,
             )
         except Exception as exc:  # pragma: no cover - best effort sync before ranking
-            logger.warning("Requester ML profile sync failed for user=%s: %s", user.id, exc)
+            logger.warning(
+                "Requester ML profile sync failed for user=%s: %s", user.id, exc
+            )
 
     def _prioritize_demo_counterpart(
         self,
@@ -565,7 +622,8 @@ class FeedService(BaseDatingService):
             return ranked_candidates
 
         candidate_id_by_email = {
-            (candidate.email or "").strip().lower(): candidate.id for candidate in candidates
+            (candidate.email or "").strip().lower(): candidate.id
+            for candidate in candidates
         }
         counterpart_id = candidate_id_by_email.get(counterpart_email)
         if counterpart_id is None:
@@ -588,8 +646,12 @@ class FeedService(BaseDatingService):
         requester_context: FeedCandidateContext,
         candidate_context: FeedCandidateContext,
     ) -> bool:
-        candidate_age = _age_for_birth_date(candidate_context.birth_date, self.local_today())
-        requester_age = _age_for_birth_date(requester_context.birth_date, self.local_today())
+        candidate_age = _age_for_birth_date(
+            candidate_context.birth_date, self.local_today()
+        )
+        requester_age = _age_for_birth_date(
+            requester_context.birth_date, self.local_today()
+        )
 
         requester_prefs = requester_context.search_preferences
         candidate_prefs = candidate_context.search_preferences
@@ -609,10 +671,14 @@ class FeedService(BaseDatingService):
 
         requester_age_range = requester_prefs.age_range
         if requester_age_range is None and requester_age is not None:
-            requester_age_range = type("AgeRangeProxy", (), {
-                "min": max(18, requester_age - 5),
-                "max": min(99, requester_age + 5),
-            })()
+            requester_age_range = type(
+                "AgeRangeProxy",
+                (),
+                {
+                    "min": max(18, requester_age - 5),
+                    "max": min(99, requester_age + 5),
+                },
+            )()
 
         if requester_age_range is not None:
             if candidate_age is not None and not (
@@ -620,7 +686,11 @@ class FeedService(BaseDatingService):
             ):
                 return False
         if candidate_prefs.age_range is not None and requester_age is not None:
-            if not (candidate_prefs.age_range.min <= requester_age <= candidate_prefs.age_range.max):
+            if not (
+                candidate_prefs.age_range.min
+                <= requester_age
+                <= candidate_prefs.age_range.max
+            ):
                 return False
 
         return True
@@ -634,7 +704,9 @@ class FeedService(BaseDatingService):
     ) -> list[FeedCard]:
         users_by_id = {
             item.id: item
-            for item in await self.user_repo.list_by_ids([item.target_user_id for item in items])
+            for item in await self.user_repo.list_by_ids(
+                [item.target_user_id for item in items]
+            )
         }
         today = date.today()
         liked_you_target_ids = liked_you_target_ids or set()
@@ -679,7 +751,9 @@ class FeedService(BaseDatingService):
             )
         return cards
 
-    async def _refresh_template_previews(self, *, items: list[RecommendationItem]) -> None:
+    async def _refresh_template_previews(
+        self, *, items: list[RecommendationItem]
+    ) -> None:
         for item in items:
             if not _is_template_preview(item.preview):
                 continue
@@ -695,14 +769,18 @@ class FeedService(BaseDatingService):
                 reason_signals: list[CompatibilityReasonSignal] = []
                 for raw_signal in item.reason_signals or []:
                     try:
-                        reason_signals.append(CompatibilityReasonSignal.model_validate(raw_signal))
+                        reason_signals.append(
+                            CompatibilityReasonSignal.model_validate(raw_signal)
+                        )
                     except Exception:
                         continue
 
                 category_scores: list[CompatibilityCategoryScore] = []
                 for raw_score in item.category_breakdown or []:
                     try:
-                        category_scores.append(CompatibilityCategoryScore.model_validate(raw_score))
+                        category_scores.append(
+                            CompatibilityCategoryScore.model_validate(raw_score)
+                        )
                     except Exception:
                         continue
 
@@ -721,7 +799,15 @@ class FeedService(BaseDatingService):
 
                 item.preview = normalized_preview
                 item.reason_codes = [str(code) for code in rebuilt_preview.reason_codes]
-                item.reason_signals = [entry.model_dump() for entry in rebuilt_preview.reason_signals]
-                item.category_breakdown = [entry.model_dump() for entry in rebuilt_preview.category_breakdown]
+                item.reason_signals = [
+                    entry.model_dump() for entry in rebuilt_preview.reason_signals
+                ]
+                item.category_breakdown = [
+                    entry.model_dump() for entry in rebuilt_preview.category_breakdown
+                ]
             except Exception as exc:
-                logger.warning("Preview refresh failed for recommendation_item=%s: %s", item.id, exc)
+                logger.warning(
+                    "Preview refresh failed for recommendation_item=%s: %s",
+                    item.id,
+                    exc,
+                )

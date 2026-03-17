@@ -1,16 +1,16 @@
 # ML EDA
 
-This document contains reproducible exploratory checks for the matchmaking dataset and serving layer.
+Этот документ содержит воспроизводимые exploratory-проверки для датасета мэтчинга и serving-слоя.
 
-## Data source
+## Источник данных
 
-- Transactions CSV in pipeline input (`party_rk`, `category_nm`, `real_transaction_dttm`)
-- Loader: `ml/learn/prepare_data.py`
-- Training entrypoint: `ml/scripts/train_model.py`
+- CSV транзакций во входе пайплайна (`party_rk`, `category_nm`, `real_transaction_dttm`)
+- Загрузчик: `ml/learn/prepare_data.py`
+- Точка входа обучения: `ml/scripts/train_model.py`
 
-## Quick dataset checks
+## Быстрые проверки датасета
 
-Run inside repository root:
+Запуск из корня репозитория:
 
 ```bash
 python - <<'PY'
@@ -27,7 +27,7 @@ print("top_categories:", cats.most_common(15))
 PY
 ```
 
-## Serving layer checks (Postgres vs Qdrant sync)
+## Проверки serving-слоя (синхрон Postgres и Qdrant)
 
 ```bash
 dc='docker compose --env-file deploy/.env -f docker-compose.prod.yml'
@@ -38,9 +38,9 @@ $dc exec -T db psql -U postgres -d chupapis -c \
 curl -sS http://127.0.0.1:6333/collections/user_profiles | jq '.result.points_count'
 ```
 
-Expected: `points_count` in Qdrant is close to `users_total` in Postgres after `scripts.sync_ml_profiles`.
+Ожидание: `points_count` в Qdrant близок к `users_total` в Postgres после `scripts.sync_ml_profiles`.
 
-## Recommendation quality sanity checks
+## Санити-проверки качества рекомендаций
 
 ```bash
 dc='docker compose --env-file deploy/.env -f docker-compose.prod.yml'
@@ -62,15 +62,15 @@ order by cards desc
 limit 20;"
 ```
 
-## Privacy checks for explanations
+## Privacy-проверки для explanations
 
-The explanation text should only contain aggregated signals and category-level labels:
+Текст объяснений должен содержать только агрегированные сигналы и метки уровня категорий:
 
-- No raw transactions
-- No merchant names
-- No amounts/timestamps
+- Без сырых транзакций
+- Без названий мерчантов
+- Без сумм и таймстемпов
 
-The enforcement path is in:
+Путь enforcement в коде:
 
 - `backend/src/service/matchmaking/ml_facade.py`
 - `ml/service/runtime.py`

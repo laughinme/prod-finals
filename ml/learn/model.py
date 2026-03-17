@@ -107,7 +107,9 @@ def train_profile_model(transactions: list[Transaction]) -> MatchModelArtifact:
     )
 
 
-def get_matches(artifact: MatchModelArtifact, user_id: str, top_n: int = 5) -> list[dict[str, float | str]]:
+def get_matches(
+    artifact: MatchModelArtifact, user_id: str, top_n: int = 5
+) -> list[dict[str, float | str]]:
     target = artifact.profiles.get(user_id)
     if target is None:
         return []
@@ -125,7 +127,9 @@ def get_matches(artifact: MatchModelArtifact, user_id: str, top_n: int = 5) -> l
 
 def artifact_to_json_bytes(artifact: MatchModelArtifact) -> bytes:
     payload = asdict(artifact)
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def artifact_from_json_bytes(payload: bytes) -> MatchModelArtifact:

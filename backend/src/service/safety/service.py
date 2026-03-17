@@ -16,16 +16,24 @@ from domain.dating import (
 )
 from domain.notifications import ConversationClosedEventPayload
 
-from service.matchmaking import AlreadyBlockedError, BaseDatingService, InvalidSafetyTargetError
+from service.matchmaking import (
+    AlreadyBlockedError,
+    BaseDatingService,
+    InvalidSafetyTargetError,
+)
 
 
 class SafetyService(BaseDatingService):
     async def list_blocks(self, *, actor: User) -> BlockListResponse:
-        blocks = await self.matchmaking_repo.list_blocks_for_actor(actor_user_id=actor.id)
+        blocks = await self.matchmaking_repo.list_blocks_for_actor(
+            actor_user_id=actor.id
+        )
         if not blocks:
             return BlockListResponse(items=[])
 
-        targets = await self.user_repo.list_by_ids([block.target_user_id for block in blocks])
+        targets = await self.user_repo.list_by_ids(
+            [block.target_user_id for block in blocks]
+        )
         targets_by_id = {target.id: target for target in targets}
         items = [
             BlockedUserItem(
@@ -57,7 +65,9 @@ class SafetyService(BaseDatingService):
             return UnblockResponse(status="unblocked", removed_from_blocklist=False)
 
         await self.matchmaking_repo.delete_block(block)
-        pair_state = await self.matchmaking_repo.get_pair_state(actor.id, target_user_id)
+        pair_state = await self.matchmaking_repo.get_pair_state(
+            actor.id, target_user_id
+        )
         if (
             pair_state is not None
             and pair_state.status == "blocked"
@@ -84,7 +94,9 @@ class SafetyService(BaseDatingService):
         if target is None or target.id == actor.id:
             raise InvalidSafetyTargetError()
 
-        existing = await self.matchmaking_repo.get_block(actor_user_id=actor.id, target_user_id=target.id)
+        existing = await self.matchmaking_repo.get_block(
+            actor_user_id=actor.id, target_user_id=target.id
+        )
         if existing is not None:
             return BlockResponse(
                 status="blocked",
@@ -101,18 +113,29 @@ class SafetyService(BaseDatingService):
                 reason_code=payload.reason_code.value,
             )
         )
-        pair_state = await self.matchmaking_repo.get_or_create_pair_state(actor.id, target.id)
-        match = await self.uow.session.get(Match, pair_state.match_id) if pair_state.match_id else None
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(
+            actor.id, target.id
+        )
+        match = (
+            await self.uow.session.get(Match, pair_state.match_id)
+            if pair_state.match_id
+            else None
+        )
         pair_state.status = "blocked"
         pair_state.blocked_by_user_id = actor.id
 
-        conversation_closed, match_closed = await self._close_related_pair_entities(pair_state, reason="blocked")
+        conversation_closed, match_closed = await self._close_related_pair_entities(
+            pair_state, reason="blocked"
+        )
         await self.add_audit_event(
             event_type="user_blocked",
             entity_type=AuditEntityType.BLOCK,
             entity_id=str(block.id),
             actor_user_id=actor.id,
-            payload={"target_user_id": str(target.id), "reason_code": payload.reason_code.value},
+            payload={
+                "target_user_id": str(target.id),
+                "reason_code": payload.reason_code.value,
+            },
         )
         await self.increment_funnel_counter(
             actor=actor,
@@ -132,7 +155,9 @@ class SafetyService(BaseDatingService):
             )
         await self.uow.commit()
         if conversation_closed and pair_state.conversation_id:
-            conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
+            conversation = await self.uow.session.get(
+                Conversation, pair_state.conversation_id
+            )
             if conversation is not None:
                 await self.realtime_service.publish_conversation_closed(
                     conversation_id=conversation.id,
@@ -162,12 +187,20 @@ class SafetyService(BaseDatingService):
                 source_context=payload.source_context.value,
                 category=payload.category.value,
                 description=payload.description,
-                related_message_id=str(payload.related_message_id) if payload.related_message_id else None,
+                related_message_id=str(payload.related_message_id)
+                if payload.related_message_id
+                else None,
                 also_block=payload.also_block,
             )
         )
-        pair_state = await self.matchmaking_repo.get_or_create_pair_state(actor.id, target.id)
-        match = await self.uow.session.get(Match, pair_state.match_id) if pair_state.match_id else None
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(
+            actor.id, target.id
+        )
+        match = (
+            await self.uow.session.get(Match, pair_state.match_id)
+            if pair_state.match_id
+            else None
+        )
         also_block_applied = False
         if payload.also_block:
             try:
@@ -188,7 +221,10 @@ class SafetyService(BaseDatingService):
             entity_type=AuditEntityType.REPORT,
             entity_id=str(report.id),
             actor_user_id=actor.id,
-            payload={"target_user_id": str(target.id), "category": payload.category.value},
+            payload={
+                "target_user_id": str(target.id),
+                "category": payload.category.value,
+            },
         )
         await self.increment_funnel_counter(
             actor=actor,
@@ -214,7 +250,9 @@ class SafetyService(BaseDatingService):
             also_block_applied=also_block_applied,
         )
 
-    async def _close_related_pair_entities(self, pair_state: PairState, *, reason: str) -> tuple[bool, bool]:
+    async def _close_related_pair_entities(
+        self, pair_state: PairState, *, reason: str
+    ) -> tuple[bool, bool]:
         match_closed = False
         conversation_closed = False
         now = self.now()
@@ -226,8 +264,13 @@ class SafetyService(BaseDatingService):
                 match.closed_at = now
                 match_closed = True
         if pair_state.conversation_id:
-            conversation = await self.uow.session.get(Conversation, pair_state.conversation_id)
-            if conversation is not None and conversation.status != ConversationStatus.CLOSED_BY_BLOCK.value:
+            conversation = await self.uow.session.get(
+                Conversation, pair_state.conversation_id
+            )
+            if (
+                conversation is not None
+                and conversation.status != ConversationStatus.CLOSED_BY_BLOCK.value
+            ):
                 conversation.status = ConversationStatus.CLOSED_BY_BLOCK.value
                 conversation.closed_at = now
                 conversation_closed = True

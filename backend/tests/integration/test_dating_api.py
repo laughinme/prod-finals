@@ -42,14 +42,18 @@ def _mobile_headers() -> dict[str, str]:
     return {"X-Client": "mobile"}
 
 
-async def _register_user(client: AsyncClient, faker: Faker, prefix: str) -> tuple[dict, str]:
+async def _register_user(
+    client: AsyncClient, faker: Faker, prefix: str
+) -> tuple[dict, str]:
     suffix = uuid4().hex[:8]
     password = faker.password(length=12)
     payload = {
         "email": f"{prefix}_{suffix}@example.com",
         "password": password,
     }
-    response = await client.post("/api/v1/auth/register", json=payload, headers=_mobile_headers())
+    response = await client.post(
+        "/api/v1/auth/register", json=payload, headers=_mobile_headers()
+    )
     assert response.status_code == 201
     return payload, response.json()["access_token"]
 
@@ -119,7 +123,9 @@ async def _answer_onboarding_filters(
         headers=auth_header(access_token),
     )
     assert patch.status_code == 200
-    audience_answers = [f"audience:{gender}" for gender in genders] if genders else ["audience:anyone"]
+    audience_answers = (
+        [f"audience:{gender}" for gender in genders] if genders else ["audience:anyone"]
+    )
     responses = [
         await client.post(
             "/api/v1/onboarding/answers",
@@ -170,7 +176,9 @@ async def _promote_to_admin(user_id: str) -> None:
             {"user_id": user_id},
         )
         await conn.execute(
-            text("UPDATE users SET auth_version = auth_version + 1 WHERE id = CAST(:user_id AS uuid)"),
+            text(
+                "UPDATE users SET auth_version = auth_version + 1 WHERE id = CAST(:user_id AS uuid)"
+            ),
             {"user_id": user_id},
         )
 
@@ -206,9 +214,10 @@ async def _pair_state_snapshot(*, user_a_id: str, user_b_id: str) -> dict | None
     engine = get_engine()
     async with engine.begin() as conn:
         row = (
-            await conn.execute(
-                text(
-                    """
+            (
+                await conn.execute(
+                    text(
+                        """
                     SELECT status, cooldown_until, blocked_by_user_id
                     FROM pair_states
                     WHERE (
@@ -220,10 +229,13 @@ async def _pair_state_snapshot(*, user_a_id: str, user_b_id: str) -> dict | None
                         AND user_high_id = CAST(:user_a_id AS uuid)
                     )
                     """
-                ),
-                {"user_a_id": user_a_id, "user_b_id": user_b_id},
+                    ),
+                    {"user_a_id": user_a_id, "user_b_id": user_b_id},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
     return dict(row) if row else None
 
 
@@ -232,7 +244,9 @@ def _opposite_gender(gender: str) -> str:
 
 
 @pytest.mark.asyncio
-async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, faker: Faker):
+async def test_onboarding_filters_and_feed_match_chat_flow(
+    client: AsyncClient, faker: Faker
+):
     credentials_a, access_a = await _register_user(client, faker, "alice")
     _, access_b = await _register_user(client, faker, "bob")
     _, access_c = await _register_user(client, faker, "charlie")
@@ -242,7 +256,9 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert initial_feed.json()["feed_state"] == "locked"
     assert initial_feed.json()["lock_reason"] == "avatar_required"
 
-    onboarding_config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_a))
+    onboarding_config = await client.get(
+        "/api/v1/onboarding/config", headers=auth_header(access_a)
+    )
     assert onboarding_config.status_code == 200
     steps = {step["step_key"]: step for step in onboarding_config.json()["steps"]}
     assert set(steps) == {"goal_and_audience", "interests_and_bank_signal"}
@@ -253,7 +269,9 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert steps["interests_and_bank_signal"]["import_transactions_default"] is True
     assert steps["interests_and_bank_signal"]["import_transactions_value"] is True
 
-    onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    onboarding_state = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_a)
+    )
     assert onboarding_state.status_code == 200
     assert onboarding_state.json()["should_show"] is True
     assert onboarding_state.json()["current_step_key"] == "goal_and_audience"
@@ -262,9 +280,13 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
 
     await _upload_avatar(client, access_a)
 
-    onboarding_state_after_photo = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    onboarding_state_after_photo = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_a)
+    )
     assert onboarding_state_after_photo.status_code == 200
-    assert onboarding_state_after_photo.json()["current_step_key"] == "goal_and_audience"
+    assert (
+        onboarding_state_after_photo.json()["current_step_key"] == "goal_and_audience"
+    )
     assert onboarding_state_after_photo.json()["missing_required_fields"] == []
 
     answer = await client.post(
@@ -314,10 +336,16 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
         headers=auth_header(access_a),
     )
     assert updated_onboarding_config.status_code == 200
-    updated_steps = {step["step_key"]: step for step in updated_onboarding_config.json()["steps"]}
-    assert updated_steps["interests_and_bank_signal"]["import_transactions_value"] is False
+    updated_steps = {
+        step["step_key"]: step for step in updated_onboarding_config.json()["steps"]
+    }
+    assert (
+        updated_steps["interests_and_bank_signal"]["import_transactions_value"] is False
+    )
 
-    completed_onboarding_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_a))
+    completed_onboarding_state = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_a)
+    )
     assert completed_onboarding_state.status_code == 200
     assert completed_onboarding_state.json()["completed"] is True
     assert completed_onboarding_state.json()["should_show"] is False
@@ -386,7 +414,11 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     candidate_ids_a = {card["candidate"]["user_id"] for card in feed_a.json()["cards"]}
     assert profile_b["id"] in candidate_ids_a
     assert profile_c["id"] not in candidate_ids_a
-    card_a = next(card for card in feed_a.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
+    card_a = next(
+        card
+        for card in feed_a.json()["cards"]
+        if card["candidate"]["user_id"] == profile_b["id"]
+    )
     assert 0 <= card_a["compatibility"]["score_percent"] <= 100
     assert card_a["compatibility"]["category_breakdown"]
     assert len(card_a["compatibility"]["category_breakdown"]) <= 5
@@ -426,7 +458,11 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     feed_b = await client.get("/api/v1/feed", headers=auth_header(access_b))
     assert feed_b.status_code == 200
     assert feed_b.json()["feed_state"] == "ready"
-    card_b = next(card for card in feed_b.json()["cards"] if card["candidate"]["user_id"] == profile_a["id"])
+    card_b = next(
+        card
+        for card in feed_b.json()["cards"]
+        if card["candidate"]["user_id"] == profile_a["id"]
+    )
 
     like_b = await client.post(
         f"/api/v1/feed/items/{card_b['serve_item_id']}/reaction",
@@ -457,7 +493,10 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert notifications_a.status_code == 200
     assert notifications_a.json()["unseen_count"] == 1
     assert notifications_a.json()["items"][0]["match_id"] == match["match_id"]
-    assert notifications_a.json()["items"][0]["conversation_id"] == match["conversation_id"]
+    assert (
+        notifications_a.json()["items"][0]["conversation_id"]
+        == match["conversation_id"]
+    )
     assert notifications_a.json()["items"][0]["peer"]["user_id"] == profile_b["id"]
 
     notifications_b = await client.get(
@@ -500,7 +539,10 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert conversation_realtime.status_code == 200
     assert conversation_realtime.json()["enabled"] is True
     assert conversation_realtime.json()["token"]
-    assert conversation_realtime.json()["channel"] == f"conversation-{match['conversation_id']}"
+    assert (
+        conversation_realtime.json()["channel"]
+        == f"conversation-{match['conversation_id']}"
+    )
 
     icebreakers = await client.get(
         f"/api/v1/conversations/{match['conversation_id']}/icebreakers",
@@ -577,8 +619,14 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     assert summary_json["totals"]["chat_first_message_sent"] == 1
     assert summary_json["totals"]["chat_first_reply_received"] == 1
     assert summary_json["totals"]["match_closed"] == 1
-    assert any(segment["user_source"] == "cold_start" for segment in summary_json["by_user_source"])
-    assert any(segment["decision_mode"] in {"model", "fallback", "unknown"} for segment in summary_json["by_decision_mode"])
+    assert any(
+        segment["user_source"] == "cold_start"
+        for segment in summary_json["by_user_source"]
+    )
+    assert any(
+        segment["decision_mode"] in {"model", "fallback", "unknown"}
+        for segment in summary_json["by_decision_mode"]
+    )
 
     funnel_daily = await client.get(
         "/api/v1/admins/stats/funnel/daily",
@@ -591,22 +639,28 @@ async def test_onboarding_filters_and_feed_match_chat_flow(client: AsyncClient, 
     engine = get_engine()
     async with engine.begin() as conn:
         outbox_topics = (
-            await conn.execute(
-                text(
-                    """
+            (
+                await conn.execute(
+                    text(
+                        """
                     SELECT topic
                     FROM outbox_events
                     WHERE topic = 'ml.interactions.match_outcome'
                     ORDER BY created_at ASC
                     """
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert outbox_topics
 
 
 @pytest.mark.asyncio
-async def test_pass_action_prevents_repeat_after_batch_regeneration(client: AsyncClient, faker: Faker):
+async def test_pass_action_prevents_repeat_after_batch_regeneration(
+    client: AsyncClient, faker: Faker
+):
     _, access_a = await _register_user(client, faker, "pass_norepeat_a")
     _, access_b = await _register_user(client, faker, "pass_norepeat_b")
 
@@ -627,14 +681,22 @@ async def test_pass_action_prevents_repeat_after_batch_regeneration(client: Asyn
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99)
-    await _answer_onboarding_filters(client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99)
+    await _answer_onboarding_filters(
+        client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99
+    )
+    await _answer_onboarding_filters(
+        client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99
+    )
 
     feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_before.status_code == 200
     assert feed_before.json()["feed_state"] == "ready"
 
-    card_b = next(card for card in feed_before.json()["cards"] if card["candidate"]["user_id"] == profile_b["id"])
+    card_b = next(
+        card
+        for card in feed_before.json()["cards"]
+        if card["candidate"]["user_id"] == profile_b["id"]
+    )
     reaction = await client.post(
         f"/api/v1/feed/items/{card_b['serve_item_id']}/reaction",
         json={"action": "pass"},
@@ -650,14 +712,18 @@ async def test_pass_action_prevents_repeat_after_batch_regeneration(client: Asyn
     ids_after = {card["candidate"]["user_id"] for card in feed_after.json()["cards"]}
     assert profile_b["id"] not in ids_after
 
-    pair_state = await _pair_state_snapshot(user_a_id=profile_a["id"], user_b_id=profile_b["id"])
+    pair_state = await _pair_state_snapshot(
+        user_a_id=profile_a["id"], user_b_id=profile_b["id"]
+    )
     assert pair_state is not None
     assert pair_state["status"] == "closed"
     assert pair_state["cooldown_until"] is not None
 
 
 @pytest.mark.asyncio
-async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClient, faker: Faker):
+async def test_unblock_keeps_candidate_excluded_until_cooldown(
+    client: AsyncClient, faker: Faker
+):
     _, access_a = await _register_user(client, faker, "unblock_cooldown_a")
     _, access_b = await _register_user(client, faker, "unblock_cooldown_b")
 
@@ -678,12 +744,19 @@ async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClie
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99)
-    await _answer_onboarding_filters(client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99)
+    await _answer_onboarding_filters(
+        client, access_a, genders=[profile_b["gender"]], age_min=18, age_max=99
+    )
+    await _answer_onboarding_filters(
+        client, access_b, genders=[profile_a["gender"]], age_min=18, age_max=99
+    )
 
     feed_before = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_before.status_code == 200
-    assert any(card["candidate"]["user_id"] == profile_b["id"] for card in feed_before.json()["cards"])
+    assert any(
+        card["candidate"]["user_id"] == profile_b["id"]
+        for card in feed_before.json()["cards"]
+    )
 
     block = await client.post(
         "/api/v1/blocks",
@@ -707,7 +780,9 @@ async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClie
 
     blocked_list = await client.get("/api/v1/blocks", headers=auth_header(access_a))
     assert blocked_list.status_code == 200
-    assert profile_b["id"] not in {item["target_user_id"] for item in blocked_list.json()["items"]}
+    assert profile_b["id"] not in {
+        item["target_user_id"] for item in blocked_list.json()["items"]
+    }
 
     await _drop_today_recommendation_batches(user_id=profile_a["id"])
 
@@ -716,7 +791,9 @@ async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClie
     ids_after = {card["candidate"]["user_id"] for card in feed_after.json()["cards"]}
     assert profile_b["id"] not in ids_after
 
-    pair_state = await _pair_state_snapshot(user_a_id=profile_a["id"], user_b_id=profile_b["id"])
+    pair_state = await _pair_state_snapshot(
+        user_a_id=profile_a["id"], user_b_id=profile_b["id"]
+    )
     assert pair_state is not None
     assert pair_state["status"] == "closed"
     assert pair_state["cooldown_until"] is not None
@@ -724,7 +801,9 @@ async def test_unblock_keeps_candidate_excluded_until_cooldown(client: AsyncClie
 
 
 @pytest.mark.asyncio
-async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, faker: Faker):
+async def test_onboarding_accepts_equal_age_range_bounds(
+    client: AsyncClient, faker: Faker
+):
     _, access = await _register_user(client, faker, "equalage")
 
     patch = await client.patch(
@@ -742,22 +821,30 @@ async def test_onboarding_accepts_equal_age_range_bounds(client: AsyncClient, fa
 
 
 @pytest.mark.asyncio
-async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, faker: Faker):
+async def test_onboarding_skip_persists_and_hides_quiz(
+    client: AsyncClient, faker: Faker
+):
     _, access_token = await _register_user(client, faker, "skipper")
 
-    initial_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    initial_state = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_token)
+    )
     assert initial_state.status_code == 200
     assert initial_state.json()["should_show"] is True
     assert initial_state.json()["current_step_key"] == "goal_and_audience"
 
-    skip_response = await client.post("/api/v1/onboarding/skip", headers=auth_header(access_token))
+    skip_response = await client.post(
+        "/api/v1/onboarding/skip", headers=auth_header(access_token)
+    )
     assert skip_response.status_code == 200
     assert skip_response.json()["quiz_started"] is True
     assert skip_response.json()["skipped"] is True
     assert skip_response.json()["should_show"] is False
     assert skip_response.json()["current_step_key"] is None
 
-    refreshed_state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    refreshed_state = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_token)
+    )
     assert refreshed_state.status_code == 200
     assert refreshed_state.json()["skipped"] is True
     assert refreshed_state.json()["should_show"] is False
@@ -765,7 +852,9 @@ async def test_onboarding_skip_persists_and_hides_quiz(client: AsyncClient, fake
 
 
 @pytest.mark.asyncio
-async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncClient, faker: Faker):
+async def test_profile_patch_keeps_preferences_as_source_of_truth(
+    client: AsyncClient, faker: Faker
+):
     _, access_token = await _register_user(client, faker, "profileprefs")
 
     await _complete_profile(
@@ -801,9 +890,14 @@ async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncC
     assert patch.json()["interests"] == []
     assert patch.json()["import_transactions"] is True
 
-    state = await client.get("/api/v1/onboarding/state", headers=auth_header(access_token))
+    state = await client.get(
+        "/api/v1/onboarding/state", headers=auth_header(access_token)
+    )
     assert state.status_code == 200
-    assert state.json()["answers_by_step"]["goal_and_audience"] == ["goal:serious_relationship", "audience:anyone"]
+    assert state.json()["answers_by_step"]["goal_and_audience"] == [
+        "goal:serious_relationship",
+        "audience:anyone",
+    ]
     assert state.json()["answers_by_step"]["interests_and_bank_signal"] == []
     assert set(state.json()["completed_step_keys"]) == {
         "goal_and_audience",
@@ -811,7 +905,9 @@ async def test_profile_patch_keeps_preferences_as_source_of_truth(client: AsyncC
         "profile_preview",
     }
 
-    config = await client.get("/api/v1/onboarding/config", headers=auth_header(access_token))
+    config = await client.get(
+        "/api/v1/onboarding/config", headers=auth_header(access_token)
+    )
     assert config.status_code == 200
     steps = {step["step_key"]: step for step in config.json()["steps"]}
     assert steps["interests_and_bank_signal"]["import_transactions_value"] is True
@@ -848,9 +944,15 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         gender="male",
     )
 
-    await _answer_onboarding_filters(client, access_a, genders=["male"], age_min=24, age_max=36)
-    await _answer_onboarding_filters(client, access_b, genders=["female"], age_min=24, age_max=36)
-    await _answer_onboarding_filters(client, access_c, genders=["female"], age_min=24, age_max=36)
+    await _answer_onboarding_filters(
+        client, access_a, genders=["male"], age_min=24, age_max=36
+    )
+    await _answer_onboarding_filters(
+        client, access_b, genders=["female"], age_min=24, age_max=36
+    )
+    await _answer_onboarding_filters(
+        client, access_c, genders=["female"], age_min=24, age_max=36
+    )
 
     block = await client.post(
         "/api/v1/blocks",
@@ -880,7 +982,9 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
 
     blocked_before = await client.get("/api/v1/blocks", headers=auth_header(access_a))
     assert blocked_before.status_code == 200
-    blocked_target_ids = {item["target_user_id"] for item in blocked_before.json()["items"]}
+    blocked_target_ids = {
+        item["target_user_id"] for item in blocked_before.json()["items"]
+    }
     assert profile_b["id"] in blocked_target_ids
     assert profile_c["id"] in blocked_target_ids
 
@@ -894,13 +998,17 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
 
     blocked_after = await client.get("/api/v1/blocks", headers=auth_header(access_a))
     assert blocked_after.status_code == 200
-    blocked_after_ids = {item["target_user_id"] for item in blocked_after.json()["items"]}
+    blocked_after_ids = {
+        item["target_user_id"] for item in blocked_after.json()["items"]
+    }
     assert profile_b["id"] not in blocked_after_ids
     assert profile_c["id"] in blocked_after_ids
 
     feed_after_safety = await client.get("/api/v1/feed", headers=auth_header(access_a))
     assert feed_after_safety.status_code == 200
-    target_ids = {card["candidate"]["user_id"] for card in feed_after_safety.json()["cards"]}
+    target_ids = {
+        card["candidate"]["user_id"] for card in feed_after_safety.json()["cards"]
+    }
     assert profile_b["id"] not in target_ids
     assert profile_c["id"] not in target_ids
 
@@ -926,7 +1034,9 @@ async def test_block_report_and_admin_audit_flow(client: AsyncClient, faker: Fak
         headers=auth_header(admin_access),
     )
     assert audit_ok.status_code == 200
-    assert any(item["event_type"] == "user_reported" for item in audit_ok.json()["items"])
+    assert any(
+        item["event_type"] == "user_reported" for item in audit_ok.json()["items"]
+    )
 
     moderation_summary = await client.get(
         "/api/v1/admins/moderation/reports/summary",
@@ -988,19 +1098,25 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
                     storage=storage,
                 )
             )
-    application = create_app(enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False)
+    application = create_app(
+        enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False
+    )
     application.dependency_overrides[get_redis] = lambda: redis_client
     transport = ASGITransport(app=application)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as seeded_client:
         login = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": "mock-user-0001@example.com", "password": "DemoPass123!"},
+            json={"email": "demo.food.a@tmatch.local", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert login.status_code == 200
         access_token = login.json()["access_token"]
 
-        feed = await seeded_client.get("/api/v1/feed", headers=auth_header(access_token))
+        feed = await seeded_client.get(
+            "/api/v1/feed", headers=auth_header(access_token)
+        )
         assert feed.status_code == 200
         assert feed.json()["feed_state"] == "ready"
         assert feed.json()["cards"]
@@ -1014,7 +1130,9 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
 
 
 @pytest.mark.asyncio
-async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(redis_client, faker: Faker):
+async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(
+    redis_client, faker: Faker
+):
     os.environ["MOCK_USER_SEED_ENABLED"] = "true"
     clear_settings_cache()
     storage = get_media_storage_service()
@@ -1029,19 +1147,25 @@ async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(redi
                     storage=storage,
                 )
             )
-    application = create_app(enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False)
+    application = create_app(
+        enable_rate_limiter=False, check_db_on_startup=False, enable_scheduler=False
+    )
     application.dependency_overrides[get_redis] = lambda: redis_client
     transport = ASGITransport(app=application)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as seeded_client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as seeded_client:
         dataset_login = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": "mock-user-0001@example.com", "password": "DemoPass123!"},
+            json={"email": "demo.food.a@tmatch.local", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert dataset_login.status_code == 200
         dataset_access = dataset_login.json()["access_token"]
 
-        cold_credentials, cold_access = await _register_user(seeded_client, faker, "segmentcold")
+        cold_credentials, cold_access = await _register_user(
+            seeded_client, faker, "segmentcold"
+        )
         cold_profile = await _complete_profile(
             seeded_client,
             cold_access,
@@ -1058,15 +1182,22 @@ async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(redi
             age_max=99,
         )
 
-        dataset_feed = await seeded_client.get("/api/v1/feed", headers=auth_header(dataset_access))
-        cold_feed = await seeded_client.get("/api/v1/feed", headers=auth_header(cold_access))
+        dataset_feed = await seeded_client.get(
+            "/api/v1/feed", headers=auth_header(dataset_access)
+        )
+        cold_feed = await seeded_client.get(
+            "/api/v1/feed", headers=auth_header(cold_access)
+        )
         assert dataset_feed.status_code == 200
         assert cold_feed.status_code == 200
 
         await _promote_to_admin(cold_profile["id"])
         relogin = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": cold_credentials["email"], "password": cold_credentials["password"]},
+            json={
+                "email": cold_credentials["email"],
+                "password": cold_credentials["password"],
+            },
             headers=_mobile_headers(),
         )
         assert relogin.status_code == 200
@@ -1077,7 +1208,9 @@ async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(redi
             headers=auth_header(admin_access),
         )
         assert summary.status_code == 200
-        by_source = {item["user_source"]: item for item in summary.json()["by_user_source"]}
+        by_source = {
+            item["user_source"]: item for item in summary.json()["by_user_source"]
+        }
         assert by_source["dataset"]["counts"]["feed_served"] >= 1
         assert by_source["cold_start"]["counts"]["feed_served"] >= 1
 

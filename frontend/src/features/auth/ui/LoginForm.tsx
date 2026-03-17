@@ -24,7 +24,10 @@ import { cn } from "@/shared/lib/utils";
 export type DemoAccount = {
   key: string;
   email: string;
+  password: string;
   titleKey: string;
+  scenarioKey: string;
+  categoriesKey: string;
 };
 
 type LoginFormProps = Omit<ComponentProps<"div">, "onSubmit"> & {
@@ -60,7 +63,7 @@ export function LoginForm({
 }: LoginFormProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
-  const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const [isDemoOpen, setIsDemoOpen] = useState(true);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -184,7 +187,7 @@ export function LoginForm({
                               type="button"
                               onClick={() => onDemoLogin(account)}
                               disabled={disabled}
-                              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted disabled:opacity-50"
+                              className="flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted disabled:opacity-50"
                             >
                               <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                                 <User className="size-3.5" />
@@ -193,8 +196,16 @@ export function LoginForm({
                                 <span className="block truncate font-medium text-foreground text-[13px]">
                                   {t(account.titleKey)}
                                 </span>
-                                <span className="block truncate text-[11px] text-muted-foreground">
-                                  {account.email}
+                                <span className="block text-[11px] text-muted-foreground">
+                                  {account.email} / {account.password}
+                                </span>
+                                <span className="block text-[11px] text-muted-foreground">
+                                  {t("auth.demo_accounts_scenario_label")}:{" "}
+                                  {t(account.scenarioKey)}
+                                </span>
+                                <span className="block text-[11px] text-muted-foreground">
+                                  {t("auth.demo_accounts_categories_label")}:{" "}
+                                  {t(account.categoriesKey)}
                                 </span>
                               </span>
                             </button>

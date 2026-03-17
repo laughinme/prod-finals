@@ -62,7 +62,9 @@ class UserNotificationsService(BaseDatingService):
             unseen_only=unseen_only,
             limit=limit,
         )
-        unseen_count = await self.notification_repo.count_unseen_match_notifications(user_id=user.id)
+        unseen_count = await self.notification_repo.count_unseen_match_notifications(
+            user_id=user.id
+        )
         return MatchNotificationsResponse(
             items=[
                 MatchNotificationItem(
@@ -113,7 +115,9 @@ class UserNotificationsService(BaseDatingService):
             unseen_only=unseen_only,
             limit=limit,
         )
-        unseen_count = await self.notification_repo.count_unseen_message_notifications(user_id=user.id)
+        unseen_count = await self.notification_repo.count_unseen_message_notifications(
+            user_id=user.id
+        )
         return MessageNotificationsResponse(
             items=[
                 MessageNotificationItem(
@@ -166,7 +170,9 @@ class UserNotificationsService(BaseDatingService):
             unseen_only=unseen_only,
             limit=limit,
         )
-        unseen_count = await self.notification_repo.count_unseen_like_notifications(user_id=user.id)
+        unseen_count = await self.notification_repo.count_unseen_like_notifications(
+            user_id=user.id
+        )
         return LikeNotificationsResponse(
             items=[
                 LikeNotificationItem(
@@ -356,10 +362,14 @@ class UserNotificationsService(BaseDatingService):
     ) -> tuple[Match, Conversation, bool]:
         existing = await self.matchmaking_repo.get_match_for_users(user_a_id, user_b_id)
         if existing is not None:
-            conversation = await self.uow.session.scalar(select(Conversation).where(Conversation.match_id == existing.id))
+            conversation = await self.uow.session.scalar(
+                select(Conversation).where(Conversation.match_id == existing.id)
+            )
             if conversation is None:
                 conversation = await self.matchmaking_repo.add(
-                    Conversation(match_id=existing.id, status=ConversationStatus.ACTIVE.value)
+                    Conversation(
+                        match_id=existing.id, status=ConversationStatus.ACTIVE.value
+                    )
                 )
                 existing.conversation_id = conversation.id
                 await self.uow.session.flush()

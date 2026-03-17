@@ -10,9 +10,9 @@ router = APIRouter()
 
 
 @router.get(
-    path='/languages',
+    path="/languages",
     response_model=list[LanguageModel],
-    summary='List languages with search'
+    summary="List languages with search",
 )
 async def list_languages(
     response: Response,

@@ -91,7 +91,9 @@ async def test_protected_profile_requires_access_token(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker: Faker):
+async def test_patch_user_with_template_payload_shape(
+    client: AsyncClient, faker: Faker
+):
     suffix = uuid4().hex[:8]
     payload = {
         "email": f"profile_{suffix}@example.com",

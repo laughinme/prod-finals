@@ -79,7 +79,9 @@ class MediaStorageService:
             config=s3_config,
         )
 
-    def build_avatar_key(self, user_id: UUID | str, filename: str, content_type: str) -> str:
+    def build_avatar_key(
+        self, user_id: UUID | str, filename: str, content_type: str
+    ) -> str:
         ext = Path(filename).suffix.lower()
         allowed_ext = _EXTENSIONS_BY_CONTENT_TYPE.get(content_type, set())
         if ext not in allowed_ext:
