@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -19,14 +19,17 @@ import {
 import {
   getDemoFeedCard,
   getDemoFeedShortcuts,
+  postDemoFeedReset,
   type DemoFeedShortcutItemDto,
 } from "@/shared/api/feed";
 import {
+  FEED_QUERY_KEY,
   useFeed,
   useFeedExplanation,
   useFeedReaction,
   useFeedTestMatch,
 } from "@/features/matchmaking";
+import { MATCHES_QUERY_KEY } from "@/features/match/model/useMatches";
 import { useProfile, useSetDefaultAvatar, useUploadAvatar } from "@/features/profile";
 import { useBlockUser, useReportUser } from "@/features/safety";
 
@@ -46,6 +49,7 @@ export type DiscoveryDemoShortcut = {
   avatarUrl: string | null;
   bio: string | null;
   isCurrentUser: boolean;
+  canResetPair: boolean;
 };
 
 type ReasonStrength = "high" | "medium" | "low";
@@ -199,6 +203,7 @@ function toLikeNotificationProfile(dto: LikeNotificationCardDto): MatchProfile {
       canBlock: dto.actions.can_block,
       canReport: dto.actions.can_report,
     },
+    likedYou: true,
     source: "like_notification",
   };
 }
@@ -210,6 +215,7 @@ function toDiscoveryDemoShortcut(dto: DemoFeedShortcutItemDto): DiscoveryDemoSho
     avatarUrl: dto.avatar_url,
     bio: dto.bio,
     isCurrentUser: dto.is_current_user,
+    canResetPair: dto.can_reset_pair,
   };
 }
 
@@ -217,6 +223,7 @@ export function useDiscoveryPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const routeState = location.state as DiscoveryLocationState;
   const { data: viewerProfile } = useProfile();
 
@@ -278,6 +285,10 @@ export function useDiscoveryPage() {
     retry: false,
   });
 
+  const resetDemoPairMutation = useMutation({
+    mutationFn: postDemoFeedReset,
+  });
+
   useEffect(() => {
     if (!likeNotificationCardQuery.isError) {
       return;
@@ -319,23 +330,29 @@ export function useDiscoveryPage() {
     currentProfileSeenAtRef.current = currentProfileId ? Date.now() : null;
   }, [currentProfileId]);
 
-  const reasonsForUi = currentProfileExplanation
-    ? filterReasonsForUi(currentProfileExplanation.reasons)
-    : [];
+  const reasonsForUi = useMemo(
+    () => (currentProfileExplanation
+      ? filterReasonsForUi(currentProfileExplanation.reasons)
+      : []),
+    [currentProfileExplanation],
+  );
 
-  const currentProfile = baseCurrentProfile
-    ? {
-        ...baseCurrentProfile,
-        explanation: baseCurrentProfile.explanation
-          || (reasonsForUi.length > 0
-            ? getExplanationText(
-                reasonsForUi,
-                baseCurrentProfile.explanation,
-              )
-            : ""),
-        tags: getCategoryTags(baseCurrentProfile),
-      }
-    : null;
+  const currentProfile = useMemo(
+    () => (baseCurrentProfile
+      ? {
+          ...baseCurrentProfile,
+          explanation: baseCurrentProfile.explanation
+            || (reasonsForUi.length > 0
+              ? getExplanationText(
+                  reasonsForUi,
+                  baseCurrentProfile.explanation,
+                )
+              : ""),
+          tags: getCategoryTags(baseCurrentProfile),
+        }
+      : null),
+    [baseCurrentProfile, reasonsForUi],
+  );
 
   const getCurrentDwellTimeMs = () => {
     if (!currentProfileSeenAtRef.current) {
@@ -345,7 +362,7 @@ export function useDiscoveryPage() {
     return Math.max(Date.now() - currentProfileSeenAtRef.current, 0);
   };
 
-  const dismissCurrentProfile = () => {
+  const dismissCurrentProfile = useCallback(() => {
     if (!currentProfile) {
       return;
     }
@@ -362,7 +379,7 @@ export function useDiscoveryPage() {
     }
 
     removeProfile(currentProfile.id);
-  };
+  }, [currentProfile, location.pathname, navigate, removeProfile]);
 
   const openPhotoGate = () => {
     setShowPhotoGate(true);
@@ -437,9 +454,9 @@ export function useDiscoveryPage() {
           activeLikeNotificationId,
           {
             action: "like",
-            openedExplanation: false,
-            openedProfile: false,
-            dwellTimeMs,
+            opened_explanation: false,
+            opened_profile: false,
+            dwell_time_ms: dwellTimeMs,
           },
         );
         setExitX(1000);
@@ -513,8 +530,10 @@ export function useDiscoveryPage() {
     }
     return false;
   }, [
+    activeLikeNotificationId,
     currentProfile,
     currentProfileExplanation,
+    dismissCurrentProfile,
     feedReactionMutation,
     navigate,
     t,
@@ -565,12 +584,12 @@ export function useDiscoveryPage() {
       try {
         await postLikeNotificationReaction(activeLikeNotificationId, {
           action: "pass",
-          openedExplanation: false,
-          openedProfile: false,
-          dwellTimeMs,
+          opened_explanation: false,
+          opened_profile: false,
+          dwell_time_ms: dwellTimeMs,
         });
-      } catch {
-        // special notification card already dismissed
+      } catch (_error) {
+        void _error;
       }
       return;
     }
@@ -587,8 +606,8 @@ export function useDiscoveryPage() {
           openedProfile: false,
           dwellTimeMs,
         });
-      } catch {
-        // card already dismissed
+      } catch (_error) {
+        void _error;
       }
     }
   };
@@ -606,8 +625,27 @@ export function useDiscoveryPage() {
       await feedTestMatchMutation.mutateAsync({
         serveItemId: currentProfile.id,
       });
-    } catch {
-      // handled in feed test-match mutation hook
+    } catch (_error) {
+      void _error;
+    }
+  };
+
+  const handleResetDemoPair = async (demoUserKey: string) => {
+    try {
+      await resetDemoPairMutation.mutateAsync(demoUserKey);
+      if (activeDemoShortcutKey === demoUserKey) {
+        setActiveDemoShortcutKey(null);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["feed", "demo-shortcuts"] }),
+        queryClient.invalidateQueries({ queryKey: MATCHES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
+      toast.success(t("discovery.demo_panel_reset_success"));
+    } catch (e) {
+      Sentry.captureException(e);
+      toast.error(t("discovery.demo_panel_reset_error"));
     }
   };
 
@@ -619,6 +657,8 @@ export function useDiscoveryPage() {
     activeDemoShortcutKey,
     openDemoShortcut: (demoUserKey: string) => setActiveDemoShortcutKey(demoUserKey),
     closeDemoShortcut: () => setActiveDemoShortcutKey(null),
+    handleResetDemoPair,
+    isResettingDemoPair: resetDemoPairMutation.isPending,
     isSafetyPending:
       blockUserMutation.isPending || reportUserMutation.isPending,
     isPhotoGatePending:

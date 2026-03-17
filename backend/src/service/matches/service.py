@@ -14,13 +14,19 @@ from domain.dating import (
 )
 from domain.notifications import ConversationClosedEventPayload
 
-from service.matchmaking import BaseDatingService, InvalidMatchStateError, MatchNotFoundError
+from service.matchmaking import (
+    BaseDatingService,
+    InvalidMatchStateError,
+    MatchNotFoundError,
+)
 
 
 class MatchService(BaseDatingService):
     async def list_matches(self, user: User) -> MatchListResponse:
         rows = await self.matchmaking_repo.list_matches_for_user(user.id)
-        unread_counts = await self.notification_repo.count_unread_messages_by_match(user_id=user.id)
+        unread_counts = await self.notification_repo.count_unread_messages_by_match(
+            user_id=user.id
+        )
         items = [
             MatchListItem(
                 match_id=match.id,
@@ -44,14 +50,20 @@ class MatchService(BaseDatingService):
         match_id,
         payload: CloseMatchRequest,
     ) -> CloseMatchResponse:
-        match = await self.matchmaking_repo.get_match_for_user(match_id=match_id, user_id=user.id)
+        match = await self.matchmaking_repo.get_match_for_user(
+            match_id=match_id, user_id=user.id
+        )
         if match is None:
             raise MatchNotFoundError()
         if match.status != MatchStatus.ACTIVE.value:
             raise InvalidMatchStateError()
 
-        conversation = await self.uow.session.scalar(select(Conversation).where(Conversation.match_id == match.id))
-        pair_state = await self.matchmaking_repo.get_or_create_pair_state(match.user_low_id, match.user_high_id)
+        conversation = await self.uow.session.scalar(
+            select(Conversation).where(Conversation.match_id == match.id)
+        )
+        pair_state = await self.matchmaking_repo.get_or_create_pair_state(
+            match.user_low_id, match.user_high_id
+        )
         now = self.now()
 
         match.status = MatchStatus.CLOSED.value
@@ -75,14 +87,17 @@ class MatchService(BaseDatingService):
             counter_name="match_closed",
             decision_mode=match.source_decision_mode,
         )
-        peer_user_id = match.user_high_id if match.user_low_id == user.id else match.user_low_id
+        peer_user_id = (
+            match.user_high_id if match.user_low_id == user.id else match.user_low_id
+        )
         peer = await self.user_repo.get_by_id(peer_user_id)
         await self.add_outbox_event(
             topic="ml.interactions.match_outcome",
             payload={
                 "match_id": str(match.id),
                 "user_a_id": user.service_user_id or str(user.id),
-                "user_b_id": (peer.service_user_id if peer else str(peer_user_id)) or str(peer_user_id),
+                "user_b_id": (peer.service_user_id if peer else str(peer_user_id))
+                or str(peer_user_id),
                 "outcome": "conversation_closed",
                 "happened_at": now.isoformat(),
             },

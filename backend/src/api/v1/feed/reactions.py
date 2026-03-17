@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Path
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.dating import FeedReactionRequest, FeedReactionResponse, FeedTestMatchResponse
+from domain.dating import (
+    FeedReactionRequest,
+    FeedReactionResponse,
+    FeedTestMatchResponse,
+)
 from service.feed import InteractionService, get_interaction_service
 
 router = APIRouter()
@@ -22,7 +26,9 @@ async def post_feed_reaction(
     user: Annotated[User, Depends(auth_user)] = ...,
     svc: Annotated[InteractionService, Depends(get_interaction_service)] = ...,
 ) -> FeedReactionResponse:
-    return await svc.submit_reaction(user=user, serve_item_id=serve_item_id, payload=payload)
+    return await svc.submit_reaction(
+        user=user, serve_item_id=serve_item_id, payload=payload
+    )
 
 
 @router.post(

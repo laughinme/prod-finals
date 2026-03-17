@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "motion/react";
+import { MessageCircle } from "lucide-react";
 
 import { cn } from "@/shared/lib/utils";
 import {
@@ -10,35 +11,47 @@ import {
 import { NavItem } from "../model/useNavItems";
 import { Logo } from "./Logo";
 import { useProfile } from "@/features/profile/model/useProfile";
+import { HeaderNotificationsBell } from "./HeaderNotificationsBell";
 
 interface MobileHeaderNavProps {
   navItems: NavItem[];
 }
 
 export function MobileHeaderNav({ navItems }: MobileHeaderNavProps) {
-  const midpoint = Math.ceil(navItems.length / 2);
-  const leftItems = navItems.slice(0, midpoint);
-  const rightItems = navItems.slice(midpoint);
+  const headerItems = navItems.filter((item) => item.to !== "/chat");
 
   return (
-    <div className="flex h-12 items-center justify-between px-4 md:hidden">
-      <div className="flex flex-1 items-center justify-evenly">
-        {leftItems.map((item) => (
-          <MobileNavTab key={item.to} item={item} />
-        ))}
-      </div>
-
-      <div className="mx-4 shrink-0">
+    <div className="flex h-12 items-center justify-evenly px-2 md:hidden">
+      {headerItems[0] && <MobileNavTab item={headerItems[0]} />}
+      {headerItems[1] && <MobileNavTab item={headerItems[1]} />}
+      <div className="shrink-0">
         <Logo compact />
       </div>
-
-      <div className="flex flex-1 items-center justify-evenly">
-        {rightItems.map((item) => (
-          <MobileNavTab key={item.to} item={item} />
-        ))}
-        <MobileProfileTab />
-      </div>
+      <HeaderNotificationsBell compact />
+      <MobileProfileTab />
     </div>
+  );
+}
+
+export function MobileFloatingChatButton({ navItems }: { navItems: NavItem[] }) {
+  const location = useLocation();
+  const chatItem = navItems.find((item) => item.to === "/chat");
+  if (!chatItem || location.pathname.startsWith("/chat")) return null;
+
+  return (
+    <NavLink
+      to={chatItem.to}
+      className="fixed bottom-6 right-4 z-9999 flex size-16 items-center justify-center rounded-full bg-primary shadow-xl transition-transform active:scale-95 md:hidden"
+    >
+      <div className="relative">
+        <MessageCircle className="size-7 text-primary-foreground" strokeWidth={2} />
+        {chatItem.badge ? (
+          <span className="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
+            {chatItem.badge}
+          </span>
+        ) : null}
+      </div>
+    </NavLink>
   );
 }
 
@@ -132,3 +145,4 @@ function MobileProfileTab() {
     </NavLink>
   );
 }
+

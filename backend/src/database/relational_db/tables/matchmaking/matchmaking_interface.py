@@ -30,12 +30,9 @@ class MatchmakingInterface:
         user_id: UUID,
         batch_date: date,
     ) -> RecommendationBatch | None:
-        stmt = (
-            select(RecommendationBatch)
-            .where(
-                RecommendationBatch.user_id == user_id,
-                RecommendationBatch.batch_date == batch_date,
-            )
+        stmt = select(RecommendationBatch).where(
+            RecommendationBatch.user_id == user_id,
+            RecommendationBatch.batch_date == batch_date,
         )
         return await self.session.scalar(stmt)
 
@@ -45,13 +42,17 @@ class MatchmakingInterface:
         user_id: UUID,
         batch_date: date,
     ) -> None:
-        batch = await self.get_active_batch_for_date(user_id=user_id, batch_date=batch_date)
+        batch = await self.get_active_batch_for_date(
+            user_id=user_id, batch_date=batch_date
+        )
         if batch is None:
             return
         await self.session.execute(
             delete(RecommendationItem).where(RecommendationItem.batch_id == batch.id)
         )
-        await self.session.execute(delete(RecommendationBatch).where(RecommendationBatch.id == batch.id))
+        await self.session.execute(
+            delete(RecommendationBatch).where(RecommendationBatch.id == batch.id)
+        )
         await self.session.flush()
 
     async def list_batch_items(self, batch_id: UUID) -> list[RecommendationItem]:
@@ -83,7 +84,10 @@ class MatchmakingInterface:
     ) -> RecommendationItem | None:
         stmt = (
             select(RecommendationItem)
-            .join(RecommendationBatch, RecommendationBatch.id == RecommendationItem.batch_id)
+            .join(
+                RecommendationBatch,
+                RecommendationBatch.id == RecommendationItem.batch_id,
+            )
             .where(
                 RecommendationItem.id == serve_item_id,
                 RecommendationBatch.user_id == owner_user_id,
@@ -104,7 +108,9 @@ class MatchmakingInterface:
         )
         return list(rows.all())
 
-    async def get_pair_state(self, user_a_id: UUID, user_b_id: UUID) -> PairState | None:
+    async def get_pair_state(
+        self, user_a_id: UUID, user_b_id: UUID
+    ) -> PairState | None:
         low_id, high_id = sorted((user_a_id, user_b_id))
         return await self.session.scalar(
             select(PairState).where(
@@ -113,7 +119,9 @@ class MatchmakingInterface:
             )
         )
 
-    async def get_or_create_pair_state(self, user_a_id: UUID, user_b_id: UUID) -> PairState:
+    async def get_or_create_pair_state(
+        self, user_a_id: UUID, user_b_id: UUID
+    ) -> PairState:
         pair_state = await self.get_pair_state(user_a_id, user_b_id)
         if pair_state is not None:
             return pair_state
@@ -136,13 +144,46 @@ class MatchmakingInterface:
             )
         )
 
-    async def get_match_for_users(self, user_a_id: UUID, user_b_id: UUID) -> Match | None:
+    async def get_match_for_users(
+        self, user_a_id: UUID, user_b_id: UUID
+    ) -> Match | None:
         low_id, high_id = sorted((user_a_id, user_b_id))
         return await self.session.scalar(
-            select(Match).where(Match.user_low_id == low_id, Match.user_high_id == high_id)
+            select(Match).where(
+                Match.user_low_id == low_id, Match.user_high_id == high_id
+            )
         )
 
-    async def list_matches_for_user(self, user_id: UUID) -> list[tuple[Match, User, Conversation | None, Message | None]]:
+    async def delete_match(self, match: Match) -> None:
+        await self.session.delete(match)
+        await self.session.flush()
+
+    async def delete_conversation(self, conversation: Conversation) -> None:
+        await self.session.delete(conversation)
+        await self.session.flush()
+
+    async def delete_messages_for_conversation(self, *, conversation_id: UUID) -> None:
+        await self.session.execute(
+            delete(Message).where(Message.conversation_id == conversation_id)
+        )
+        await self.session.flush()
+
+    async def reset_pair_state(self, pair_state: PairState) -> None:
+        pair_state.low_action = None
+        pair_state.high_action = None
+        pair_state.low_action_at = None
+        pair_state.high_action_at = None
+        pair_state.status = "none"
+        pair_state.cooldown_until = None
+        pair_state.blocked_by_user_id = None
+        pair_state.hidden_by_user_id = None
+        pair_state.match_id = None
+        pair_state.conversation_id = None
+        await self.session.flush()
+
+    async def list_matches_for_user(
+        self, user_id: UUID
+    ) -> list[tuple[Match, User, Conversation | None, Message | None]]:
         peer = aliased(User)
         last_message_at_subq = (
             select(
@@ -182,7 +223,9 @@ class MatchmakingInterface:
         result = await self.session.execute(stmt)
         return list(result.all())
 
-    async def get_match_for_user(self, *, match_id: UUID, user_id: UUID) -> Match | None:
+    async def get_match_for_user(
+        self, *, match_id: UUID, user_id: UUID
+    ) -> Match | None:
         return await self.session.scalar(
             select(Match).where(
                 Match.id == match_id,
@@ -259,13 +302,27 @@ class MatchmakingInterface:
             )
         )
 
-    async def get_block(self, *, actor_user_id: UUID, target_user_id: UUID) -> Block | None:
+    async def get_block(
+        self, *, actor_user_id: UUID, target_user_id: UUID
+    ) -> Block | None:
         return await self.session.scalar(
             select(Block).where(
                 Block.actor_user_id == actor_user_id,
                 Block.target_user_id == target_user_id,
             )
         )
+
+    async def list_blocks_for_actor(self, *, actor_user_id: UUID) -> list[Block]:
+        rows = await self.session.scalars(
+            select(Block)
+            .where(Block.actor_user_id == actor_user_id)
+            .order_by(Block.created_at.desc())
+        )
+        return list(rows.all())
+
+    async def delete_block(self, block: Block) -> None:
+        await self.session.delete(block)
+        await self.session.flush()
 
     async def get_existing_report(
         self,
@@ -286,11 +343,16 @@ class MatchmakingInterface:
         rows = await self.session.scalars(
             select(OnboardingQuizAnswer)
             .where(OnboardingQuizAnswer.user_id == user_id)
-            .order_by(OnboardingQuizAnswer.updated_at.asc(), OnboardingQuizAnswer.step_key.asc())
+            .order_by(
+                OnboardingQuizAnswer.updated_at.asc(),
+                OnboardingQuizAnswer.step_key.asc(),
+            )
         )
         return list(rows.all())
 
-    async def get_quiz_answer(self, *, user_id: UUID, step_key: str) -> OnboardingQuizAnswer | None:
+    async def get_quiz_answer(
+        self, *, user_id: UUID, step_key: str
+    ) -> OnboardingQuizAnswer | None:
         return await self.session.scalar(
             select(OnboardingQuizAnswer).where(
                 OnboardingQuizAnswer.user_id == user_id,
@@ -307,7 +369,9 @@ class MatchmakingInterface:
     ) -> OnboardingQuizAnswer:
         record = await self.get_quiz_answer(user_id=user_id, step_key=step_key)
         if record is None:
-            record = OnboardingQuizAnswer(user_id=user_id, step_key=step_key, answers=answers)
+            record = OnboardingQuizAnswer(
+                user_id=user_id, step_key=step_key, answers=answers
+            )
             self.session.add(record)
         else:
             record.answers = answers
@@ -344,7 +408,9 @@ class MatchmakingInterface:
         excluded = set(blocked_rows.all()) | set(blocked_by_rows.all())
         now = datetime.now(UTC)
         for pair in pair_rows.all():
-            target_id = pair.user_high_id if pair.user_low_id == user_id else pair.user_low_id
+            target_id = (
+                pair.user_high_id if pair.user_low_id == user_id else pair.user_low_id
+            )
             if pair.status in {"blocked", "hidden"}:
                 excluded.add(target_id)
                 continue
@@ -364,7 +430,9 @@ class MatchmakingInterface:
         )
         return list(rows.all())
 
-    async def get_recommendation_batch(self, batch_id: UUID) -> RecommendationBatch | None:
+    async def get_recommendation_batch(
+        self, batch_id: UUID
+    ) -> RecommendationBatch | None:
         return await self.session.get(RecommendationBatch, batch_id)
 
     async def increment_daily_funnel_counter(
@@ -431,7 +499,9 @@ class MatchmakingInterface:
             .where(
                 OutboxEvent.topic == topic,
                 OutboxEvent.status == "pending",
-                or_(OutboxEvent.available_at.is_(None), OutboxEvent.available_at <= now),
+                or_(
+                    OutboxEvent.available_at.is_(None), OutboxEvent.available_at <= now
+                ),
             )
             .order_by(OutboxEvent.created_at.asc())
             .with_for_update(skip_locked=True)

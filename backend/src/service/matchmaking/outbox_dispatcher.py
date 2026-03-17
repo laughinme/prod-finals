@@ -31,7 +31,9 @@ async def _dispatch_events(
     async with session_factory() as session:
         async with UoW(session) as uow:
             repo = MatchmakingInterface(session)
-            events = await repo.claim_pending_outbox_events(topic=topic, limit=batch_size, now=now)
+            events = await repo.claim_pending_outbox_events(
+                topic=topic, limit=batch_size, now=now
+            )
             await uow.commit()
 
     if not events:
@@ -53,7 +55,9 @@ async def _dispatch_events(
                 delivered += 1
             except Exception as exc:
                 failed_ids.add(str(event.id))
-                logger.warning("Failed to dispatch ML outbox event %s: %s", event.id, exc)
+                logger.warning(
+                    "Failed to dispatch ML outbox event %s: %s", event.id, exc
+                )
 
     retry_at = datetime.now(UTC) + timedelta(seconds=retry_delay_sec)
     async with session_factory() as session:
@@ -61,9 +65,13 @@ async def _dispatch_events(
             repo = MatchmakingInterface(session)
             for event in events:
                 if str(event.id) in failed_ids:
-                    await repo.update_outbox_event(event_id=event.id, status="pending", available_at=retry_at)
+                    await repo.update_outbox_event(
+                        event_id=event.id, status="pending", available_at=retry_at
+                    )
                 else:
-                    await repo.update_outbox_event(event_id=event.id, status="sent", available_at=None)
+                    await repo.update_outbox_event(
+                        event_id=event.id, status="sent", available_at=None
+                    )
             await uow.commit()
 
     return delivered
@@ -83,10 +91,12 @@ async def dispatch_ml_swipe_events(
         batch_size=batch_size,
         retry_delay_sec=retry_delay_sec,
         payload_builder=lambda event: {
-            **({
-                "trace_id": str(uuid4()),
-                "event_id": str(event.id),
-            }),
+            **(
+                {
+                    "trace_id": str(uuid4()),
+                    "event_id": str(event.id),
+                }
+            ),
             "actor_user_id": (event.payload or {}).get("actor_user_id"),
             "target_user_id": (event.payload or {}).get("target_user_id"),
             "action": (event.payload or {}).get("action"),
@@ -116,6 +126,7 @@ async def dispatch_ml_match_outcome_events(
             "user_a_id": (event.payload or {}).get("user_a_id"),
             "user_b_id": (event.payload or {}).get("user_b_id"),
             "outcome": (event.payload or {}).get("outcome"),
-            "happened_at": (event.payload or {}).get("happened_at") or datetime.now(UTC).isoformat(),
+            "happened_at": (event.payload or {}).get("happened_at")
+            or datetime.now(UTC).isoformat(),
         },
     )

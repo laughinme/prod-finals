@@ -3,7 +3,13 @@ from datetime import date
 
 from core.config import Settings
 from core.crypto import hash_password
-from database.relational_db import CitiesInterface, RolesInterface, UoW, User, UserInterface
+from database.relational_db import (
+    CitiesInterface,
+    RolesInterface,
+    UoW,
+    User,
+    UserInterface,
+)
 from domain.auth.enums import DEFAULT_ROLE
 from service.media import MediaStorageService
 
@@ -207,7 +213,11 @@ async def ensure_dev_seed(
         )
 
         assigned_roles = [member_role]
-        if "roles" in payload and admin_role is not None and "admin" in payload["roles"]:
+        if (
+            "roles" in payload
+            and admin_role is not None
+            and "admin" in payload["roles"]
+        ):
             assigned_roles = [member_role, admin_role]
         await user_repo.assign_roles(user, assigned_roles)
 

@@ -11,7 +11,12 @@ from database.relational_db import (
     User,
     UserInterface,
 )
-from domain.dating import AuditEntityType, FeedCandidateContext, FeedLockReason, ProfileStatus
+from domain.dating import (
+    AuditEntityType,
+    FeedCandidateContext,
+    FeedLockReason,
+    ProfileStatus,
+)
 from domain.statistics import FunnelDecisionMode, FunnelUserSource
 from service.realtime import RealtimeService
 
@@ -106,10 +111,16 @@ class BaseDatingService:
         )
 
     async def add_outbox_event(self, *, topic: str, payload: dict) -> OutboxEvent:
-        return await self.matchmaking_repo.add(OutboxEvent(topic=topic, payload=payload, status="pending"))
+        return await self.matchmaking_repo.add(
+            OutboxEvent(topic=topic, payload=payload, status="pending")
+        )
 
     def funnel_user_source(self, user: User) -> FunnelUserSource:
-        return FunnelUserSource.DATASET if bool(user.is_dataset_user) else FunnelUserSource.COLD_START
+        return (
+            FunnelUserSource.DATASET
+            if bool(user.is_dataset_user)
+            else FunnelUserSource.COLD_START
+        )
 
     def funnel_decision_mode(self, raw: str | None) -> FunnelDecisionMode:
         normalized = (raw or "").strip().lower()

@@ -3,10 +3,11 @@ openapi: 3.1.0
 info:
   title: T-Match Internal ML API (Backend <-> ML Service)
   summary: Внутренний контракт для ранжирования, explanations и feedback.
-  description: |-
-    Внутренний контракт между main backend и ML service.
+  description: 'Внутренний контракт между main backend и ML service.
 
-    Main backend владеет бизнес-состоянием, ML service владеет scoring/explanations/feedback ingestion.
+
+    Main backend владеет бизнес-состоянием, ML service владеет scoring/explanations/feedback
+    ingestion.'
   version: 1.0.0
 servers:
 - url: http://ml-service:8080
@@ -24,16 +25,16 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/MlHealthResponse"
+                $ref: '#/components/schemas/MlHealthResponse'
         '503':
           description: Service Unavailable
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - APIKeyHeader: []
-  "/v1/recommendations":
+  /v1/recommendations:
     post:
       tags:
       - recommendations
@@ -43,7 +44,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/RecommendationRequest"
+              $ref: '#/components/schemas/RecommendationRequest'
         required: true
       responses:
         '200':
@@ -51,7 +52,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/RecommendationResponse"
+                $ref: '#/components/schemas/RecommendationResponse'
         '400':
           description: Bad Request
           content:
@@ -69,10 +70,10 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
       security:
       - APIKeyHeader: []
-  "/v1/interactions/swipe":
+  /v1/interactions/swipe:
     post:
       tags:
       - feedback
@@ -82,7 +83,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/SwipeFeedbackRequest"
+              $ref: '#/components/schemas/SwipeFeedbackRequest'
         required: true
       responses:
         '202':
@@ -102,16 +103,16 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/interactions/match-outcome":
+  /v1/interactions/match-outcome:
     post:
       tags:
       - feedback
@@ -121,7 +122,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/MatchOutcomeRequest"
+              $ref: '#/components/schemas/MatchOutcomeRequest'
         required: true
       responses:
         '202':
@@ -141,16 +142,16 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/explanations/compatibility":
+  /v1/explanations/compatibility:
     post:
       tags:
       - explanations
@@ -160,7 +161,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/CompatibilityExplanationRequest"
+              $ref: '#/components/schemas/CompatibilityExplanationRequest'
         required: true
       responses:
         '200':
@@ -168,7 +169,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/CompatibilityExplanationResponse"
+                $ref: '#/components/schemas/CompatibilityExplanationResponse'
         '400':
           description: Bad Request
           content:
@@ -186,16 +187,16 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/profile/favorites":
+  /v1/profile/favorites:
     post:
       tags:
       - feedback
@@ -205,7 +206,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
         required: true
       responses:
         '202':
@@ -213,28 +214,28 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AckResponse"
+                $ref: '#/components/schemas/AckResponse'
         '400':
           description: Bad Request
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/profile/preferences":
+  /v1/profile/preferences:
     post:
       tags:
       - feedback
@@ -244,7 +245,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
         required: true
       responses:
         '202':
@@ -252,28 +253,28 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AckResponse"
+                $ref: '#/components/schemas/AckResponse'
         '400':
           description: Bad Request
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/profiles/onboarding":
+  /v1/profiles/onboarding:
     post:
       tags:
       - onboarding
@@ -283,7 +284,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UserProfileUpdateRequest"
+              $ref: '#/components/schemas/UserProfileUpdateRequest'
         required: true
       responses:
         '202':
@@ -291,16 +292,16 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AckResponse"
+                $ref: '#/components/schemas/AckResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
-  "/v1/transactions/sync":
+  /v1/transactions/sync:
     post:
       tags:
       - onboarding
@@ -312,7 +313,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/TransactionSyncRequest"
+              $ref: '#/components/schemas/TransactionSyncRequest'
         required: true
       responses:
         '202':
@@ -320,13 +321,13 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AckResponse"
+                $ref: '#/components/schemas/AckResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/HTTPValidationError"
+                $ref: '#/components/schemas/HTTPValidationError'
       security:
       - APIKeyHeader: []
 components:
@@ -334,7 +335,7 @@ components:
     AckResponse:
       properties:
         status:
-          "$ref": "#/components/schemas/AckStatus"
+          $ref: '#/components/schemas/AckStatus'
         received_at:
           type: string
           format: date-time
@@ -374,7 +375,7 @@ components:
           - type: integer
           title: Candidate User Id
         channel:
-          "$ref": "#/components/schemas/ExplanationChannel"
+          $ref: '#/components/schemas/ExplanationChannel'
           default: feed
         locale:
           type: string
@@ -405,10 +406,10 @@ components:
           - type: integer
           title: Candidate User Id
         privacy_level:
-          "$ref": "#/components/schemas/PrivacyLevel"
+          $ref: '#/components/schemas/PrivacyLevel'
         reasons:
           items:
-            "$ref": "#/components/schemas/ExplanationReason"
+            $ref: '#/components/schemas/ExplanationReason'
           type: array
           maxItems: 5
           minItems: 1
@@ -492,12 +493,12 @@ components:
     ExplanationReason:
       properties:
         code:
-          "$ref": "#/components/schemas/ExplanationReasonCode"
+          $ref: '#/components/schemas/ExplanationReasonCode'
         template_key:
           type: string
           title: Template Key
         strength:
-          "$ref": "#/components/schemas/Strength"
+          $ref: '#/components/schemas/Strength'
         confidence:
           anyOf:
           - type: number
@@ -525,7 +526,7 @@ components:
       properties:
         detail:
           items:
-            "$ref": "#/components/schemas/ValidationError"
+            $ref: '#/components/schemas/ValidationError'
           type: array
           title: Detail
       type: object
@@ -611,7 +612,7 @@ components:
           - type: integer
           title: User B Id
         outcome:
-          "$ref": "#/components/schemas/MatchOutcome"
+          $ref: '#/components/schemas/MatchOutcome'
         happened_at:
           type: string
           format: date-time
@@ -648,13 +649,13 @@ components:
     MlHealthResponse:
       properties:
         status:
-          "$ref": "#/components/schemas/MlStatus"
+          $ref: '#/components/schemas/MlStatus'
         timestamp:
           type: string
           format: date-time
           title: Timestamp
         decision_mode:
-          "$ref": "#/components/schemas/HealthDecisionMode"
+          $ref: '#/components/schemas/HealthDecisionMode'
         model_version:
           type: string
           title: Model Version
@@ -662,7 +663,7 @@ components:
           type: string
           title: Features Version
         checks:
-          "$ref": "#/components/schemas/MlChecks"
+          $ref: '#/components/schemas/MlChecks'
         warnings:
           items:
             type: string
@@ -746,9 +747,9 @@ components:
     ReasonSignal:
       properties:
         code:
-          "$ref": "#/components/schemas/ReasonCode"
+          $ref: '#/components/schemas/ReasonCode'
         strength:
-          "$ref": "#/components/schemas/Strength"
+          $ref: '#/components/schemas/Strength'
         confidence:
           anyOf:
           - type: number
@@ -783,14 +784,14 @@ components:
           title: Score Components
         reason_signals:
           items:
-            "$ref": "#/components/schemas/ReasonSignal"
+            $ref: '#/components/schemas/ReasonSignal'
           type: array
           maxItems: 5
           minItems: 1
           title: Reason Signals
         policy_flags:
           items:
-            "$ref": "#/components/schemas/PolicyFlag"
+            $ref: '#/components/schemas/PolicyFlag'
           type: array
           maxItems: 10
           title: Policy Flags
@@ -823,9 +824,9 @@ components:
           - type: 'null'
           title: Timezone
         client:
-          "$ref": "#/components/schemas/ClientType"
+          $ref: '#/components/schemas/ClientType'
         decision_policy:
-          "$ref": "#/components/schemas/DecisionPolicy"
+          $ref: '#/components/schemas/DecisionPolicy'
       additionalProperties: false
       type: object
       required:
@@ -857,7 +858,7 @@ components:
           title: Limit
           default: 12
         strategy:
-          "$ref": "#/components/schemas/Strategy"
+          $ref: '#/components/schemas/Strategy'
           default: balanced
         candidate_user_ids:
           anyOf:
@@ -871,14 +872,14 @@ components:
           title: Candidate User Ids
         hard_filters:
           anyOf:
-          - "$ref": "#/components/schemas/HardFilters"
+          - $ref: '#/components/schemas/HardFilters'
           - type: 'null'
         exclusion:
           anyOf:
-          - "$ref": "#/components/schemas/ExclusionSet"
+          - $ref: '#/components/schemas/ExclusionSet'
           - type: 'null'
         context:
-          "$ref": "#/components/schemas/RecommendationContext"
+          $ref: '#/components/schemas/RecommendationContext'
       additionalProperties: false
       type: object
       required:
@@ -903,7 +904,7 @@ components:
           type: string
           title: Features Version
         decision_mode:
-          "$ref": "#/components/schemas/RecommendationDecisionMode"
+          $ref: '#/components/schemas/RecommendationDecisionMode'
         warnings:
           items:
             type: string
@@ -912,7 +913,7 @@ components:
           title: Warnings
         candidates:
           items:
-            "$ref": "#/components/schemas/RecommendationCandidate"
+            $ref: '#/components/schemas/RecommendationCandidate'
           type: array
           maxItems: 5000
           title: Candidates
@@ -969,7 +970,7 @@ components:
           - type: integer
           title: Target User Id
         action:
-          "$ref": "#/components/schemas/SwipeAction"
+          $ref: '#/components/schemas/SwipeAction'
         shown_rank:
           anyOf:
           - type: integer
@@ -995,7 +996,7 @@ components:
           format: date-time
           title: Acted At
         source_context:
-          "$ref": "#/components/schemas/SwipeSourceContext"
+          $ref: '#/components/schemas/SwipeSourceContext'
           default: feed
       additionalProperties: false
       type: object
@@ -1028,7 +1029,7 @@ components:
           title: User Id
         transactions:
           items:
-            "$ref": "#/components/schemas/RawTransaction"
+            $ref: '#/components/schemas/RawTransaction'
           type: array
           maxItems: 1000
           minItems: 1

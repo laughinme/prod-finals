@@ -22,4 +22,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute("UPDATE users SET gender = 'other' WHERE gender = 'female' AND email = 'admin.demo@example.com'")
+    op.execute(
+        "UPDATE users SET gender = 'other' WHERE gender = 'female' AND email = 'admin.demo@example.com'"
+    )

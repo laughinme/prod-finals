@@ -24,13 +24,20 @@ def upgrade() -> None:
         sa.Column("label", sa.String(length=255), nullable=False),
         sa.Column("source_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column(
+            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
         sa.PrimaryKeyConstraint("key"),
         sa.UniqueConstraint("label"),
     )
     op.add_column(
         "recommendation_items",
-        sa.Column("category_breakdown", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
+        sa.Column(
+            "category_breakdown",
+            sa.JSON(),
+            nullable=False,
+            server_default=sa.text("'[]'"),
+        ),
     )
 
 

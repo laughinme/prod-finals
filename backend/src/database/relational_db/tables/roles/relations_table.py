@@ -23,8 +23,13 @@ class UserRole(Base):
     __tablename__ = "user_roles"
 
     user_id: Mapped[Uuid] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True,
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
     )
     role_id: Mapped[Uuid] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True, index=True,
+        Uuid(as_uuid=True),
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
     )

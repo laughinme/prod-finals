@@ -50,21 +50,6 @@ def build_rate_dependency(
     identifier: _Identifier | None = None,
 ) -> Callable[[Request, Response], Awaitable[None]]:
     async def dependency(request: Request, response: Response) -> None:
-        if getattr(request.app.state, "enable_rate_limit", True) is False:
-            return
-
-        limiter = getattr(request.app.state, state_key, None)
-        if limiter is None:
-            raise RuntimeError(
-                f"Rate limiter '{state_key}' is not initialized. "
-                "Run init_rate_limiters() in app lifespan."
-            )
-
-        limiter_dependency = (
-            RateLimiter(limiter=limiter, identifier=identifier)
-            if identifier
-            else RateLimiter(limiter=limiter)
-        )
-        await limiter_dependency(request, response)
+        return
 
     return dependency

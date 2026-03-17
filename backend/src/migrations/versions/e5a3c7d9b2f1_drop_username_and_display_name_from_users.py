@@ -28,7 +28,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.add_column("users", sa.Column("username", sa.String(), nullable=True))
-    op.add_column("users", sa.Column("display_name", sa.String(length=80), nullable=True))
+    op.add_column(
+        "users", sa.Column("display_name", sa.String(length=80), nullable=True)
+    )
     op.create_index(
         "users_username_trgm",
         "users",

@@ -18,4 +18,3 @@ async def get_ml_status(
     ml_facade: Annotated[MlFacade, Depends(get_ml_facade)],
 ) -> MlConnectionStatusModel:
     return await ml_facade.connection_status()
-

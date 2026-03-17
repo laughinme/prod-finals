@@ -8,6 +8,7 @@ from database.relational_db import User
 from domain.dating import (
     CompatibilityExplanationResponse,
     DemoFeedShortcutListResponse,
+    DemoFeedResetResponse,
     FeedCard,
     FeedResponse,
 )
@@ -52,6 +53,19 @@ async def get_demo_shortcut_card(
     svc: Annotated[FeedService, Depends(get_feed_service)],
 ) -> FeedCard:
     return await svc.get_demo_card(user=user, demo_user_key=demo_user_key)
+
+
+@router.post(
+    "/demo-shortcuts/{demo_user_key}/reset",
+    response_model=DemoFeedResetResponse,
+    summary="Reset a demo pair so it can be matched again",
+)
+async def reset_demo_shortcut_pair(
+    demo_user_key: str,
+    user: Annotated[User, Depends(auth_user)],
+    svc: Annotated[FeedService, Depends(get_feed_service)],
+) -> DemoFeedResetResponse:
+    return await svc.reset_demo_pair(user=user, demo_user_key=demo_user_key)
 
 
 @router.get(

@@ -18,7 +18,9 @@ def _mobile_headers() -> dict[str, str]:
 
 
 @pytest.mark.asyncio
-async def test_avatar_presign_upload_confirm_get_and_delete_flow(client: AsyncClient, faker: Faker):
+async def test_avatar_presign_upload_confirm_get_and_delete_flow(
+    client: AsyncClient, faker: Faker
+):
     suffix = uuid4().hex[:8]
     credentials = {
         "email": f"avatar_{suffix}@example.com",

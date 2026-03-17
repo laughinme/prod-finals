@@ -12,15 +12,12 @@ class LanguagesInterface:
         stmt = select(Language)
 
         if search:
-            stmt = (
-                stmt.where(
-                    or_(
-                        Language.name_ru.ilike(f"%{search}%"),
-                        Language.name_en.ilike(f"%{search}%"),
-                    )
+            stmt = stmt.where(
+                or_(
+                    Language.name_ru.ilike(f"%{search}%"),
+                    Language.name_en.ilike(f"%{search}%"),
                 )
-                .order_by(func.char_length(Language.name_ru))
-            )
+            ).order_by(func.char_length(Language.name_ru))
 
         stmt = stmt.limit(limit)
 

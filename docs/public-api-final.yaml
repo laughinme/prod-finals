@@ -257,6 +257,23 @@ paths:
                 "$ref": "#/components/schemas/HTTPValidationError"
       security:
       - HTTPBearer: []
+  "/api/v1/users/me/avatar/default":
+    post:
+      tags:
+      - Users
+      summary: Attach the default demo avatar to profile
+      operationId: set_default_avatar_api_v1_users_me_avatar_default_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/UserModel"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
   "/api/v1/users/me/avatar":
     delete:
       tags:
@@ -337,6 +354,35 @@ paths:
                 "$ref": "#/components/schemas/HTTPValidationError"
       security:
       - HTTPBearer: []
+  "/api/v1/onboarding/estimate":
+    post:
+      tags:
+      - Onboarding
+      summary: Estimate how many candidates fit the current onboarding answers
+      operationId: post_onboarding_estimate_api_v1_onboarding_estimate_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/OnboardingEstimateRequest"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/OnboardingEstimateResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
   "/api/v1/onboarding/skip":
     post:
       tags:
@@ -379,6 +425,53 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/FeedResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/feed/demo-shortcuts":
+    get:
+      tags:
+      - Feed
+      summary: List demo shortcuts for discovery
+      operationId: get_demo_shortcuts_api_v1_feed_demo_shortcuts_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DemoFeedShortcutListResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
+  "/api/v1/feed/demo-shortcuts/{demo_user_key}/card":
+    get:
+      tags:
+      - Feed
+      summary: Open a demo shortcut card
+      operationId: get_demo_shortcut_card_api_v1_feed_demo_shortcuts__demo_user_key__card_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: demo_user_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Demo User Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/FeedCard"
         '401':
           description: Not authorized
         '422':
@@ -825,6 +918,216 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/messages":
+    get:
+      tags:
+      - Notifications
+      summary: List message notifications for current user
+      operationId: get_message_notifications_api_v1_notifications_messages_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: unseen_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Unseen Only
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MessageNotificationsResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/messages/{notification_id}/seen":
+    post:
+      tags:
+      - Notifications
+      summary: Mark message notification as seen
+      operationId: mark_message_notification_seen_api_v1_notifications_messages__notification_id__seen_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MarkNotificationSeenResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/likes":
+    get:
+      tags:
+      - Notifications
+      summary: List like notifications for current user
+      operationId: get_like_notifications_api_v1_notifications_likes_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: unseen_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Unseen Only
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LikeNotificationsResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/likes/{notification_id}/seen":
+    post:
+      tags:
+      - Notifications
+      summary: Mark like notification as seen
+      operationId: mark_like_notification_seen_api_v1_notifications_likes__notification_id__seen_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/MarkNotificationSeenResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/likes/{notification_id}/card":
+    get:
+      tags:
+      - Notifications
+      summary: Get profile card for like notification
+      operationId: get_like_notification_card_api_v1_notifications_likes__notification_id__card_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LikeNotificationCardResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/notifications/likes/{notification_id}/reaction":
+    post:
+      tags:
+      - Notifications
+      summary: React to a like notification
+      operationId: react_to_like_notification_api_v1_notifications_likes__notification_id__reaction_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Notification Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/LikeNotificationReactionRequest"
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/LikeNotificationReactionResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
   "/api/v1/realtime/connection-token":
     get:
       tags:
@@ -843,6 +1146,22 @@ paths:
       security:
       - HTTPBearer: []
   "/api/v1/blocks":
+    get:
+      tags:
+      - Safety
+      summary: List blocked users
+      operationId: list_blocks_api_v1_blocks_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/BlockListResponse"
+        '401':
+          description: Not authorized
+      security:
+      - HTTPBearer: []
     post:
       tags:
       - Safety
@@ -871,6 +1190,37 @@ paths:
                 "$ref": "#/components/schemas/HTTPValidationError"
       security:
       - HTTPBearer: []
+  "/api/v1/blocks/{target_user_id}":
+    delete:
+      tags:
+      - Safety
+      summary: Unblock a user
+      operationId: delete_block_api_v1_blocks__target_user_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: target_user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+          title: Target User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/UnblockResponse"
+        '401':
+          description: Not authorized
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
   "/api/v1/reports":
     post:
       tags:
@@ -1240,6 +1590,47 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/HTTPValidationError"
+  "/api/v1/admins/experiments/random-mix":
+    get:
+      tags:
+      - Admins
+      summary: Get random recommendation mix percent for admin experiments
+      operationId: get_random_mix_config_api_v1_admins_experiments_random_mix_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RandomMixConfigModel"
+      security:
+      - HTTPBearer: []
+    put:
+      tags:
+      - Admins
+      summary: Update random recommendation mix percent for admin experiments
+      operationId: update_random_mix_config_api_v1_admins_experiments_random_mix_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/RandomMixConfigUpdateModel"
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/RandomMixConfigModel"
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/HTTPValidationError"
+      security:
+      - HTTPBearer: []
   "/api/ping":
     get:
       summary: Ping
@@ -1402,6 +1793,15 @@ components:
       - public_url
       - expires_in
       title: AvatarPresignResponse
+    BlockListResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/BlockedUserItem"
+          type: array
+          title: Items
+      type: object
+      title: BlockListResponse
     BlockReasonCode:
       type: string
       enum:
@@ -1449,6 +1849,43 @@ components:
       required:
       - removed_from_future_feed
       title: BlockResponse
+    BlockedUserItem:
+      properties:
+        block_id:
+          type: string
+          format: uuid
+          title: Block Id
+        target_user_id:
+          type: string
+          format: uuid
+          title: Target User Id
+        display_name:
+          type: string
+          title: Display Name
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+        blocked_at:
+          type: string
+          format: date-time
+          title: Blocked At
+        reason_code:
+          type: string
+          title: Reason Code
+        source_context:
+          type: string
+          title: Source Context
+      type: object
+      required:
+      - block_id
+      - target_user_id
+      - display_name
+      - blocked_at
+      - reason_code
+      - source_context
+      title: BlockedUserItem
     CityRef:
       properties:
         id:
@@ -1718,6 +2155,42 @@ components:
       required:
       - items
       title: CursorPage[UserModel]
+    DemoFeedShortcutItem:
+      properties:
+        demo_user_key:
+          type: string
+          title: Demo User Key
+        display_name:
+          type: string
+          title: Display Name
+        avatar_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Avatar Url
+        bio:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bio
+        is_current_user:
+          type: boolean
+          title: Is Current User
+          default: false
+      type: object
+      required:
+      - demo_user_key
+      - display_name
+      title: DemoFeedShortcutItem
+    DemoFeedShortcutListResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/DemoFeedShortcutItem"
+          type: array
+          title: Items
+      type: object
+      title: DemoFeedShortcutListResponse
     FeedAction:
       type: string
       enum:
@@ -1771,6 +2244,10 @@ components:
           "$ref": "#/components/schemas/CompatibilityPreview"
         actions:
           "$ref": "#/components/schemas/FeedCardActions"
+        liked_you:
+          type: boolean
+          title: Liked You
+          default: false
       type: object
       required:
       - serve_item_id
@@ -2196,6 +2673,112 @@ components:
       - name_ru
       - name_en
       title: LanguageModel
+    LikeNotificationCardResponse:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+        candidate:
+          "$ref": "#/components/schemas/FeedCandidate"
+        compatibility:
+          "$ref": "#/components/schemas/CompatibilityPreview"
+        actions:
+          "$ref": "#/components/schemas/FeedCardActions"
+      type: object
+      required:
+      - notification_id
+      - candidate
+      - compatibility
+      - actions
+      title: LikeNotificationCardResponse
+    LikeNotificationItem:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+        liker_user_id:
+          type: string
+          format: uuid
+          title: Liker User Id
+        peer:
+          "$ref": "#/components/schemas/NotificationPeer"
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        seen_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Seen At
+      type: object
+      required:
+      - notification_id
+      - liker_user_id
+      - peer
+      - created_at
+      title: LikeNotificationItem
+    LikeNotificationReactionRequest:
+      properties:
+        action:
+          "$ref": "#/components/schemas/FeedAction"
+        opened_explanation:
+          type: boolean
+          title: Opened Explanation
+          default: false
+        opened_profile:
+          type: boolean
+          title: Opened Profile
+          default: false
+        dwell_time_ms:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Dwell Time Ms
+      type: object
+      required:
+      - action
+      title: LikeNotificationReactionRequest
+    LikeNotificationReactionResponse:
+      properties:
+        result:
+          "$ref": "#/components/schemas/FeedReactionResult"
+        match:
+          anyOf:
+          - "$ref": "#/components/schemas/MatchLink"
+          - type: 'null'
+        next_card_hint:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Card Hint
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+      type: object
+      required:
+      - result
+      - notification_id
+      title: LikeNotificationReactionResponse
+    LikeNotificationsResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/LikeNotificationItem"
+          type: array
+          title: Items
+        unseen_count:
+          type: integer
+          minimum: 0.0
+          title: Unseen Count
+          default: 0
+      type: object
+      title: LikeNotificationsResponse
     MarkNotificationSeenResponse:
       properties:
         notification_id:
@@ -2339,6 +2922,63 @@ components:
       - closed
       - blocked
       title: MatchStatus
+    MessageNotificationItem:
+      properties:
+        notification_id:
+          type: string
+          format: uuid
+          title: Notification Id
+        match_id:
+          type: string
+          format: uuid
+          title: Match Id
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
+        message_id:
+          type: string
+          format: uuid
+          title: Message Id
+        peer:
+          "$ref": "#/components/schemas/NotificationPeer"
+        preview_text:
+          type: string
+          title: Preview Text
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        seen_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Seen At
+      type: object
+      required:
+      - notification_id
+      - match_id
+      - conversation_id
+      - message_id
+      - peer
+      - preview_text
+      - created_at
+      title: MessageNotificationItem
+    MessageNotificationsResponse:
+      properties:
+        items:
+          items:
+            "$ref": "#/components/schemas/MessageNotificationItem"
+          type: array
+          title: Items
+        unseen_count:
+          type: integer
+          minimum: 0.0
+          title: Unseen Count
+          default: 0
+      type: object
+      title: MessageNotificationsResponse
     MessageResponse:
       properties:
         message_id:
@@ -2516,6 +3156,31 @@ components:
           title: Steps
       type: object
       title: OnboardingConfigResponse
+    OnboardingEstimateRequest:
+      properties:
+        answers_by_step:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+          title: Answers By Step
+        import_transactions:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Import Transactions
+      type: object
+      title: OnboardingEstimateRequest
+    OnboardingEstimateResponse:
+      properties:
+        estimated_count:
+          type: integer
+          minimum: 0.0
+          title: Estimated Count
+          default: 0
+      type: object
+      title: OnboardingEstimateResponse
     OnboardingStateResponse:
       properties:
         quiz_started:
@@ -2683,6 +3348,33 @@ components:
       - ready
       - blocked
       title: ProfileStatus
+    RandomMixConfigModel:
+      properties:
+        random_mix_percent:
+          type: integer
+          maximum: 80.0
+          minimum: 0.0
+          title: Random Mix Percent
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - random_mix_percent
+      - updated_at
+      title: RandomMixConfigModel
+    RandomMixConfigUpdateModel:
+      properties:
+        random_mix_percent:
+          type: integer
+          maximum: 80.0
+          minimum: 0.0
+          title: Random Mix Percent
+      type: object
+      required:
+      - random_mix_percent
+      title: RandomMixConfigUpdateModel
     RealtimeConnectionResponse:
       properties:
         enabled:
@@ -2879,6 +3571,18 @@ components:
       required:
       - access_token
       title: TokenPair
+    UnblockResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          default: unblocked
+        removed_from_blocklist:
+          type: boolean
+          title: Removed From Blocklist
+          default: true
+      type: object
+      title: UnblockResponse
     UserLogin:
       properties:
         email:
@@ -3016,6 +3720,14 @@ components:
         has_approved_photo:
           type: boolean
           title: Has Approved Photo
+        can_like_profiles:
+          type: boolean
+          title: Can Like Profiles
+          default: false
+        can_be_shown_in_feed:
+          type: boolean
+          title: Can Be Shown In Feed
+          default: false
         profile_status:
           type: string
           title: Profile Status
@@ -3051,24 +3763,6 @@ components:
       title: UserModel
     UserPatch:
       properties:
-        first_name:
-          anyOf:
-          - type: string
-            maxLength: 80
-          - type: 'null'
-          title: First Name
-        last_name:
-          anyOf:
-          - type: string
-            maxLength: 80
-          - type: 'null'
-          title: Last Name
-        birth_date:
-          anyOf:
-          - type: string
-            format: date
-          - type: 'null'
-          title: Birth Date
         bio:
           anyOf:
           - type: string
@@ -3087,16 +3781,11 @@ components:
             maxLength: 128
           - type: 'null'
           title: City
-        gender:
-          anyOf:
-          - "$ref": "#/components/schemas/Gender"
-          - type: 'null'
         looking_for_genders:
           anyOf:
           - items:
               "$ref": "#/components/schemas/Gender"
             type: array
-            maxItems: 3
           - type: 'null'
           title: Looking For Genders
         age_range:
@@ -3120,7 +3809,6 @@ components:
           - items:
               type: string
             type: array
-            maxItems: 15
           - type: 'null'
           title: Interests
         import_transactions:
@@ -3132,6 +3820,7 @@ components:
           anyOf:
           - "$ref": "#/components/schemas/SearchPreferences"
           - type: 'null'
+      additionalProperties: false
       type: object
       title: UserPatch
     UserRegister:

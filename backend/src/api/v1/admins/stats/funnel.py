@@ -30,6 +30,11 @@ async def funnel_summary(
 async def funnel_daily(
     _: Annotated[User, Depends(require("admin"))],
     svc: Annotated[StatService, Depends(get_stats_service)],
-    days: int = Query(30, ge=1, le=365, description="Number of days back to retrieve daily funnel rows for"),
+    days: int = Query(
+        30,
+        ge=1,
+        le=365,
+        description="Number of days back to retrieve daily funnel rows for",
+    ),
 ):
     return await svc.funnel_daily(days)

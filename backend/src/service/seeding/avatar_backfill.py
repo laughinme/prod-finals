@@ -30,7 +30,9 @@ class AvatarBackfillSeedTask:
             user.avatar_status = "approved"
             user.avatar_rejection_reason = None
             if user.is_dataset_user:
-                demo_user_key = DEMO_DATASET_EMAIL_TO_KEY.get((user.email or "").strip().lower())
+                demo_user_key = DEMO_DATASET_EMAIL_TO_KEY.get(
+                    (user.email or "").strip().lower()
+                )
                 if demo_user_key:
                     user.demo_user_key = demo_user_key
 

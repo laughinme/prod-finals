@@ -19,7 +19,9 @@ _QUIZ_STEPS = [
         required_for_feed=False,
         max_answers=5,
         options=[
-            OnboardingStepOption(value="goal:serious_relationship", label="Серьезные отношения"),
+            OnboardingStepOption(
+                value="goal:serious_relationship", label="Серьезные отношения"
+            ),
             OnboardingStepOption(value="goal:casual_dates", label="Легкое общение"),
             OnboardingStepOption(value="goal:new_friends", label="Новые друзья"),
             OnboardingStepOption(value="audience:male", label="Мужчины"),
@@ -47,22 +49,20 @@ _QUIZ_STEPS = [
 
 _PROFILE_PREVIEW_STEP = OnboardingStep(
     step_key="profile_preview",
-    title="Проверьте анкету",
-    subtitle="Посмотрите, как ваша карточка будет выглядеть в выдаче.",
-    description="Фото можно добавить сейчас или позже, но без него нельзя ставить лайки.",
+    title="Ваша карточка",
+    subtitle="Так вас увидят другие пользователи в ленте.",
+    description="На этом шаге нужно добавить фото или выбрать демо-фото, а потом открыть подборку.",
     step_type=OnboardingStepType.SINGLE_SELECT,
     optional=False,
     multi_select=False,
-    required_for_feed=False,
+    required_for_feed=True,
     min_answers=1,
     max_answers=1,
     options=[OnboardingStepOption(value="confirmed", label="Готово")],
 )
 
 _OPTION_LABELS = {
-    option.value: option.label
-    for step in _QUIZ_STEPS
-    for option in step.options
+    option.value: option.label for step in _QUIZ_STEPS for option in step.options
 }
 
 

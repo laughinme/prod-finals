@@ -12,7 +12,6 @@ from .prepare_data import Transaction, generate_sample_transactions
 
 @dataclass(slots=True)
 class RecommendationItem:
-                                                                         
     candidate_user_id: str | int
     score: float
 
@@ -30,7 +29,6 @@ def _clamp_score(value: float) -> float:
 
 
 def _normalize_user_id(raw_user_id: str | int) -> str:
-                                                                                
     if isinstance(raw_user_id, int):
         return f"user-{raw_user_id}"
     raw = str(raw_user_id)
@@ -62,7 +60,6 @@ class ModelPipeline:
         self.features_version = "features_v1"
         self.trained_at = datetime.now(timezone.utc)
 
-                                                                                                 
         self._known_user_ids: list[str] = []
         for raw_user_id in artifact.profiles.keys():
             self._known_user_ids.append(str(raw_user_id))
@@ -89,12 +86,16 @@ class ModelPipeline:
         soft_seen = {_normalize_user_id(x) for x in soft_seen_user_ids}
         hard_exclude.add(_normalize_user_id(request_user_id))
 
-        request_user_key = _resolve_profile_key(self._artifact.profiles, request_user_id)
+        request_user_key = _resolve_profile_key(
+            self._artifact.profiles, request_user_id
+        )
         warnings: list[str] = []
 
         scored: list[RecommendationItem] = []
         if request_user_key is not None:
-            matches = get_matches(self._artifact, request_user_key, top_n=max(200, limit * 5))
+            matches = get_matches(
+                self._artifact, request_user_key, top_n=max(200, limit * 5)
+            )
             for row in matches:
                 candidate_raw = str(row["user_id"])
                 candidate_key = _normalize_user_id(candidate_raw)
@@ -115,7 +116,11 @@ class ModelPipeline:
 
         if len(scored) < limit:
             rng = random.Random(trace_seed)
-            pool = [user_id for user_id in self._known_user_ids if user_id not in hard_exclude]
+            pool = [
+                user_id
+                for user_id in self._known_user_ids
+                if user_id not in hard_exclude
+            ]
             rng.shuffle(pool)
             existing_ids = {item.candidate_user_id for item in scored}
             for user_id in pool:
@@ -141,12 +146,18 @@ class ModelPipeline:
         requester_key = _resolve_profile_key(self._artifact.profiles, requester_user_id)
         candidate_key = _resolve_profile_key(self._artifact.profiles, candidate_user_id)
 
-        requester = self._artifact.profiles.get(requester_key) if requester_key else None
-        candidate = self._artifact.profiles.get(candidate_key) if candidate_key else None
+        requester = (
+            self._artifact.profiles.get(requester_key) if requester_key else None
+        )
+        candidate = (
+            self._artifact.profiles.get(candidate_key) if candidate_key else None
+        )
         if requester is None or candidate is None:
             raise LookupError("pair_not_found")
 
-        similarity = _clamp_score(_cosine_similarity(requester.vector, candidate.vector))
+        similarity = _clamp_score(
+            _cosine_similarity(requester.vector, candidate.vector)
+        )
         if similarity >= 0.8:
             strength = "high"
             template_suffix = "high"

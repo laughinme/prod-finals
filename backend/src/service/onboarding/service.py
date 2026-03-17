@@ -28,9 +28,7 @@ class OnboardingService(BaseDatingService):
     async def get_config(self, user: User) -> OnboardingConfigResponse:
         import_transactions = await self._get_import_transactions_value(user.id)
         steps = [
-            step.model_copy(
-                update={"import_transactions_value": import_transactions}
-            )
+            step.model_copy(update={"import_transactions_value": import_transactions})
             if step.import_transactions_enabled
             else step
             for step in get_quiz_steps()
@@ -39,14 +37,27 @@ class OnboardingService(BaseDatingService):
 
     async def get_state(self, user: User) -> OnboardingStateResponse:
         records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
-        return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
+        return OnboardingStateResponse(
+            **self._build_progress(user, records).model_dump()
+        )
 
-    async def estimate(self, user: User, payload: OnboardingEstimateRequest) -> OnboardingEstimateResponse:
-        answers_by_step = {key: list(value or []) for key, value in (payload.answers_by_step or {}).items()}
-        requester = await self._build_estimate_context(user=user, answers_by_step=answers_by_step)
-        excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(user.id)
+    async def estimate(
+        self, user: User, payload: OnboardingEstimateRequest
+    ) -> OnboardingEstimateResponse:
+        answers_by_step = {
+            key: list(value or [])
+            for key, value in (payload.answers_by_step or {}).items()
+        }
+        requester = await self._build_estimate_context(
+            user=user, answers_by_step=answers_by_step
+        )
+        excluded_ids = await self.matchmaking_repo.list_excluded_target_ids_for_user(
+            user.id
+        )
         total = 0
-        for candidate in await self.matchmaking_repo.list_feed_candidates(requester_id=user.id):
+        for candidate in await self.matchmaking_repo.list_feed_candidates(
+            requester_id=user.id
+        ):
             if candidate.id in excluded_ids or not candidate.can_be_shown_in_feed:
                 continue
             candidate_context = await self._build_feed_context(candidate)
@@ -57,10 +68,15 @@ class OnboardingService(BaseDatingService):
                 total += 1
         return OnboardingEstimateResponse(estimated_count=total)
 
-    async def save_answers(self, user: User, payload: OnboardingAnswersRequest) -> OnboardingAnswersResponse:
+    async def save_answers(
+        self, user: User, payload: OnboardingAnswersRequest
+    ) -> OnboardingAnswersResponse:
         step = get_step(payload.step_key)
         if step is None:
             raise BadRequestError("Unknown quiz step")
+
+        if payload.step_key == PROFILE_PREVIEW_STEP_KEY and not user.has_approved_photo:
+            raise BadRequestError("Add a photo before completing onboarding")
 
         normalized_answers = self._validate_answers(step, payload.answers)
         import_transactions = await self._resolve_import_transactions_value(
@@ -84,11 +100,15 @@ class OnboardingService(BaseDatingService):
         self._apply_quiz_answer_to_user(user, payload.step_key, normalized_answers)
         user.quiz_started = True
         user.onboarding_skipped = False
-        progress_records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
+        progress_records = await self.matchmaking_repo.list_quiz_answers(
+            user_id=user.id
+        )
         progress = self._build_progress(user, progress_records)
         user.quiz_current_step_key = progress.current_step_key
         user.is_onboarded = user.can_open_feed
-        await self.matchmaking_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
+        await self.matchmaking_repo.reset_batch_for_date(
+            user_id=user.id, batch_date=self.local_today()
+        )
         await self.add_audit_event(
             event_type="onboarding_answer_saved",
             entity_type=AuditEntityType.QUIZ,
@@ -107,7 +127,9 @@ class OnboardingService(BaseDatingService):
             await self._sync_onboarding_with_ml(
                 user=user,
                 favorite_categories=normalized_answers,
-                import_transactions=import_transactions if import_transactions is not None else True,
+                import_transactions=import_transactions
+                if import_transactions is not None
+                else True,
             )
 
         return OnboardingAnswersResponse(
@@ -119,7 +141,10 @@ class OnboardingService(BaseDatingService):
         user.quiz_started = True
         user.onboarding_skipped = True
         user.quiz_current_step_key = None
-        await self.matchmaking_repo.reset_batch_for_date(user_id=user.id, batch_date=self.local_today())
+        user.is_onboarded = user.can_open_feed
+        await self.matchmaking_repo.reset_batch_for_date(
+            user_id=user.id, batch_date=self.local_today()
+        )
         await self.add_audit_event(
             event_type="onboarding_skipped",
             entity_type=AuditEntityType.QUIZ,
@@ -130,7 +155,9 @@ class OnboardingService(BaseDatingService):
         await self.uow.commit()
         await self.uow.session.refresh(user)
         records = await self.matchmaking_repo.list_quiz_answers(user_id=user.id)
-        return OnboardingStateResponse(**self._build_progress(user, records).model_dump())
+        return OnboardingStateResponse(
+            **self._build_progress(user, records).model_dump()
+        )
 
     def _validate_answers(self, step, answers: list[str]) -> list[str]:
         if step.step_key == PROFILE_PREVIEW_STEP_KEY:
@@ -155,7 +182,9 @@ class OnboardingService(BaseDatingService):
             if step.range_max is not None and upper > step.range_max:
                 raise BadRequestError("Range upper bound is too large")
             if lower > upper:
-                raise BadRequestError("Range lower bound must be less than or equal to upper bound")
+                raise BadRequestError(
+                    "Range lower bound must be less than or equal to upper bound"
+                )
             return [str(lower), str(upper)]
 
         normalized = list(dict.fromkeys(normalized))
@@ -192,11 +221,15 @@ class OnboardingService(BaseDatingService):
         if len(goals) > 1:
             raise BadRequestError("Only one goal can be selected")
         if "audience:anyone" in audiences and len(audiences) > 1:
-            raise BadRequestError("Audience 'anyone' cannot be combined with explicit genders")
+            raise BadRequestError(
+                "Audience 'anyone' cannot be combined with explicit genders"
+            )
 
         return [*goals, *audiences]
 
-    def _apply_quiz_answer_to_user(self, user: User, step_key: str, answers: list[str]) -> None:
+    def _apply_quiz_answer_to_user(
+        self, user: User, step_key: str, answers: list[str]
+    ) -> None:
         if step_key == "goal_and_audience":
             if not answers:
                 user.goal = None
@@ -213,9 +246,11 @@ class OnboardingService(BaseDatingService):
                 if answer.startswith("audience:")
             ]
             user.goal = goals[0] if goals else None
-            user.looking_for_genders = [] if "anyone" in audiences else [
-                gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS
-            ]
+            user.looking_for_genders = (
+                []
+                if "anyone" in audiences
+                else [gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS]
+            )
             return
         if step_key == "interests_and_bank_signal":
             user.interests = list(answers or [])
@@ -225,6 +260,7 @@ class OnboardingService(BaseDatingService):
         steps = get_quiz_steps()
         step_keys = [step.step_key for step in steps]
         workflow_step_keys = [*step_keys, PROFILE_PREVIEW_STEP_KEY]
+        pre_preview_step_keys = list(step_keys)
         record_step_keys = {
             record.step_key
             for record in records
@@ -232,14 +268,26 @@ class OnboardingService(BaseDatingService):
         }
         answers_by_step = self._build_answers_by_step(user, records, workflow_step_keys)
         completed_step_keys = [
-            step_key
-            for step_key in workflow_step_keys
-            if step_key in record_step_keys
+            step_key for step_key in workflow_step_keys if step_key in record_step_keys
         ]
         required_profile_step_key = user.required_profile_step_key
+        if (
+            required_profile_step_key == PROFILE_PREVIEW_STEP_KEY
+            and not user.onboarding_skipped
+            and any(
+                step_key not in completed_step_keys
+                for step_key in pre_preview_step_keys
+            )
+        ):
+            required_profile_step_key = None
         missing_required_fields = list(user.missing_required_fields)
-        completed = len(completed_step_keys) == len(workflow_step_keys) and required_profile_step_key is None
-        should_show = required_profile_step_key is not None or (not user.onboarding_skipped and not completed)
+        completed = (
+            len(completed_step_keys) == len(workflow_step_keys)
+            and required_profile_step_key is None
+        )
+        should_show = required_profile_step_key is not None or (
+            not user.onboarding_skipped and not completed
+        )
 
         current_step_key: str | None = None
         if required_profile_step_key is not None:
@@ -252,7 +300,11 @@ class OnboardingService(BaseDatingService):
                 current_step_key = user.quiz_current_step_key
             else:
                 current_step_key = next(
-                    (step_key for step_key in workflow_step_keys if step_key not in completed_step_keys),
+                    (
+                        step_key
+                        for step_key in workflow_step_keys
+                        if step_key not in completed_step_keys
+                    ),
                     workflow_step_keys[0] if workflow_step_keys else None,
                 )
 
@@ -268,7 +320,9 @@ class OnboardingService(BaseDatingService):
             answers_by_step=answers_by_step,
         )
 
-    def _build_answers_by_step(self, user: User, records: Iterable, step_keys: list[str]) -> dict[str, list[str]]:
+    def _build_answers_by_step(
+        self, user: User, records: Iterable, step_keys: list[str]
+    ) -> dict[str, list[str]]:
         answers_by_step = {
             record.step_key: list(record.answers or [])
             for record in records
@@ -285,7 +339,8 @@ class OnboardingService(BaseDatingService):
         )
         if not user.looking_for_genders:
             inferred_goal_and_audience = [
-                answer for answer in inferred_goal_and_audience
+                answer
+                for answer in inferred_goal_and_audience
                 if not answer.startswith("audience:")
             ]
             inferred_goal_and_audience.append("audience:anyone")
@@ -327,7 +382,9 @@ class OnboardingService(BaseDatingService):
         favorite_categories: list[str],
         import_transactions: bool,
     ) -> None:
-        categories = list(dict.fromkeys(favorite_categories or list(user.interests or [])))
+        categories = list(
+            dict.fromkeys(favorite_categories or list(user.interests or []))
+        )
         if not categories:
             categories = pick_category_keys(f"onboarding:{user.id}")[:3]
         await self.ml_facade.sync_onboarding_profile(
@@ -357,9 +414,11 @@ class OnboardingService(BaseDatingService):
                 if answer.startswith("audience:")
             ]
             context.search_preferences["goal"] = goals[0] if goals else None
-            context.search_preferences["looking_for_genders"] = [] if "anyone" in audiences else [
-                gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS
-            ]
+            context.search_preferences["looking_for_genders"] = (
+                []
+                if "anyone" in audiences
+                else [gender for gender in audiences if gender in PUBLIC_MATCH_GENDERS]
+            )
 
         interests = answers_by_step.get("interests_and_bank_signal")
         if interests is not None:

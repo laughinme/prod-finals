@@ -3,59 +3,54 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import * as Sentry from "@sentry/react";
-import { ArrowRight, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/entities/auth";
 import type { AuthCredentials } from "@/entities/auth";
 import { LoginForm, SignupForm } from "@/features/auth";
+import type { DemoAccount } from "@/features/auth";
 
 type Mode = "login" | "register";
 
-const DEMO_PASSWORD = "DemoPass123!";
-
-const DEMO_ACCOUNTS = [
+const DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    key: "tid",
-    email: "mock-user-0001@example.com",
-    icon: Sparkles,
-    tone: "from-sky-500 via-cyan-500 to-emerald-400",
+    key: "food_a",
+    email: "demo.food.a@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_food_a_title",
+    scenarioKey: "auth.demo_account_food_a_scenario",
+    categoriesKey: "auth.demo_account_food_a_categories",
   },
   {
-    key: "dataset_a",
-    email: "mock-user-0001@example.com",
-    icon: Users,
-    tone: "from-amber-400 via-orange-400 to-pink-400",
+    key: "food_b",
+    email: "demo.food.b@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_food_b_title",
+    scenarioKey: "auth.demo_account_food_b_scenario",
+    categoriesKey: "auth.demo_account_food_b_categories",
   },
   {
-    key: "dataset_b",
-    email: "mock-user-0002@example.com",
-    icon: Users,
-    tone: "from-violet-400 via-fuchsia-400 to-rose-400",
+    key: "style",
+    email: "demo.style@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_style_title",
+    scenarioKey: "auth.demo_account_style_scenario",
+    categoriesKey: "auth.demo_account_style_categories",
   },
   {
-    key: "dataset_c",
-    email: "mock-user-0003@example.com",
-    icon: Users,
-    tone: "from-teal-400 via-cyan-400 to-blue-400",
-  },
-  {
-    key: "dataset_d",
-    email: "mock-user-0004@example.com",
-    icon: Users,
-    tone: "from-lime-400 via-emerald-400 to-green-500",
-  },
-  {
-    key: "dataset_e",
-    email: "mock-user-0005@example.com",
-    icon: Users,
-    tone: "from-rose-400 via-orange-400 to-amber-400",
+    key: "cold",
+    email: "demo.cold@tmatch.local",
+    password: "DemoPass123!",
+    titleKey: "auth.demo_account_cold_title",
+    scenarioKey: "auth.demo_account_cold_scenario",
+    categoriesKey: "auth.demo_account_cold_categories",
   },
   {
     key: "admin",
-    email: "admin@example.com",
-    icon: ShieldCheck,
-    tone: "from-slate-600 via-slate-700 to-slate-900",
+    email: "admin@demo.local",
+    password: "Admin12345!",
+    titleKey: "auth.demo_account_admin_title",
+    scenarioKey: "auth.demo_account_admin_scenario",
   },
-] as const;
+];
 
 export default function AuthPage(): ReactElement {
   const { t } = useTranslation();
@@ -193,6 +188,13 @@ export default function AuthPage(): ReactElement {
                 submitDisabled={!canSubmit}
                 errorMessage={errorMessage}
                 onSwitchToSignup={() => setMode("register")}
+                demoAccounts={DEMO_ACCOUNTS}
+                onDemoLogin={(account) =>
+                  void quickLogin({
+                    email: account.email,
+                    password: account.password,
+                  })
+                }
               />
             </motion.div>
           ) : (
@@ -214,6 +216,13 @@ export default function AuthPage(): ReactElement {
                 submitDisabled={!canSubmit}
                 errorMessage={errorMessage}
                 onSwitchToLogin={() => setMode("login")}
+                demoAccounts={DEMO_ACCOUNTS}
+                onDemoLogin={(account) =>
+                  void quickLogin({
+                    email: account.email,
+                    password: account.password,
+                  })
+                }
               />
             </motion.div>
           )}

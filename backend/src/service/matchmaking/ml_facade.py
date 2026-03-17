@@ -71,7 +71,9 @@ def _is_specific_category_label(value: str | None) -> bool:
     }
 
 
-def _top_category(scores: list[CompatibilityCategoryScore]) -> CompatibilityCategoryScore | None:
+def _top_category(
+    scores: list[CompatibilityCategoryScore],
+) -> CompatibilityCategoryScore | None:
     for item in scores:
         if _is_specific_category_label(item.label):
             return item
@@ -148,7 +150,9 @@ class MlFacade:
     ) -> RankedCandidates:
         raise NotImplementedError
 
-    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+    async def explain(
+        self, payload: ExplanationRequest
+    ) -> CompatibilityExplanationResponse:
         raise NotImplementedError
 
     async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
@@ -194,7 +198,9 @@ class MockMlFacade(MlFacade):
         *,
         preview_text_generator: LlmCategoryPreviewGenerator | None = None,
     ) -> None:
-        self._preview_text_generator = preview_text_generator or LlmCategoryPreviewGenerator()
+        self._preview_text_generator = (
+            preview_text_generator or LlmCategoryPreviewGenerator()
+        )
 
     async def rank(
         self,
@@ -220,14 +226,17 @@ class MockMlFacade(MlFacade):
             if (
                 requester.search_preferences.goal
                 and candidate.search_preferences.goal
-                and requester.search_preferences.goal == candidate.search_preferences.goal
+                and requester.search_preferences.goal
+                == candidate.search_preferences.goal
             ):
                 score += 0.16
                 reason_codes.append(CompatibilityReasonCode.GOAL_FIT)
 
             requester_age = _age_for_birth_date(requester.birth_date, today)
             candidate_age = _age_for_birth_date(candidate.birth_date, today)
-            if self._has_mutual_age_fit(requester, candidate, requester_age, candidate_age):
+            if self._has_mutual_age_fit(
+                requester, candidate, requester_age, candidate_age
+            ):
                 score += 0.16
                 reason_codes.append(CompatibilityReasonCode.AGE_FIT)
 
@@ -238,7 +247,9 @@ class MockMlFacade(MlFacade):
 
             score = round(min(score, 0.99), 2)
             category_keys = self._resolve_category_keys(requester, candidate)
-            normalized_reason_codes = reason_codes[:4] or [CompatibilityReasonCode.PROFILE_QUALITY]
+            normalized_reason_codes = reason_codes[:4] or [
+                CompatibilityReasonCode.PROFILE_QUALITY
+            ]
             reason_signal_payloads = build_preview_reason_signals(
                 reason_codes=[code.value for code in normalized_reason_codes],
                 score=score,
@@ -267,13 +278,12 @@ class MockMlFacade(MlFacade):
             candidates=scored[:limit],
         )
 
-    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+    async def explain(
+        self, payload: ExplanationRequest
+    ) -> CompatibilityExplanationResponse:
         ranked = await self.rank(payload.requester, [payload.candidate], limit=1)
         scored = ranked.candidates[0]
-        reasons = [
-            self._reason_from_code(code)
-            for code in scored.reason_codes[:3]
-        ]
+        reasons = [self._reason_from_code(code) for code in scored.reason_codes[:3]]
         return CompatibilityExplanationResponse(
             serve_item_id=payload.serve_item_id,
             candidate_user_id=payload.candidate.user_id,
@@ -283,7 +293,9 @@ class MockMlFacade(MlFacade):
 
     async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         reason_codes = [
-            code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
+            code
+            if isinstance(code, CompatibilityReasonCode)
+            else CompatibilityReasonCode(code)
             for code in scored.reason_codes
         ]
         if not reason_codes:
@@ -307,10 +319,16 @@ class MockMlFacade(MlFacade):
             if top_category is not None
             else preview_map[primary]
         )
-        preview_topic = top_category.label if top_category is not None else _preview_topic_from_reason(primary)
+        preview_topic = (
+            top_category.label
+            if top_category is not None
+            else _preview_topic_from_reason(primary)
+        )
         preview = await self._preview_text_generator.render_category_preview(
             category_label=preview_topic,
-            score_percent=top_category.score_percent if top_category is not None else score_percent,
+            score_percent=top_category.score_percent
+            if top_category is not None
+            else score_percent,
             fallback_text=fallback_preview,
         )
         return CompatibilityPreview(
@@ -417,8 +435,10 @@ class MockMlFacade(MlFacade):
         return bool(
             requester.gender
             and candidate.gender
-            and candidate.gender in (requester.search_preferences.looking_for_genders or [])
-            and requester.gender in (candidate.search_preferences.looking_for_genders or [])
+            and candidate.gender
+            in (requester.search_preferences.looking_for_genders or [])
+            and requester.gender
+            in (candidate.search_preferences.looking_for_genders or [])
         )
 
     def _has_mutual_age_fit(
@@ -473,7 +493,9 @@ class MockMlFacade(MlFacade):
             ),
         }
         title, text, confidence = mapping[code]
-        return CompatibilityReason(code=code.value, title=title, text=text, confidence=confidence)
+        return CompatibilityReason(
+            code=code.value, title=title, text=text, confidence=confidence
+        )
 
     def _interest_overlap(
         self,
@@ -525,6 +547,8 @@ class MockMlFacade(MlFacade):
                 )
             )
         return items
+
+
 logger = logging.getLogger(__name__)
 
 # ML ReasonCode → backend CompatibilityReasonCode
@@ -550,8 +574,12 @@ class HttpMlFacade(MlFacade):
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._service_token = service_token
-        self._preview_text_generator = preview_text_generator or LlmCategoryPreviewGenerator()
-        self._fallback = MockMlFacade(preview_text_generator=self._preview_text_generator)
+        self._preview_text_generator = (
+            preview_text_generator or LlmCategoryPreviewGenerator()
+        )
+        self._fallback = MockMlFacade(
+            preview_text_generator=self._preview_text_generator
+        )
 
     def _headers(self) -> dict[str, str]:
         return {"X-Service-Token": self._service_token}
@@ -565,7 +593,10 @@ class HttpMlFacade(MlFacade):
         *,
         top_category_label: str | None = None,
     ) -> CompatibilityReasonSignal:
-        code = str(payload.get("code", "")).strip() or CompatibilityReasonCode.PROFILE_QUALITY.value
+        code = (
+            str(payload.get("code", "")).strip()
+            or CompatibilityReasonCode.PROFILE_QUALITY.value
+        )
         return CompatibilityReasonSignal(
             code=code,
             label=self._signal_label(code, top_category_label=top_category_label),
@@ -579,7 +610,9 @@ class HttpMlFacade(MlFacade):
         *,
         top_category_label: str | None = None,
     ) -> str:
-        if code == "activity_overlap" and _is_specific_category_label(top_category_label):
+        if code == "activity_overlap" and _is_specific_category_label(
+            top_category_label
+        ):
             return f"Совпадает интерес: «{top_category_label}»"
         mapping = {
             "lifestyle_similarity": "Похожий образ жизни",
@@ -597,9 +630,14 @@ class HttpMlFacade(MlFacade):
         *,
         category_scores: list[CompatibilityCategoryScore] | None = None,
     ) -> str:
-        primary = reason_codes[0] if reason_codes else CompatibilityReasonCode.PROFILE_QUALITY
+        primary = (
+            reason_codes[0] if reason_codes else CompatibilityReasonCode.PROFILE_QUALITY
+        )
         top_category = _top_category(category_scores or [])
-        if CompatibilityReasonCode.CATEGORY_FIT in reason_codes and top_category is not None:
+        if (
+            CompatibilityReasonCode.CATEGORY_FIT in reason_codes
+            and top_category is not None
+        ):
             return _category_preview_text(
                 category_label=top_category.label,
                 score_percent=top_category.score_percent,
@@ -633,7 +671,11 @@ class HttpMlFacade(MlFacade):
             parsed_strength = parts[2]
 
         code = parsed_code or "lifestyle_similarity"
-        strength = parsed_strength if parsed_strength in {"high", "medium", "low"} else "medium"
+        strength = (
+            parsed_strength
+            if parsed_strength in {"high", "medium", "low"}
+            else "medium"
+        )
 
         title_map = {
             "lifestyle_similarity": "Похожий образ жизни",
@@ -643,16 +685,40 @@ class HttpMlFacade(MlFacade):
             "locality_fit": "Удобная география",
         }
         text_map = {
-            ("lifestyle_similarity", "high"): "Ваши привычки и стиль жизни хорошо совпадают.",
-            ("lifestyle_similarity", "medium"): "Ваш образ жизни в целом хорошо сочетается.",
-            ("lifestyle_similarity", "low"): "Есть точки соприкосновения по образу жизни.",
-            ("activity_overlap", "high"): "У вас много общих интересов и сценариев досуга.",
+            (
+                "lifestyle_similarity",
+                "high",
+            ): "Ваши привычки и стиль жизни хорошо совпадают.",
+            (
+                "lifestyle_similarity",
+                "medium",
+            ): "Ваш образ жизни в целом хорошо сочетается.",
+            (
+                "lifestyle_similarity",
+                "low",
+            ): "Есть точки соприкосновения по образу жизни.",
+            (
+                "activity_overlap",
+                "high",
+            ): "У вас много общих интересов и сценариев досуга.",
             ("activity_overlap", "medium"): "Есть заметное пересечение по интересам.",
             ("activity_overlap", "low"): "Найдены отдельные общие интересы.",
-            ("communication_style_fit", "high"): "Вам должно быть комфортно общаться друг с другом.",
-            ("communication_style_fit", "medium"): "Ваш стиль общения в целом совместим.",
-            ("communication_style_fit", "low"): "Есть базовая совместимость по стилю общения.",
-            ("meetup_rhythm_fit", "high"): "Ваш привычный ритм встреч хорошо совпадает.",
+            (
+                "communication_style_fit",
+                "high",
+            ): "Вам должно быть комфортно общаться друг с другом.",
+            (
+                "communication_style_fit",
+                "medium",
+            ): "Ваш стиль общения в целом совместим.",
+            (
+                "communication_style_fit",
+                "low",
+            ): "Есть базовая совместимость по стилю общения.",
+            (
+                "meetup_rhythm_fit",
+                "high",
+            ): "Ваш привычный ритм встреч хорошо совпадает.",
             ("meetup_rhythm_fit", "medium"): "Ваш ритм встреч в целом сочетается.",
             ("meetup_rhythm_fit", "low"): "Есть базовая совместимость по ритму встреч.",
             ("locality_fit", "high"): "Вам будет удобно встречаться с учётом локации.",
@@ -661,7 +727,9 @@ class HttpMlFacade(MlFacade):
         }
 
         title = title_map.get(code, "Совместимость профилей")
-        text = text_map.get((code, strength), "Найдены признаки совместимости по анкете и поведению.")
+        text = text_map.get(
+            (code, strength), "Найдены признаки совместимости по анкете и поведению."
+        )
         return title, text
 
     async def rank(
@@ -679,7 +747,9 @@ class HttpMlFacade(MlFacade):
         for candidate in candidates:
             candidate_uuid = candidate.user_id
             candidate_id_map[_normalize_ml_id(str(candidate_uuid))] = candidate_uuid
-            candidate_id_map[_deterministic_qdrant_uuid(_normalize_ml_id(str(candidate_uuid)))] = candidate_uuid
+            candidate_id_map[
+                _deterministic_qdrant_uuid(_normalize_ml_id(str(candidate_uuid)))
+            ] = candidate_uuid
             if candidate.ml_user_id:
                 ml_key = _normalize_ml_id(candidate.ml_user_id)
                 candidate_id_map[ml_key] = candidate_uuid
@@ -712,7 +782,9 @@ class HttpMlFacade(MlFacade):
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            logger.warning("ML service /v1/recommendations failed: %s, falling back to mock", exc)
+            logger.warning(
+                "ML service /v1/recommendations failed: %s, falling back to mock", exc
+            )
             return await self._fallback.rank(requester, candidates, limit)
 
         ml_candidates = data.get("candidates", [])
@@ -720,7 +792,9 @@ class HttpMlFacade(MlFacade):
 
         scored: list[RankedCandidate] = []
         for ml_item in ml_candidates:
-            candidate_user_id_raw = _normalize_ml_id(ml_item.get("candidate_user_id", ""))
+            candidate_user_id_raw = _normalize_ml_id(
+                ml_item.get("candidate_user_id", "")
+            )
             candidate_uuid = candidate_id_map.get(candidate_user_id_raw)
             if candidate_uuid is None:
                 continue
@@ -757,7 +831,10 @@ class HttpMlFacade(MlFacade):
         scored = _diversify_by_top_category(scored)
 
         if not scored:
-            logger.info("ML returned %d candidates but none matched backend user pool, falling back to mock", len(ml_candidates))
+            logger.info(
+                "ML returned %d candidates but none matched backend user pool, falling back to mock",
+                len(ml_candidates),
+            )
             return await self._fallback.rank(requester, candidates, limit)
 
         return RankedCandidates(
@@ -765,7 +842,9 @@ class HttpMlFacade(MlFacade):
             candidates=scored[:limit],
         )
 
-    async def explain(self, payload: ExplanationRequest) -> CompatibilityExplanationResponse:
+    async def explain(
+        self, payload: ExplanationRequest
+    ) -> CompatibilityExplanationResponse:
         trace_id = uuid4()
         requester_ml_id = payload.requester.ml_user_id or str(payload.requester.user_id)
         candidate_ml_id = payload.candidate.ml_user_id or str(payload.candidate.user_id)
@@ -788,7 +867,10 @@ class HttpMlFacade(MlFacade):
                 resp.raise_for_status()
                 data = resp.json()
         except Exception as exc:
-            logger.warning("ML service /v1/explanations/compatibility failed: %s, falling back to mock", exc)
+            logger.warning(
+                "ML service /v1/explanations/compatibility failed: %s, falling back to mock",
+                exc,
+            )
             return await self._fallback.explain(payload)
 
         reasons: list[CompatibilityReason] = []
@@ -828,7 +910,9 @@ class HttpMlFacade(MlFacade):
 
     async def build_preview(self, scored: RankedCandidate) -> CompatibilityPreview:
         reason_codes = [
-            code if isinstance(code, CompatibilityReasonCode) else CompatibilityReasonCode(code)
+            code
+            if isinstance(code, CompatibilityReasonCode)
+            else CompatibilityReasonCode(code)
             for code in scored.reason_codes
         ]
         if not reason_codes:
@@ -840,10 +924,16 @@ class HttpMlFacade(MlFacade):
             reason_codes,
             category_scores=scored.category_scores,
         )
-        preview_topic = top_category.label if top_category is not None else _preview_topic_from_reason(primary)
+        preview_topic = (
+            top_category.label
+            if top_category is not None
+            else _preview_topic_from_reason(primary)
+        )
         preview_text = await self._preview_text_generator.render_category_preview(
             category_label=preview_topic,
-            score_percent=top_category.score_percent if top_category is not None else score_percent,
+            score_percent=top_category.score_percent
+            if top_category is not None
+            else score_percent,
             fallback_text=fallback_preview,
         )
         return CompatibilityPreview(
@@ -956,7 +1046,11 @@ class HttpMlFacade(MlFacade):
         detail = None
         checks = data.get("checks")
         if isinstance(checks, dict):
-            failed = [name for name, value in checks.items() if not _is_healthy_ml_check(value)]
+            failed = [
+                name
+                for name, value in checks.items()
+                if not _is_healthy_ml_check(value)
+            ]
             if failed:
                 detail = f"Degraded ML checks: {', '.join(failed)}"
 
@@ -971,7 +1065,9 @@ class HttpMlFacade(MlFacade):
             detail=detail,
         )
 
-    def _category_scores_from_components(self, ml_item: dict) -> list[CompatibilityCategoryScore]:
+    def _category_scores_from_components(
+        self, ml_item: dict
+    ) -> list[CompatibilityCategoryScore]:
         components = ml_item.get("score_components") or {}
         if not isinstance(components, dict):
             return []
@@ -991,7 +1087,9 @@ class HttpMlFacade(MlFacade):
             CompatibilityCategoryScore(
                 category_key=key,
                 label=labels.get(key, key),
-                score_percent=max(1, min(100, int(round(max(value, 0.0) / total * 100)))),
+                score_percent=max(
+                    1, min(100, int(round(max(value, 0.0) / total * 100)))
+                ),
             )
             for key, value in ranked
         ]

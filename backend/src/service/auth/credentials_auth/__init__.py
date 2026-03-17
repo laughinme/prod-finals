@@ -16,7 +16,9 @@ from ..tokens import TokenService, get_token_service
 async def get_credentials_service(
     uow: Annotated[UoW, Depends(get_uow)],
     token_service: Annotated[TokenService, Depends(get_token_service)],
-    notification_service: Annotated[NotificationService, Depends(get_notification_service)],
+    notification_service: Annotated[
+        NotificationService, Depends(get_notification_service)
+    ],
 ) -> CredentialsService:
     user_repo = UserInterface(uow.session)
     role_repo = RolesInterface(uow.session)

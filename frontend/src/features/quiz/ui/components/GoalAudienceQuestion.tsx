@@ -66,7 +66,7 @@ export function GoalAudienceQuestion({
   return (
     <div className="space-y-5 py-1">
       <section className="space-y-3">
-        <p className="text-[11px] font-semibold tracking-[0.24em] text-primary/80 uppercase">
+        <p className="text-xs font-semibold tracking-[0.22em] text-primary/80 uppercase">
           {t("profile.goal_label")}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -96,7 +96,7 @@ export function GoalAudienceQuestion({
       </section>
 
       <section className="space-y-3">
-        <p className="text-[11px] font-semibold tracking-[0.24em] text-primary/80 uppercase">
+        <p className="text-xs font-semibold tracking-[0.22em] text-primary/80 uppercase">
           {t("profile.audience_title")}
         </p>
         <div className="flex flex-wrap gap-2">

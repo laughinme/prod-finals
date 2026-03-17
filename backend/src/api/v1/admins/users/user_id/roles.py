@@ -20,7 +20,7 @@ router = APIRouter()
 async def set_roles(
     payload: UserRolesUpdate,
     user_id: Annotated[UUID, Path(...)],
-    _: Annotated[User, Depends(require('admin'))],
+    _: Annotated[User, Depends(require("admin"))],
     svc: Annotated[UserService, Depends(get_user_service)],
 ):
     target = await svc.get_user(user_id)

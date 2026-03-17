@@ -43,6 +43,7 @@ export const toMatchProfile = (dto: FeedCardDto): MatchProfile => ({
   reasonCodes: dto.compatibility.reason_codes,
   detailsAvailable: dto.compatibility.details_available ?? true,
   actions: toMatchProfileActions(dto.actions),
+  likedYou: dto.liked_you ?? false,
   source: "feed",
 });
 

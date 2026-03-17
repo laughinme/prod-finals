@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Path, Query, status
 
 from core.security import auth_user
 from database.relational_db import User
-from domain.dating import ConversationMessagesResponse, MessageResponse, SendMessageRequest
+from domain.dating import (
+    ConversationMessagesResponse,
+    MessageResponse,
+    SendMessageRequest,
+)
 from service.conversations import ConversationService, get_conversation_service
 
 router = APIRouter()
@@ -23,7 +27,9 @@ async def get_conversation_messages(
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
 ) -> ConversationMessagesResponse:
-    return await svc.list_messages(user=user, conversation_id=conversation_id, cursor=cursor, limit=limit)
+    return await svc.list_messages(
+        user=user, conversation_id=conversation_id, cursor=cursor, limit=limit
+    )
 
 
 @router.post(
@@ -38,4 +44,6 @@ async def post_conversation_message(
     user: Annotated[User, Depends(auth_user)] = ...,
     svc: Annotated[ConversationService, Depends(get_conversation_service)] = ...,
 ) -> MessageResponse:
-    return await svc.send_message(user=user, conversation_id=conversation_id, payload=payload)
+    return await svc.send_message(
+        user=user, conversation_id=conversation_id, payload=payload
+    )

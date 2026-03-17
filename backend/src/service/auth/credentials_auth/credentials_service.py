@@ -18,6 +18,7 @@ from ..tokens import TokenService
 
 config = get_settings()
 
+
 class CredentialsService:
     def __init__(
         self,
@@ -35,7 +36,7 @@ class CredentialsService:
         self.notification_service = notification_service
         self.mock_identity_service = mock_identity_service
         self.settings = get_settings()
-        
+
     @staticmethod
     async def _check_password(password: str, password_hash: str) -> bool:
         try:
@@ -44,20 +45,16 @@ class CredentialsService:
                 raise WrongCredentials()
         except ValueError:
             raise WrongCredentials()
-        
+
         return valid
-        
+
     @staticmethod
     async def _hash_password(password: str) -> str:
         return await hash_password(password)
-    
-    
+
     async def register(
-        self,
-        payload: UserRegister,
-        src: Literal['web', 'mobile']
+        self, payload: UserRegister, src: Literal["web", "mobile"]
     ) -> tuple[User, str, str, str]:
-        
         password_hash = await self._hash_password(payload.password)
 
         user = User(
@@ -65,14 +62,13 @@ class CredentialsService:
             password_hash=password_hash,
         )
         self.mock_identity_service.apply_registration_defaults(user)
-        
+
         try:
             await self.user_repo.add(user)
             await self.uow.session.flush()
         except IntegrityError:
             raise AlreadyExists()
-        
-        
+
         default_role = await self.role_repo.get_by_slug(DEFAULT_ROLE.value)
         if default_role is None:
             raise RuntimeError("Default role is missing from the database")
@@ -82,25 +78,22 @@ class CredentialsService:
         await self.notification_service.send_text(
             f"New user registered: {payload.email}"
         )
-        
+
         access, refresh, csrf = await self.token_service.issue_tokens(user, src)
         return user, access, refresh, csrf
-    
-    
+
     async def login(
-        self,
-        payload: UserLogin,
-        src: Literal['web', 'mobile']
+        self, payload: UserLogin, src: Literal["web", "mobile"]
     ) -> tuple[User, str, str, str]:
         user = await self.user_repo.get_by_email(payload.email)
         if user is None:
             raise WrongCredentials()
 
         await self._check_password(payload.password, user.password_hash)
-        
+
         if await needs_rehash(user.password_hash):
             user.password_hash = await self._hash_password(payload.password)
-        
+
         access, refresh, csrf = await self.token_service.issue_tokens(user, src)
         return user, access, refresh, csrf
 

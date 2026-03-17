@@ -71,24 +71,19 @@ export function InterestTagsQuestion({
           type="button"
           onClick={() => onToggleImportTransactions(!currentImportTransactions)}
           className={cn(
-            "w-full rounded-3xl border p-5 text-left transition-all",
+            "w-full rounded-2xl border px-4 py-3 text-left transition-all",
             currentImportTransactions
               ? "border-primary/40 bg-primary/10 shadow-sm"
               : "border-border/50 bg-secondary/35",
           )}
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">
-                {t("profile.ml_recommendations_label")}
-              </p>
-              <p className="text-sm leading-6 text-muted-foreground">
-                {t("profile.ml_recommendations_description")}
-              </p>
-            </div>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-semibold text-foreground">
+              {t("profile.ml_recommendations_label")}
+            </p>
             <span
               className={cn(
-                "mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition-colors",
+                "inline-flex h-7 w-12 shrink-0 items-center rounded-full border px-1 transition-colors",
                 currentImportTransactions
                   ? "border-primary bg-primary justify-end"
                   : "border-border bg-background justify-start",

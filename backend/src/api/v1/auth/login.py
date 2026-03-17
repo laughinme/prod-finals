@@ -9,8 +9,7 @@ from domain.auth import TokenPair, UserLogin
 
 router = APIRouter()
 security = HTTPBearer(
-    auto_error=False, 
-    description='Send refresh token as Bearer for non-browser clients'
+    auto_error=False, description="Send refresh token as Bearer for non-browser clients"
 )
 
 
@@ -24,29 +23,26 @@ async def login_user(
     response: Response,
     payload: UserLogin,
     svc: Annotated[CredentialsService, Depends(get_credentials_service)],
-    client: Literal['web', 'mobile'] = Header('web', alias='X-Client'),
+    client: Literal["web", "mobile"] = Header("web", alias="X-Client"),
 ) -> TokenPair:
     _user, access, refresh, csrf = await svc.login(payload, client)
-    
-    if client == 'web':
+
+    if client == "web":
         set_auth_cookies(response, refresh, csrf)
         return TokenPair(access_token=access, refresh_token=None)
 
     return TokenPair(access_token=access, refresh_token=refresh)
 
 
-@router.post(
-    path="/logout",
-    responses={401: {"description": "Not authorized"}}
-)
+@router.post(path="/logout", responses={401: {"description": "Not authorized"}})
 async def logout(
     request: Request,
     response: Response,
     svc: Annotated[CredentialsService, Depends(get_credentials_service)],
-    creds: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+    creds: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ) -> dict:
     refresh_cookie = request.cookies.get("refresh_token")
-    
+
     refresh_header = (
         creds.credentials if creds and creds.scheme.lower() == "bearer" else None
     )
@@ -54,10 +50,10 @@ async def logout(
     token = refresh_cookie or refresh_header
     if token is None:
         raise UnauthorizedError("Refresh token is not passed")
-    
+
     await svc.logout(token)
-    
+
     if refresh_cookie:
         clear_auth_cookies(response)
-        
-    return {'message': 'Logged out successfully'}
+
+    return {"message": "Logged out successfully"}

@@ -91,7 +91,9 @@ async def test_protected_profile_requires_access_token(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker: Faker):
+async def test_patch_user_with_template_payload_shape(
+    client: AsyncClient, faker: Faker
+):
     suffix = uuid4().hex[:8]
     payload = {
         "email": f"profile_{suffix}@example.com",
@@ -106,15 +108,18 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     assert register.status_code == 201
     access_token = register.json()["access_token"]
 
+    before = await client.get(
+        "/api/v1/users/me",
+        headers=auth_header(access_token),
+    )
+    assert before.status_code == 200
+    before_body = before.json()
+
     patch = await client.patch(
         "/api/v1/users/me",
         json={
-            "first_name": "Profile",
-            "last_name": "User",
-            "birth_date": "1998-05-12",
             "bio": "Bio",
             "city_id": "msk",
-            "gender": "female",
             "looking_for_genders": ["male"],
             "age_range": {"min": 24, "max": 35},
             "distance_km": 30,
@@ -124,8 +129,10 @@ async def test_patch_user_with_template_payload_shape(client: AsyncClient, faker
     )
     assert patch.status_code == 200
     body = patch.json()
-    assert body["first_name"] == "Profile"
-    assert body["last_name"] == "User"
+    assert body["first_name"] == before_body["first_name"]
+    assert body["last_name"] == before_body["last_name"]
+    assert body["birth_date"] == before_body["birth_date"]
+    assert body["gender"] == before_body["gender"]
     assert body["city"]["id"] == "msk"
     assert body["goal"] == "dating"
     assert body["quiz_started"] is False

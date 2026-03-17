@@ -75,7 +75,9 @@ def category_label_map() -> dict[str, str]:
     return {item.key: item.label for item in load_category_definitions()}
 
 
-def pick_category_keys(seed_key: str, *, min_items: int = 3, max_items: int = 5) -> list[str]:
+def pick_category_keys(
+    seed_key: str, *, min_items: int = 3, max_items: int = 5
+) -> list[str]:
     definitions = load_category_definitions()
     if not definitions:
         return []

@@ -19,6 +19,16 @@ _FIRST_NAMES_BY_GENDER: dict[str, tuple[str, ...]] = {
         "Максим",
         "Кирилл",
         "Артем",
+        "Андрей",
+        "Егор",
+        "Павел",
+        "Степан",
+        "Владимир",
+        "Тимофей",
+        "Матвей",
+        "Сергей",
+        "Глеб",
+        "Федор",
     ),
     "female": (
         "Анна",
@@ -31,23 +41,74 @@ _FIRST_NAMES_BY_GENDER: dict[str, tuple[str, ...]] = {
         "Елена",
         "Виктория",
         "Полина",
+        "Анастасия",
+        "Вероника",
+        "Ксения",
+        "Юлия",
+        "Надежда",
+        "Валерия",
+        "Татьяна",
+        "Лилия",
+        "Ульяна",
+        "Арина",
     ),
 }
 
-_LAST_NAMES: tuple[str, ...] = (
-    "Иванов",
-    "Петров",
-    "Смирнов",
-    "Кузнецов",
-    "Соколов",
-    "Попов",
-    "Лебедев",
-    "Козлов",
-    "Новиков",
-    "Морозов",
-)
+_LAST_NAMES_BY_GENDER: dict[str, tuple[str, ...]] = {
+    "male": (
+        "Иванов",
+        "Петров",
+        "Смирнов",
+        "Кузнецов",
+        "Соколов",
+        "Попов",
+        "Лебедев",
+        "Козлов",
+        "Новиков",
+        "Морозов",
+        "Волков",
+        "Соловьев",
+        "Зайцев",
+        "Павлов",
+        "Семенов",
+        "Голубев",
+        "Виноградов",
+        "Богданов",
+        "Воробьев",
+        "Федоров",
+    ),
+    "female": (
+        "Иванова",
+        "Петрова",
+        "Смирнова",
+        "Кузнецова",
+        "Соколова",
+        "Попова",
+        "Лебедева",
+        "Козлова",
+        "Новикова",
+        "Морозова",
+        "Волкова",
+        "Соловьева",
+        "Зайцева",
+        "Павлова",
+        "Семенова",
+        "Голубева",
+        "Виноградова",
+        "Богданова",
+        "Воробьева",
+        "Федорова",
+    ),
+}
 
 _DEFAULT_INTERESTS: tuple[str, ...] = ("coffee", "music", "travel")
+
+_SCENARIO_EMAIL_BY_DATASET_INDEX: dict[int, str] = {
+    1: "demo.food.a@tmatch.local",
+    2: "demo.food.b@tmatch.local",
+    3: "demo.style@tmatch.local",
+    4: "demo.cold@tmatch.local",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +130,9 @@ class DatasetUserProfile(MockIdentityProfile):
 
 class MockIdentityRegistry:
     def __init__(self, dataset_user_ids: Iterable[str]) -> None:
-        normalized_ids = [str(item).strip() for item in dataset_user_ids if str(item).strip()]
+        normalized_ids = [
+            str(item).strip() for item in dataset_user_ids if str(item).strip()
+        ]
         if not normalized_ids:
             raise ValueError("Mock identity dataset is empty")
         self._dataset_user_ids = tuple(dict.fromkeys(normalized_ids))
@@ -107,12 +170,15 @@ class MockIdentityRegistry:
             is_dataset_user=False,
         )
 
-    def _build_dataset_profile(self, *, index: int, service_user_id: str) -> DatasetUserProfile:
+    def _build_dataset_profile(
+        self, *, index: int, service_user_id: str
+    ) -> DatasetUserProfile:
         local_part = f"mock-user-{index:04d}"
+        email = _SCENARIO_EMAIL_BY_DATASET_INDEX.get(index, f"{local_part}@example.com")
         profile = self._build_profile(
             seed_key=f"dataset:{service_user_id}",
             service_user_id=service_user_id,
-            email=f"{local_part}@example.com",
+            email=email,
             is_dataset_user=True,
         )
         return DatasetUserProfile(
@@ -138,8 +204,9 @@ class MockIdentityRegistry:
         digest = sha256(seed_key.encode("utf-8")).digest()
         gender = "female" if digest[0] % 2 else "male"
         first_names = _FIRST_NAMES_BY_GENDER[gender]
+        last_names = _LAST_NAMES_BY_GENDER[gender]
         first_name = first_names[digest[1] % len(first_names)]
-        last_name = _LAST_NAMES[digest[2] % len(_LAST_NAMES)]
+        last_name = last_names[digest[2] % len(last_names)]
         age = 21 + (digest[3] % 18)
         month = 1 + (digest[4] % 12)
         day = 1 + (digest[5] % 28)

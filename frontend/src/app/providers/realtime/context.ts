@@ -38,13 +38,18 @@ export type PersonalNotification =
     };
 
 export type MatchNotificationsContextValue = {
+  notifications: PersonalNotification[];
   currentNotification: PersonalNotification | null;
+  totalUnseenCount: number;
   unseenMatchCount: number;
   unseenLikeCount: number;
+  unseenMessageCount: number;
   isRealtimeEnabled: boolean;
   realtimeClient: Centrifuge | null;
   dismissCurrentNotification: () => Promise<void>;
   openCurrentNotification: () => Promise<void>;
+  openNotification: (notification: PersonalNotification) => Promise<void>;
+  markNotificationSeen: (notification: PersonalNotification) => Promise<void>;
   markMatchAsSeen: (matchId: string) => Promise<void>;
 };
 

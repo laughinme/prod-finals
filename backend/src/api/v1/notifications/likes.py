@@ -12,7 +12,10 @@ from domain.notifications import (
     LikeNotificationsResponse,
     MarkNotificationSeenResponse,
 )
-from service.user_notifications import UserNotificationsService, get_user_notifications_service
+from service.user_notifications import (
+    UserNotificationsService,
+    get_user_notifications_service,
+)
 
 router = APIRouter()
 
@@ -28,7 +31,9 @@ async def get_like_notifications(
     unseen_only: bool = Query(False),
     limit: int = Query(20, ge=1, le=100),
 ) -> LikeNotificationsResponse:
-    return await svc.list_like_notifications(user=user, unseen_only=unseen_only, limit=limit)
+    return await svc.list_like_notifications(
+        user=user, unseen_only=unseen_only, limit=limit
+    )
 
 
 @router.post(
@@ -41,7 +46,9 @@ async def mark_like_notification_seen(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserNotificationsService, Depends(get_user_notifications_service)],
 ) -> MarkNotificationSeenResponse:
-    return await svc.mark_like_notification_seen(user=user, notification_id=notification_id)
+    return await svc.mark_like_notification_seen(
+        user=user, notification_id=notification_id
+    )
 
 
 @router.get(
@@ -54,7 +61,9 @@ async def get_like_notification_card(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserNotificationsService, Depends(get_user_notifications_service)],
 ) -> LikeNotificationCardResponse:
-    return await svc.get_like_notification_card(user=user, notification_id=notification_id)
+    return await svc.get_like_notification_card(
+        user=user, notification_id=notification_id
+    )
 
 
 @router.post(

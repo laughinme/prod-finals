@@ -2,13 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Loader2, PencilLine, Sparkles, Wand2 } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  CheckCircle2,
+  Loader2,
+  PencilLine,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import * as Sentry from "@sentry/react";
 
 import { MatchProfileCard } from "@/entities/match-profile/ui";
 import type { MatchProfile } from "@/entities/match-profile/model";
-import type { User } from "@/entities/user/model";
 import {
   useProfile,
   useSetDefaultAvatar,
@@ -21,37 +28,29 @@ import { getAge } from "@/shared/lib/date";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 
 function buildPreviewProfile(
-  profile: User | undefined,
-  goalLabel: string | null,
-  bio: string,
-): MatchProfile | null {
-  if (!profile) {
-    return null;
-  }
-
-  const tags = [
-    ...(goalLabel ? [goalLabel] : []),
-    ...profile.interests.slice(0, 4),
-  ];
-
+  fullName: string,
+  birthDate: string | null,
+  cityName: string | null,
+  image: string | null,
+  tags: string[],
+): MatchProfile {
   return {
-    id: profile.email,
+    id: "preview-card",
     candidateUserId: null,
-    name: profile.fullName,
-    age: getAge(profile.birthDate),
-    image: profile.profilePicUrl,
-    bio,
+    name: fullName,
+    age: birthDate ? getAge(birthDate) : null,
+    image,
+    bio: "",
     matchScore: 0,
     categoryBreakdown: [],
     tags,
-    explanation: goalLabel
-      ? `Мы будем учитывать вашу цель знакомства: ${goalLabel}.`
-      : "Эта карточка появится в ленте сразу после короткого онбординга.",
-    location: profile.city?.name ?? "",
+    explanation: "",
+    location: cityName ?? "",
     reasonCodes: [],
     detailsAvailable: false,
     actions: null,
     source: "feed",
+    likedYou: false,
   };
 }
 
@@ -62,12 +61,12 @@ export function ProfilePreviewStep() {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: profile, isLoading } = useProfile();
-  const { mutateAsync: setDefaultAvatar, isPending: isDefaultPending } = useSetDefaultAvatar();
-  const { mutateAsync: uploadAvatar, isPending: isUploadPending } = useUploadAvatar();
-  const { mutateAsync: updateProfile, isPending: isBioPending } = useUpdateProfile();
-  const goalLabel = profile?.goal
-    ? t(`profile.goal_${profile.goal}`, { defaultValue: profile.goal })
-    : null;
+  const { mutateAsync: setDefaultAvatar, isPending: isDefaultPending } =
+    useSetDefaultAvatar();
+  const { mutateAsync: uploadAvatar, isPending: isUploadPending } =
+    useUploadAvatar();
+  const { mutateAsync: updateProfile, isPending: isBioPending } =
+    useUpdateProfile();
   const [bioDraft, setBioDraft] = useState("");
 
   useEffect(() => {
@@ -82,15 +81,76 @@ export function ProfilePreviewStep() {
       }),
     onSuccess: (nextState) => {
       queryClient.setQueryData(["onboarding", "state"], nextState);
+      void queryClient.invalidateQueries({ queryKey: ["profile", "me"] });
     },
   });
 
-  const previewProfile = useMemo(
-    () => buildPreviewProfile(profile, goalLabel, bioDraft),
-    [bioDraft, goalLabel, profile],
+  const goalLabel = profile?.goal
+    ? t(`profile.goal_${profile.goal}`, { defaultValue: profile.goal })
+    : null;
+  const tags = useMemo(
+    () =>
+      [goalLabel, ...(profile?.interests ?? []).slice(0, 4)].filter(
+        Boolean,
+      ) as string[],
+    [goalLabel, profile?.interests],
   );
-  const isPhotoPending = isDefaultPending || isUploadPending;
+  const previewProfile = useMemo(() => {
+    if (!profile) {
+      return null;
+    }
+    return buildPreviewProfile(
+      profile.fullName,
+      profile.birthDate,
+      profile.city?.name ?? null,
+      profile.profilePicUrl,
+      tags,
+    );
+  }, [profile, tags]);
   const hasBioChanges = bioDraft.trim() !== (profile?.bio ?? "").trim();
+  const isPhotoPending = isDefaultPending || isUploadPending;
+  const canContinue = Boolean(profile?.hasApprovedPhoto) && !isPhotoPending;
+  const customBioContent = (
+    <div
+      className={[
+        "rounded-[1.35rem] border px-4 py-4 shadow-sm",
+        isMobile
+          ? "border-white/12 bg-white/10 backdrop-blur-md"
+          : "border-border/60 bg-background/70",
+      ].join(" ")}
+    >
+      <div
+        className={[
+          "flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em]",
+          isMobile ? "text-primary" : "text-primary/80",
+        ].join(" ")}
+      >
+        <PencilLine className="size-4" />
+        {t("profile.preview_bio_label")}
+      </div>
+      <p
+        className={[
+          "mt-2 text-sm leading-5",
+          isMobile ? "text-white/72" : "text-muted-foreground",
+        ].join(" ")}
+      >
+        {t("profile.preview_bio_hint")}
+      </p>
+      <textarea
+        value={bioDraft}
+        onChange={(event) => setBioDraft(event.target.value)}
+        placeholder={t("profile.tell_about_yourself")}
+        rows={isMobile ? 4 : 5}
+        maxLength={500}
+        className={[
+          "mt-4 w-full resize-none rounded-[1.1rem] border px-4 py-4 text-sm leading-6 outline-none transition-all",
+          isMobile
+            ? "min-h-24 border-white/12 bg-black/22 text-white placeholder:text-white/42 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+            : "min-h-28 border-border/60 bg-card text-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/15",
+        ].join(" ")}
+      />
+    </div>
+  );
 
   if (isLoading || !profile || !previewProfile) {
     return (
@@ -101,11 +161,16 @@ export function ProfilePreviewStep() {
   }
 
   const handleContinue = async () => {
+    if (!profile.hasApprovedPhoto) {
+      return;
+    }
+
     try {
       if (hasBioChanges) {
         await updateProfile({ bio: bioDraft.trim() || null });
       }
       await completePreview.mutateAsync();
+      document.cookie = "t-match-show-swipe-hint=1;path=/;max-age=60";
       navigate("/discovery", { replace: true });
     } catch (error) {
       Sentry.captureException(error);
@@ -120,7 +185,9 @@ export function ProfilePreviewStep() {
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -136,166 +203,232 @@ export function ProfilePreviewStep() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,221,45,0.18),_transparent_35%),linear-gradient(180deg,rgba(16,18,24,0.02),rgba(16,18,24,0.08))] px-4 py-6 md:px-8 md:py-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,221,45,0.18),_transparent_35%),linear-gradient(180deg,rgba(16,18,24,0.02),rgba(16,18,24,0.08))] px-4 py-5 md:px-8 md:py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="overflow-hidden rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-2xl shadow-primary/5 backdrop-blur-sm md:p-8"
+          className={`mx-auto w-full ${isMobile ? "max-w-[420px]" : "max-w-5xl"} overflow-hidden rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-2xl shadow-primary/5 backdrop-blur-sm md:p-7`}
         >
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">
-              <Sparkles className="size-4" />
-              {t("profile.preview_badge")}
-            </div>
+          <div className="space-y-3 text-center">
+            {!isMobile && (
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary/90">
+                <Sparkles className="size-4" />
+                {t("profile.preview_badge")}
+              </div>
+            )}
             <div className="space-y-2">
-              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-5xl">
+              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">
                 {t("profile.profile_ready_title")}
               </h1>
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                {t("profile.preview_description")}
-              </p>
+              {!isMobile && (
+                <p className="mx-auto max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+                  {t("profile.preview_description")}
+                </p>
+              )}
             </div>
           </div>
         </motion.section>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <motion.div
+        <div className="flex justify-center">
+          <motion.section
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="min-w-0"
+            className="w-full max-w-5xl"
           >
-            <MatchProfileCard
-              profile={previewProfile}
-              isMobile={isMobile}
-              onLike={() => false}
-              onPass={() => undefined}
-              onOpenReport={() => undefined}
-              showMatchScore={false}
-              showReportButton={false}
-              showActions={false}
-            />
-          </motion.div>
-
-          <motion.aside
-            initial={{ opacity: 0, x: 18 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="space-y-4"
-          >
-            <div className="rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-lg shadow-primary/5">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
-                <PencilLine className="size-4" />
-                {t("profile.preview_bio_label")}
+            <div className="relative">
+              <div
+                className={
+                  isMobile ? "mx-auto max-w-[420px]" : "mx-auto max-w-5xl"
+                }
+              >
+                <MatchProfileCard
+                  profile={previewProfile}
+                  isMobile={isMobile}
+                  onLike={() => false}
+                  onPass={() => undefined}
+                  onOpenReport={() => undefined}
+                  showMatchScore={false}
+                  showReportButton={false}
+                  showActions={false}
+                  customBioContent={customBioContent}
+                />
               </div>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {t("profile.preview_bio_hint")}
-              </p>
-              <textarea
-                value={bioDraft}
-                onChange={(event) => setBioDraft(event.target.value)}
-                placeholder={t("profile.tell_about_yourself")}
-                rows={5}
-                className="mt-4 w-full resize-none rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm leading-6 outline-none transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+
+              <AnimatePresence mode="wait">
+                {!profile.hasApprovedPhoto ? (
+                  <motion.div
+                    key="photo-required"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    className={[
+                      "pointer-events-none absolute z-20",
+                      isMobile
+                        ? "left-4 right-4 top-[3.5%]"
+                        : "left-6 top-1/2 w-[calc(45%-3rem)] -translate-y-1/2",
+                    ].join(" ")}
+                  >
+                    <div
+                      className={[
+                        "pointer-events-auto w-full border border-white/15 bg-black/60 text-center text-white shadow-xl backdrop-blur-xl",
+                        isMobile
+                          ? "rounded-[1.6rem] p-4"
+                          : "rounded-[1.8rem] p-5",
+                      ].join(" ")}
+                    >
+                      <p
+                        className={[
+                          "font-semibold uppercase text-primary",
+                          isMobile
+                            ? "text-[10px] tracking-[0.22em]"
+                            : "text-[11px] tracking-[0.24em]",
+                        ].join(" ")}
+                      >
+                        {t("profile.preview_photo_label")}
+                      </p>
+                      <p
+                        className={[
+                          "text-white/80",
+                          isMobile
+                            ? "mt-2 text-[13px] leading-5"
+                            : "mt-3 text-sm leading-6",
+                        ].join(" ")}
+                      >
+                        {t("profile.preview_photo_required")}
+                      </p>
+                      <div
+                        className={
+                          isMobile
+                            ? "mt-4 flex flex-col gap-2.5"
+                            : "mt-5 flex flex-col gap-3"
+                        }
+                      >
+                        <Button
+                          type="button"
+                          size={isMobile ? "default" : "lg"}
+                          className={
+                            isMobile
+                              ? "h-11 w-full rounded-[1.1rem]"
+                              : "w-full rounded-2xl"
+                          }
+                          disabled={isPhotoPending}
+                          onClick={() => void handleSetDefaultAvatar()}
+                        >
+                          {isDefaultPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <>
+                              <Wand2 className="size-4.5" />
+                              {t("profile.set_default_photo")}
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size={isMobile ? "default" : "lg"}
+                          className={[
+                            "w-full bg-white/12 text-white hover:bg-white/18",
+                            isMobile ? "h-11 rounded-[1.1rem]" : "rounded-2xl",
+                          ].join(" ")}
+                          disabled={isPhotoPending}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          {isUploadPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <>
+                              <Camera className="size-4.5" />
+                              {t("profile.upload_photo")}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {profile.hasApprovedPhoto ? (
+                <div
+                  className={[
+                    "absolute bottom-4 z-20 flex -translate-x-1/2 items-center gap-2",
+                    isMobile ? "left-1/2 px-4" : "left-[22.5%]",
+                  ].join(" ")}
+                >
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full border border-white/15 bg-white/90 shadow-lg backdrop-blur-md"
+                    disabled={isPhotoPending}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Camera className="size-4" />
+                    {t("profile.upload_photo")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full border border-white/15 bg-white/90 shadow-lg backdrop-blur-md"
+                    disabled={isPhotoPending}
+                    onClick={() => void handleSetDefaultAvatar()}
+                  >
+                    <Wand2 className="size-4" />
+                    {t("profile.preview_replace_with_demo")}
+                  </Button>
+                </div>
+              ) : null}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => void handleFileSelect(event)}
               />
             </div>
 
-            <div className="rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-lg shadow-primary/5">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
-                {t("profile.preview_photo_label")}
-              </p>
-              <h2 className="mt-2 text-2xl font-bold">{t("profile.preview_photo_title")}</h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {profile.hasApprovedPhoto
-                  ? t("profile.preview_photo_ready")
-                  : t("profile.preview_photo_optional")}
-              </p>
+            <div className="mx-auto mt-4 w-full max-w-3xl space-y-4">
+              <div className="rounded-[1.8rem] border border-border/60 bg-card/92 p-4 shadow-lg shadow-primary/5">
+                <div className="rounded-[1.4rem] border border-border/60 bg-background/60 px-4 py-3 text-sm leading-6 text-foreground/80">
+                  {profile.hasApprovedPhoto ? (
+                    <span className="inline-flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                      {t("profile.preview_ready_status")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-start gap-2">
+                      <Camera className="mt-0.5 size-4 shrink-0 text-primary" />
+                      {t("profile.preview_need_photo_status")}
+                    </span>
+                  )}
+                </div>
 
-              <div className="mt-5 space-y-3">
                 <Button
                   type="button"
                   size="lg"
-                  className="w-full rounded-2xl"
-                  disabled={isPhotoPending}
-                  onClick={() => void handleSetDefaultAvatar()}
+                  className="mt-4 h-14 w-full rounded-[1.2rem] text-base font-semibold shadow-[0_18px_40px_rgba(255,221,45,0.26)]"
+                  disabled={
+                    !canContinue || completePreview.isPending || isBioPending
+                  }
+                  onClick={() => void handleContinue()}
                 >
-                  {isDefaultPending ? (
+                  {completePreview.isPending || isBioPending ? (
                     <Loader2 className="animate-spin" />
                   ) : (
                     <>
-                      <Wand2 className="size-4.5" />
-                      {t("profile.set_default_photo")}
+                      {t("profile.preview_continue")}
+                      <ArrowRight className="size-4.5" />
                     </>
                   )}
                 </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full rounded-2xl"
-                  disabled={isPhotoPending}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {isUploadPending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <>
-                      <Camera className="size-4.5" />
-                      {t("profile.upload_photo")}
-                    </>
-                  )}
-                </Button>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(event) => void handleFileSelect(event)}
-                />
               </div>
             </div>
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={profile.hasApprovedPhoto ? "with-photo" : "without-photo"}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="rounded-[2rem] border border-border/60 bg-card/90 p-5 shadow-lg shadow-primary/5"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
-                  {t("profile.preview_next_label")}
-                </p>
-                <h3 className="mt-2 text-xl font-bold">{t("profile.preview_next_title")}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {t("profile.preview_next_description")}
-                </p>
-
-                <div className="mt-5 flex flex-col gap-3">
-                  <Button
-                    size="lg"
-                    className="w-full rounded-2xl"
-                    onClick={() => void handleContinue()}
-                    disabled={completePreview.isPending || isPhotoPending || isBioPending}
-                  >
-                    {completePreview.isPending || isBioPending ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      t("profile.preview_continue")
-                    )}
-                  </Button>
-                  {!profile.hasApprovedPhoto ? (
-                    <p className="text-center text-xs leading-5 text-muted-foreground">
-                      {t("profile.preview_continue_without_photo")}
-                    </p>
-                  ) : null}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </motion.aside>
+          </motion.section>
         </div>
       </div>
     </div>

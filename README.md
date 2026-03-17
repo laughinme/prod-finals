@@ -15,16 +15,11 @@
 - ML OpenAPI (локально): <http://localhost:8081/openapi.json>
 - ML API спецификация в репо: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
 - Публичный API контракт (backend): [`docs/public-api-final.yaml`](docs/public-api-final.yaml)
-
-## Что решает продукт
-
-Классические анкеты дают много случайных совпадений.  
-T-Match уменьшает шум за счет:
-
-1. ранжирования кандидатов по ML-сигналам и категориям интересов/трат;
-2. безопасных объяснений совместимости (без раскрытия чувствительных данных);
-3. контроля жизненного цикла контакта (match -> чат -> block/report);
-4. запрета нежелательного повторного показа после pass/block.
+- Демо login: `demo.food.a@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.food.b@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.style@tmatch.local` / `DemoPass123!`
+- Демо login: `demo.cold@tmatch.local` / `DemoPass123!`
+- Админ login: `admin@demo.local` / `Admin12345!`
 
 ## E2E пользовательский путь
 
@@ -39,7 +34,7 @@ T-Match уменьшает шум за счет:
 
 - `frontend` — React + Vite.
 - `backend` — FastAPI, Postgres, Redis, бизнес-правила контактов/безопасности.
-- `ml` — FastAPI ML-сервис, ранжирование и explanations.
+- `ml` — FastAPI ML-сервис, ранжирование и explanations, Catboost.
 - `qdrant` — векторное хранилище user profiles.
 - `minio` — хранение медиа.
 - `centrifugo` — realtime канал для событий.
@@ -74,6 +69,18 @@ docker compose up -d
 - ml-service: <http://localhost:8081/docs>
 - qdrant: <http://localhost:6333/dashboard>
 
+## Линт и форматирование
+
+```bash
+make format
+make format-check
+make lint
+```
+
+- `make format` — автоформат backend/ml и автофикс eslint во frontend.
+- `make format-check` — проверка форматирования Python-кода без изменений файлов.
+- `make lint` — общий линт backend/ml/frontend.
+
 ## Прод деплой
 
 Основной сценарий деплоя описан в [`deploy/README.md`](deploy/README.md).  
@@ -83,22 +90,12 @@ docker compose up -d
 bash deploy/manual-train-ml.sh "<dataset_url_or_zip_url>"
 ```
 
-## Тестовые учетные записи
-
-Если включен mock seed (`MOCK_USER_SEED_ENABLED=true`), доступны:
-
-- admin: `admin@example.com`
-- users: `mock-user-0001@example.com`, `mock-user-0550@example.com`, ...
-- пароль: значение `MOCK_USER_SEED_PASSWORD` (по умолчанию `DemoPass123!`).
-
 ## Материалы для секции ML
 
 - EDA: [`ml/EDA.md`](ml/EDA.md)
 - Пайплайн обучения: [`ml/scripts/train_model.py`](ml/scripts/train_model.py), [`deploy/manual-train-ml.sh`](deploy/manual-train-ml.sh)
 - Код рантайма ML: [`ml/service/runtime.py`](ml/service/runtime.py)
 - Контракт ML API: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
-
-## Что отправлять в форме (готовый список)
 
 ### Бэкенд
 

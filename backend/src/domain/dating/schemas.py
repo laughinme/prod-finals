@@ -164,6 +164,7 @@ class FeedCard(BaseModel):
     candidate: FeedCandidate
     compatibility: CompatibilityPreview
     actions: FeedCardActions
+    liked_you: bool = False
 
 
 class DemoFeedShortcutItem(BaseModel):
@@ -172,10 +173,17 @@ class DemoFeedShortcutItem(BaseModel):
     avatar_url: str | None = None
     bio: str | None = None
     is_current_user: bool = False
+    can_reset_pair: bool = False
 
 
 class DemoFeedShortcutListResponse(BaseModel):
     items: list[DemoFeedShortcutItem] = Field(default_factory=list)
+
+
+class DemoFeedResetResponse(BaseModel):
+    status: str = "reset"
+    demo_user_key: str
+    target_user_id: UUID
 
 
 class FeedEmptyState(BaseModel):
@@ -324,6 +332,25 @@ class BlockResponse(BaseModel):
     removed_from_future_feed: bool
     conversation_closed: bool | None = None
     match_closed: bool | None = None
+
+
+class BlockedUserItem(BaseModel):
+    block_id: UUID
+    target_user_id: UUID
+    display_name: str
+    avatar_url: str | None = None
+    blocked_at: datetime
+    reason_code: str
+    source_context: str
+
+
+class BlockListResponse(BaseModel):
+    items: list[BlockedUserItem] = Field(default_factory=list)
+
+
+class UnblockResponse(BaseModel):
+    status: str = "unblocked"
+    removed_from_blocklist: bool = True
 
 
 class ReportRequest(BaseModel):

@@ -1,4 +1,9 @@
-from .registry import DatasetUserProfile, MockIdentityProfile, MockIdentityRegistry, get_mock_identity_registry
+from .registry import (
+    DatasetUserProfile,
+    MockIdentityProfile,
+    MockIdentityRegistry,
+    get_mock_identity_registry,
+)
 from .service import MockIdentityService
 
 __all__ = [

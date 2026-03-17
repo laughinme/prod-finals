@@ -29,7 +29,9 @@ class FakeMediaStorage:
     def build_avatar_key(self, user_id, filename: str, content_type: str) -> str:
         return f"avatars/{user_id}/avatar.jpg"
 
-    def create_presigned_upload_url(self, *, bucket: str, key: str, content_type: str, expires_in: int | None = None) -> str:
+    def create_presigned_upload_url(
+        self, *, bucket: str, key: str, content_type: str, expires_in: int | None = None
+    ) -> str:
         return f"http://localhost/{bucket}/{key}?signature=test"
 
     def build_public_url(self, *, bucket: str, key: str) -> str:

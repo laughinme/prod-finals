@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Heart,
   Info,
@@ -45,6 +45,8 @@ interface MatchProfileMobileCardProps {
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
+  showInfoButton?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileMobileCard({
@@ -54,6 +56,8 @@ export function MatchProfileMobileCard({
   isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
+  showInfoButton = true,
+  customBioContent,
 }: MatchProfileMobileCardProps) {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
@@ -150,11 +154,28 @@ export function MatchProfileMobileCard({
                 </div>
               ) : null}
 
+              {profile.likedYou ? (
+                <div className="flex">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-rose-300/35 bg-rose-500/20 px-3 py-1.5 text-[12px] font-semibold text-rose-100 backdrop-blur-md">
+                    <Heart size={12} className="fill-current" />
+                    {t("discovery.liked_you_badge")}
+                  </span>
+                </div>
+              ) : null}
+
               <h2 className="text-[34px] font-bold leading-[0.96] tracking-[-0.04em] text-white drop-shadow-md">
                 {title}
               </h2>
-              {profile.bio ? (
-                <p className="max-w-[18rem] text-[15px] leading-[1.35] text-white/80">
+              {primaryLocation ? (
+                <div className="flex items-center gap-1.5 text-[15px] text-white/65">
+                  <MapPin size={14} className="shrink-0" />
+                  <span>{primaryLocation}</span>
+                </div>
+              ) : null}
+              {customBioContent ? (
+                <div>{customBioContent}</div>
+              ) : profile.bio ? (
+                <p className="max-w-[18rem] wrap-break-word text-[15px] leading-[1.35] text-white/80">
                   {profile.bio}
                 </p>
               ) : null}
@@ -175,7 +196,7 @@ export function MatchProfileMobileCard({
                             <Sparkles className="size-3.5" />
                             {t("discovery.why_matched")}
                           </p>
-                          <p className="text-[15px] leading-8 text-white/80">
+                          <p className="wrap-break-word text-[15px] leading-8 text-white/80">
                             {profile.explanation}
                           </p>
                         </div>
@@ -202,9 +223,9 @@ export function MatchProfileMobileCard({
                   onClick={() => setShowCompatibilityDetails(true)}
                   className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-4 py-3 backdrop-blur-md transition-colors hover:bg-black/55"
                 >
-                  <Heart
+                  <Sparkles
                     size={14}
-                    className="fill-[#FF453A] text-[#FF453A]"
+                    className="text-primary"
                   />
                   <span className="text-[15px] font-semibold text-white">
                     {profile.matchScore}%
@@ -214,27 +235,29 @@ export function MatchProfileMobileCard({
                 <div />
               )}
 
-              <button
-                type="button"
-                onMouseDown={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => {
-                  if (!hasDetails) {
-                    return;
-                  }
-                  setShowDetails((value) => !value);
-                }}
-                disabled={!hasDetails}
-                className={`flex size-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
-                  showDetails
-                    ? "border-sky-300/50 bg-sky-500/22 text-sky-200"
-                    : "border-sky-300/30 bg-black/45 text-sky-300 hover:bg-black/55 hover:text-sky-200"
-                }`}
-                aria-label={t("common.details")}
-                title={t("common.details")}
-              >
-                <Info size={20} strokeWidth={1.5} />
-              </button>
+              {showInfoButton ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    if (!hasDetails) {
+                      return;
+                    }
+                    setShowDetails((value) => !value);
+                  }}
+                  disabled={!hasDetails}
+                  className={`flex size-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
+                    showDetails
+                      ? "border-sky-300/50 bg-sky-500/22 text-sky-200"
+                      : "border-sky-300/30 bg-black/45 text-sky-300 hover:bg-black/55 hover:text-sky-200"
+                  }`}
+                  aria-label={t("common.details")}
+                  title={t("common.details")}
+                >
+                  <Info size={20} strokeWidth={1.5} />
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

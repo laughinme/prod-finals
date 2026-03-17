@@ -22,7 +22,7 @@ from database.relational_db import Base
 
 target_metadata = Base.metadata
 
-settings = Settings() # pyright: ignore[reportCallIssue]
+settings = Settings()  # pyright: ignore[reportCallIssue]
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

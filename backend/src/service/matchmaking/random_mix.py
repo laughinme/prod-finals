@@ -97,6 +97,8 @@ def apply_random_mix(
 
     selected_candidates = [ranked_candidates[index] for index in selected_indices]
     remaining = [
-        ranked_candidates[index] for index in pool_indices if index not in selected_index_set
+        ranked_candidates[index]
+        for index in pool_indices
+        if index not in selected_index_set
     ]
     return ranked_candidates[:protected_top] + selected_candidates + remaining

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
 import math
+import subprocess
 from typing import Any
 
 from .prepare_data import Transaction
@@ -26,6 +27,8 @@ class MatchModelArtifact:
     user_count: int
     categories: list[str]
     profiles: dict[str, UserProfile]
+    git_commit_hash: str = ""
+    git_branch: str = ""
 
 
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -39,6 +42,19 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
 
 def _safe_model_version(now: datetime) -> str:
     return now.strftime("%Y%m%dT%H%M%SZ")
+
+
+def _safe_git_value(command: list[str], default: str = "") -> str:
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        return default
+    return result.stdout.strip() or default
 
 
 def train_profile_model(transactions: list[Transaction]) -> MatchModelArtifact:
@@ -86,10 +102,14 @@ def train_profile_model(transactions: list[Transaction]) -> MatchModelArtifact:
         user_count=len(profiles),
         categories=categories,
         profiles=profiles,
+        git_commit_hash=_safe_git_value(["git", "rev-parse", "HEAD"]),
+        git_branch=_safe_git_value(["git", "rev-parse", "--abbrev-ref", "HEAD"]),
     )
 
 
-def get_matches(artifact: MatchModelArtifact, user_id: str, top_n: int = 5) -> list[dict[str, float | str]]:
+def get_matches(
+    artifact: MatchModelArtifact, user_id: str, top_n: int = 5
+) -> list[dict[str, float | str]]:
     target = artifact.profiles.get(user_id)
     if target is None:
         return []
@@ -107,7 +127,9 @@ def get_matches(artifact: MatchModelArtifact, user_id: str, top_n: int = 5) -> l
 
 def artifact_to_json_bytes(artifact: MatchModelArtifact) -> bytes:
     payload = asdict(artifact)
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
 
 def artifact_from_json_bytes(payload: bytes) -> MatchModelArtifact:
@@ -130,4 +152,6 @@ def artifact_from_json_bytes(payload: bytes) -> MatchModelArtifact:
         user_count=int(raw["user_count"]),
         categories=[str(item) for item in raw.get("categories", [])],
         profiles=profiles,
+        git_commit_hash=str(raw.get("git_commit_hash", "")),
+        git_branch=str(raw.get("git_branch", "")),
     )

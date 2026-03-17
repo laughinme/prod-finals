@@ -70,7 +70,12 @@ def _username(seed: bytes, email: str) -> str:
 def upgrade() -> None:
     op.add_column(
         "users",
-        sa.Column("is_dataset_user", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "is_dataset_user",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
     )
 
     bind = op.get_bind()

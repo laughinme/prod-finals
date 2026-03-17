@@ -14,7 +14,9 @@ class PreferenceCategoryInterface:
         rows = await self.session.scalars(
             select(PreferenceCategory)
             .where(PreferenceCategory.is_active.is_(True))
-            .order_by(PreferenceCategory.sort_order.asc(), PreferenceCategory.label.asc())
+            .order_by(
+                PreferenceCategory.sort_order.asc(), PreferenceCategory.label.asc()
+            )
         )
         return list(rows.all())
 
@@ -41,4 +43,3 @@ class PreferenceCategoryInterface:
             category.source_count = definition.source_count
             category.sort_order = definition.sort_order
             category.is_active = True
-

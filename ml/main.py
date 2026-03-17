@@ -22,7 +22,7 @@ from ml.service.schemas import (
     RecommendationResponse,
     SwipeFeedbackRequest,
     UserProfileUpdateRequest,
-    TransactionSyncRequest
+    TransactionSyncRequest,
 )
 
 
@@ -49,7 +49,9 @@ def _build_error_response(
         details=details,
         trace_id=trace_id or uuid4(),
     )
-    return JSONResponse(status_code=status_code, content=payload.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=status_code, content=payload.model_dump(mode="json")
+    )
 
 
 runtime = MlRuntime()
@@ -66,8 +68,14 @@ app = FastAPI(
     openapi_tags=[
         {"name": "health", "description": "Состояние ML-компонента и деградации"},
         {"name": "recommendations", "description": "Ранжирование кандидатов"},
-        {"name": "feedback", "description": "Feedback-события для обучения и аналитики"},
-        {"name": "explanations", "description": "Безопасные объяснения в виде reason codes"},
+        {
+            "name": "feedback",
+            "description": "Feedback-события для обучения и аналитики",
+        },
+        {
+            "name": "explanations",
+            "description": "Безопасные объяснения в виде reason codes",
+        },
     ],
     servers=[{"url": "http://ml-service:8080", "description": "ML service"}],
 )
@@ -95,7 +103,9 @@ async def http_exception_handler(
 ) -> JSONResponse:
     detail = exc.detail
     if isinstance(detail, dict):
-        trace_id = _coerce_trace_id(detail.get("trace_id") or request.headers.get("X-Trace-Id"))
+        trace_id = _coerce_trace_id(
+            detail.get("trace_id") or request.headers.get("X-Trace-Id")
+        )
         return _build_error_response(
             error_code=str(detail.get("error_code", "request_error")),
             message=str(detail.get("message", "Request failed.")),
@@ -138,9 +148,15 @@ async def get_ml_health() -> MlHealthResponse | JSONResponse:
     operation_id="postRecommendations",
     response_model=RecommendationResponse,
     dependencies=[Depends(require_service_token)],
-    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
 )
-async def post_recommendations(payload: RecommendationRequest) -> RecommendationResponse:
+async def post_recommendations(
+    payload: RecommendationRequest,
+) -> RecommendationResponse:
     if (
         payload.hard_filters
         and payload.hard_filters.age_min is not None
@@ -212,7 +228,11 @@ async def post_match_outcome(payload: MatchOutcomeRequest) -> AckResponse:
     operation_id="postCompatibilityExplanation",
     response_model=CompatibilityExplanationResponse,
     dependencies=[Depends(require_service_token)],
-    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
+    responses={
+        400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
 )
 async def post_compatibility_explanation(
     payload: CompatibilityExplanationRequest,
@@ -271,8 +291,7 @@ async def post_update_preferences(payload: UserProfileUpdateRequest) -> AckRespo
     dependencies=[Depends(require_service_token)],
 )
 async def post_onboarding(
-    payload: UserProfileUpdateRequest,
-    background_tasks: BackgroundTasks
+    payload: UserProfileUpdateRequest, background_tasks: BackgroundTasks
 ) -> AckResponse:
     runtime.update_user_profile_favorites(
         user_id=payload.user_id,
@@ -289,7 +308,10 @@ async def post_onboarding(
                 user_id=payload.user_id,
                 trace_id=payload.trace_id,
             )
-    return AckResponse(status=AckStatus.accepted, received_at=datetime.now(timezone.utc))
+    return AckResponse(
+        status=AckStatus.accepted, received_at=datetime.now(timezone.utc)
+    )
+
 
 @app.post(
     "/v1/transactions/sync",
@@ -300,18 +322,12 @@ async def post_onboarding(
     dependencies=[Depends(require_service_token)],
 )
 async def post_sync_transactions(
-    payload: TransactionSyncRequest, 
-    background_tasks: BackgroundTasks
+    payload: TransactionSyncRequest, background_tasks: BackgroundTasks
 ) -> AckResponse:
     """Event-driven обновление профиля. ML-логика выполняется в фоне."""
-    
-                                                                       
-    background_tasks.add_task(
-        runtime.process_transactions_sync_background,
-        payload
-    )
-    
+
+    background_tasks.add_task(runtime.process_transactions_sync_background, payload)
+
     return AckResponse(
-        status=AckStatus.accepted, 
-        received_at=datetime.now(timezone.utc)
+        status=AckStatus.accepted, received_at=datetime.now(timezone.utc)
     )

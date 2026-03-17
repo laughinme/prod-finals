@@ -6,11 +6,39 @@ from core.crypto import hash_password
 from database.relational_db import RolesInterface, User, UserInterface
 from domain.auth.enums import DEFAULT_ROLE
 from domain.dating.category_catalog import CategoryDefinition, pick_category_keys
+from sqlalchemy.exc import IntegrityError
 from service.mock_identity import MockIdentityRegistry
 from service.avatar_assets import load_dataset_avatar_asset
 from service.demo_accounts import DEMO_DATASET_INDEX_TO_KEY
 
 from .base import SeedContext
+
+_SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
+    # Scenario presets control vector shape for demo accounts.
+    # food_a: strongest food affinity; food_b: mixed profile; style: lifestyle cluster.
+    "demo.food.a@tmatch.local": (
+        "рестораны",
+        "фаст_фуд",
+        "супермаркеты",
+        "рестораны",
+        "фаст_фуд",
+    ),
+    "demo.food.b@tmatch.local": (
+        "супермаркеты",
+        "фаст_фуд",
+        "рестораны",
+        "развлечения",
+        "транспорт",
+    ),
+    "demo.style@tmatch.local": (
+        "одежда_обувь",
+        "развлечения",
+        "транспорт",
+        "одежда_обувь",
+        "развлечения",
+    ),
+    "demo.cold@tmatch.local": ("развлечения", "транспорт", "супермаркеты"),
+}
 
 
 class DatasetUsersSeedTask:
@@ -50,12 +78,22 @@ class DatasetUsersSeedTask:
                 user = await user_repo.get_by_email(profile.email)
 
             if user is None:
-                user = User(
-                    email=profile.email,
-                    password_hash=password_hash,
-                )
-                await user_repo.add(user)
-                await context.uow.session.flush()
+                try:
+                    async with context.uow.session.begin_nested():
+                        user = User(
+                            email=profile.email,
+                            password_hash=password_hash,
+                        )
+                        await user_repo.add(user)
+                        await context.uow.session.flush()
+                except IntegrityError:
+                    user = await user_repo.get_by_service_user_id(
+                        profile.service_user_id
+                    )
+                    if user is None:
+                        user = await user_repo.get_by_email(profile.email)
+                    if user is None:
+                        raise
 
             user.service_user_id = profile.service_user_id
             user.email = profile.email
@@ -74,11 +112,17 @@ class DatasetUsersSeedTask:
             user.age_range_max = None
             user.distance_km = None
             user.goal = None
-            user.interests = pick_category_keys(
-                f"dataset-interests:{profile.service_user_id}",
-                min_items=3,
-                max_items=min(5, len(self.category_definitions) or 5),
+            scenario_interests = _SCENARIO_INTERESTS_BY_EMAIL.get(
+                (profile.email or "").strip().lower()
             )
+            if scenario_interests is not None:
+                user.interests = list(scenario_interests)
+            else:
+                user.interests = pick_category_keys(
+                    f"dataset-interests:{profile.service_user_id}",
+                    min_items=3,
+                    max_items=min(5, len(self.category_definitions) or 5),
+                )
             user.avatar_status = "approved"
             user.avatar_rejection_reason = None
 

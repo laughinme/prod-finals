@@ -7,7 +7,11 @@ def get_conversations_router() -> APIRouter:
     from .messages import router as messages_router
     from .realtime import router as realtime_router
 
-    router = APIRouter(prefix="/conversations", tags=["Conversations"], responses={401: {"description": "Not authorized"}})
+    router = APIRouter(
+        prefix="/conversations",
+        tags=["Conversations"],
+        responses={401: {"description": "Not authorized"}},
+    )
     router.include_router(detail_router)
     router.include_router(messages_router)
     router.include_router(icebreakers_router)

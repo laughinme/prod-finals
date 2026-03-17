@@ -1,3 +1,2 @@
 from .categories_interface import PreferenceCategoryInterface
 from .categories_table import PreferenceCategory
-

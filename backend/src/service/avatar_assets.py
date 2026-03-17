@@ -43,9 +43,9 @@ def load_default_avatar_asset() -> AvatarAsset:
 
 @lru_cache
 def load_dataset_avatar_asset() -> AvatarAsset:
-    path = _resolve_asset_path("sponge_bob.jpg", "sponge bob.jpg")
+    path = _resolve_asset_path("saul.jpeg")
     return AvatarAsset(
-        filename="dataset-avatar.jpg",
+        filename="dataset-avatar.jpeg",
         content_type="image/jpeg",
         payload=path.read_bytes(),
     )

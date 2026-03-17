@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import type { MatchProfile } from "../model";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { MatchProfileDesktopCard } from "./MatchProfileDesktopCard";
 import { MatchProfileMobileCard } from "./MatchProfileMobileCard";
 
@@ -13,6 +15,7 @@ export interface MatchProfileCardProps {
   showMatchScore?: boolean;
   showReportButton?: boolean;
   showActions?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileCard({
@@ -26,31 +29,39 @@ export function MatchProfileCard({
   showMatchScore = true,
   showReportButton = true,
   showActions = true,
+  customBioContent,
 }: MatchProfileCardProps) {
   if (isMobile) {
     return (
-      <MatchProfileMobileCard
+      <ErrorBoundary compact title="Не удалось отобразить профиль">
+        <MatchProfileMobileCard
+          profile={profile}
+          onLike={onLike}
+          onPass={onPass}
+          onOpenReport={onOpenReport}
+          onPrepareTestMatch={onPrepareTestMatch}
+          isPreparingTestMatch={isPreparingTestMatch}
+          showMatchScore={showMatchScore}
+          showReportButton={showReportButton}
+          showActions={showActions}
+          showInfoButton={showActions}
+          customBioContent={customBioContent}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  return (
+    <ErrorBoundary compact title="Не удалось отобразить профиль">
+      <MatchProfileDesktopCard
         profile={profile}
-        onLike={onLike}
-        onPass={onPass}
         onOpenReport={onOpenReport}
         onPrepareTestMatch={onPrepareTestMatch}
         isPreparingTestMatch={isPreparingTestMatch}
         showMatchScore={showMatchScore}
         showReportButton={showReportButton}
-        showActions={showActions}
+        customBioContent={customBioContent}
       />
-    );
-  }
-
-  return (
-    <MatchProfileDesktopCard
-      profile={profile}
-      onOpenReport={onOpenReport}
-      onPrepareTestMatch={onPrepareTestMatch}
-      isPreparingTestMatch={isPreparingTestMatch}
-      showMatchScore={showMatchScore}
-      showReportButton={showReportButton}
-    />
+    </ErrorBoundary>
   );
 }

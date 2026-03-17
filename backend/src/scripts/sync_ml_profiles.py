@@ -63,17 +63,17 @@ def _build_favorite_categories(
     bootstrap_categories: list[str],
 ) -> list[str]:
     picked: list[str] = []
-    seen: set[str] = set()
 
     for raw_interest in profile.interests:
         candidate = str(raw_interest).strip()
         if not candidate:
             continue
-        normalized = candidate.lower()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
+        # Keep source ordering (including duplicates) to preserve preference intensity.
         picked.append(candidate)
+        if len(picked) >= 5:
+            return picked[:5]
+
+    seen = {item.lower() for item in picked}
 
     if bootstrap_categories:
         seed = _stable_seed(profile.ml_user_id)
@@ -140,7 +140,9 @@ async def _ensure_ml_user_ids() -> tuple[list[BackendUserProfile], int]:
             if not user.service_user_id:
                 continue
 
-            interests = [value for value in (user.interests or []) if isinstance(value, str)]
+            interests = [
+                value for value in (user.interests or []) if isinstance(value, str)
+            ]
             normalized_profiles.append(
                 BackendUserProfile(
                     user_id=user.id,
@@ -218,7 +220,10 @@ async def _read_qdrant_snapshot(
 
             normalized_party_id = _normalize_ml_user_id(party_rk)
             normalized_party_ids.add(normalized_party_id)
-            if normalized_party_id not in backend_ids_normalized and point_id is not None:
+            if (
+                normalized_party_id not in backend_ids_normalized
+                and point_id is not None
+            ):
                 orphan_point_ids.append(point_id)
 
         offset = result.get("next_page_offset")
@@ -280,7 +285,9 @@ async def _direct_upsert_profiles(
                         ),
                         "preferred_activity_hour": _preferred_hour(profile.ml_user_id),
                         "import_transactions_enabled": False,
-                        "top_cat": profile.interests[0] if profile.interests else "unknown",
+                        "top_cat": profile.interests[0]
+                        if profile.interests
+                        else "unknown",
                         "is_fallback_synced": True,
                     },
                 }
@@ -333,15 +340,17 @@ async def _upsert_profiles_via_ml(
 async def _run(args: argparse.Namespace) -> int:
     settings = get_settings()
     ml_service_url = (args.ml_service_url or settings.ML_SERVICE_URL or "").strip()
-    ml_service_token = (args.ml_service_token or settings.ML_SERVICE_TOKEN or "").strip()
+    ml_service_token = (
+        args.ml_service_token or settings.ML_SERVICE_TOKEN or ""
+    ).strip()
     qdrant_url = (args.qdrant_url or DEFAULT_QDRANT_URL).rstrip("/")
 
     users, assigned = await _ensure_ml_user_ids()
     users_by_normalized_id = {
-        _normalize_ml_user_id(profile.ml_user_id): profile
-        for profile in users
+        _normalize_ml_user_id(profile.ml_user_id): profile for profile in users
     }
     backend_ids_normalized = set(users_by_normalized_id.keys())
+    deleted_orphans = 0
 
     async with httpx.AsyncClient(timeout=30.0) as qdrant_client:
         await _ensure_collection(
@@ -356,8 +365,6 @@ async def _run(args: argparse.Namespace) -> int:
             collection=args.collection,
             backend_ids_normalized=backend_ids_normalized,
         )
-
-        deleted_orphans = 0
         if args.delete_orphans and snapshot.orphan_point_ids:
             deleted_orphans = await _delete_orphans(
                 client=qdrant_client,
@@ -394,6 +401,7 @@ async def _run(args: argparse.Namespace) -> int:
             bootstrap_categories=bootstrap_categories,
         )
 
+    direct_upserted = 0
     async with httpx.AsyncClient(timeout=30.0) as qdrant_client:
         snapshot_after_ml = await _read_qdrant_snapshot(
             client=qdrant_client,
@@ -402,8 +410,9 @@ async def _run(args: argparse.Namespace) -> int:
             backend_ids_normalized=backend_ids_normalized,
         )
 
-        remaining_missing_ids = backend_ids_normalized - snapshot_after_ml.normalized_party_ids
-        direct_upserted = 0
+        remaining_missing_ids = (
+            backend_ids_normalized - snapshot_after_ml.normalized_party_ids
+        )
         if remaining_missing_ids and args.direct_upsert_fallback:
             direct_upserted = await _direct_upsert_profiles(
                 client=qdrant_client,
@@ -425,11 +434,27 @@ async def _run(args: argparse.Namespace) -> int:
             )
         else:
             snapshot_final = snapshot_after_ml
-        remaining_missing_ids = backend_ids_normalized - snapshot_final.normalized_party_ids
+        remaining_missing_ids = (
+            backend_ids_normalized - snapshot_final.normalized_party_ids
+        )
+
+    print(
+        "sync_summary "
+        f"users_total={len(users)} "
+        f"assigned_ml_ids={assigned} "
+        f"qdrant_points_before={snapshot.points_count} "
+        f"deleted_orphans={deleted_orphans} "
+        f"sync_target={len(users_to_sync)} "
+        f"ml_synced_ok={synced_ok} "
+        f"ml_synced_failed={synced_failed} "
+        f"direct_upserted={direct_upserted} "
+        f"remaining_missing={len(remaining_missing_ids)}"
+    )
 
     if synced_failed or remaining_missing_ids:
         if remaining_missing_ids:
             sample = sorted(list(remaining_missing_ids))[:10]
+            print(f"sync_missing_sample={','.join(sample)}")
         return 1
     return 0
 
@@ -440,10 +465,21 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--ml-service-url", default="", help="ML service base URL")
     parser.add_argument("--ml-service-token", default="", help="ML service token")
-    parser.add_argument("--qdrant-url", default=DEFAULT_QDRANT_URL, help="Qdrant base URL")
-    parser.add_argument("--collection", default=DEFAULT_COLLECTION, help="Qdrant collection name")
-    parser.add_argument("--vector-size", type=int, default=35, help="Vector size for collection bootstrap")
-    parser.add_argument("--batch-size", type=int, default=200, help="Batch size for orphan deletion")
+    parser.add_argument(
+        "--qdrant-url", default=DEFAULT_QDRANT_URL, help="Qdrant base URL"
+    )
+    parser.add_argument(
+        "--collection", default=DEFAULT_COLLECTION, help="Qdrant collection name"
+    )
+    parser.add_argument(
+        "--vector-size",
+        type=int,
+        default=35,
+        help="Vector size for collection bootstrap",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=200, help="Batch size for orphan deletion"
+    )
     parser.add_argument(
         "--delete-orphans",
         action="store_true",

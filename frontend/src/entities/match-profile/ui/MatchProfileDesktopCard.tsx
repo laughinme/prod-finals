@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +39,7 @@ interface MatchProfileDesktopCardProps {
   isPreparingTestMatch?: boolean;
   showMatchScore?: boolean;
   showReportButton?: boolean;
+  customBioContent?: ReactNode;
 }
 
 export function MatchProfileDesktopCard({
@@ -48,6 +49,7 @@ export function MatchProfileDesktopCard({
   isPreparingTestMatch = false,
   showMatchScore = true,
   showReportButton = true,
+  customBioContent,
 }: MatchProfileDesktopCardProps) {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
@@ -240,8 +242,17 @@ export function MatchProfileDesktopCard({
         <div className="relative flex w-full shrink-0 flex-col p-8 md:h-[70vh] md:w-[55%] md:overflow-hidden md:px-12 md:pt-6 md:pb-12">
           <div className="mb-6 hidden items-start justify-between gap-6 md:flex">
             <div className="min-w-0 pt-[clamp(0.75rem,3.5vh,3.75rem)]">
-              {profile.tags.length > 0 ? (
+              {profile.tags.length > 0 || profile.likedYou ? (
                 <div className="mb-4 flex flex-wrap gap-2">
+                  {profile.likedYou ? (
+                    <Badge
+                      variant="secondary"
+                      className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700"
+                    >
+                      <Heart className="mr-1.5 size-3.5 fill-current" />
+                      {t("discovery.liked_you_badge")}
+                    </Badge>
+                  ) : null}
                   {profile.tags.map((tag) => (
                     <Badge
                       key={tag}
@@ -270,7 +281,7 @@ export function MatchProfileDesktopCard({
                     ) : null}
 
                     {profile.location ? (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
                         <MapPin className="size-5 shrink-0" />
                         <span className="truncate">{profile.location}</span>
                       </span>
@@ -332,7 +343,7 @@ export function MatchProfileDesktopCard({
                           {t("discovery.why_matched")}
                         </h4>
                       </div>
-                      <p className="text-[18px] leading-[1.55] text-muted-foreground">
+                      <p className="wrap-break-word text-[18px] leading-[1.55] text-muted-foreground">
                         {detailsText}
                       </p>
                     </div>
@@ -340,9 +351,11 @@ export function MatchProfileDesktopCard({
                 ) : null}
               </AnimatePresence>
 
-              {profile.bio ? (
+              {customBioContent ? (
+                <div>{customBioContent}</div>
+              ) : profile.bio ? (
                 <div>
-                  <p className="text-lg leading-relaxed text-foreground/80">
+                  <p className="wrap-break-word text-lg leading-relaxed text-foreground/80">
                     {profile.bio}
                   </p>
                 </div>

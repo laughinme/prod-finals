@@ -5,11 +5,11 @@ from typing import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import(
+from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
     AsyncSession,
-    AsyncEngine
+    AsyncEngine,
 )
 
 from core.config import Settings, get_settings

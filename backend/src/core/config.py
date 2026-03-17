@@ -9,12 +9,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=f'{BASE_DIR}/.env',
-        extra='ignore'
-    )
-    
+    model_config = SettingsConfigDict(env_file=f"{BASE_DIR}/.env", extra="ignore")
+
     APP_STAGE: Literal["dev", "prod"] = "dev"
     APP_VERSION: str = "dev"
     DEBUG: bool | None = None
@@ -29,6 +27,8 @@ class Settings(BaseSettings):
     MOCK_USER_SEED_ENABLED: bool = False
     MOCK_USER_SEED_LIMIT: int = 0
     MOCK_USER_SEED_PASSWORD: str = "DemoPass123!"
+    DEMO_ADMIN_EMAIL: str = "admin@demo.local"
+    DEMO_ADMIN_PASSWORD: str = "Admin12345!"
     CENTRIFUGO_ENABLED: bool = False
     CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api/publish"
     CENTRIFUGO_WS_URL: str = ""
@@ -46,13 +46,13 @@ class Settings(BaseSettings):
     ML_PREVIEW_LLM_TIMEOUT_SEC: float = 4.0
 
     API_PORT: int = 8080
-    API_HOST: str = '0.0.0.0'
-    
-    SITE_URL: str = ''
-    
-    MEDIA_DIR: str = 'media'
-    MAX_PHOTO_SIZE: int = 5 
-    
+    API_HOST: str = "0.0.0.0"
+
+    SITE_URL: str = ""
+
+    MEDIA_DIR: str = "media"
+    MAX_PHOTO_SIZE: int = 5
+
     STORAGE_ENDPOINT_INTERNAL: str = "http://minio:9000"
     STORAGE_ENDPOINT_PUBLIC: str = "http://localhost"
     STORAGE_REGION: str = "us-east-1"
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     NOTIFICATIONS_PROVIDER: Literal["noop", "telegram"] = "noop"
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
-    
+
     JWT_SECRET: str
     JWT_ALGO: str = "HS256"
     ACCESS_TTL: int = 60 * 15
@@ -81,7 +81,7 @@ class Settings(BaseSettings):
 
     CORS_ALLOW_ORIGINS: str = ""
     CORS_ALLOW_ORIGIN_REGEX: str = ""
-    
+
     DATABASE_URL: str
     REDIS_URL: str
 
@@ -135,7 +135,9 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be at least 32 characters long.")
         return secret
 
-    @field_validator("STORAGE_ENDPOINT_INTERNAL", "STORAGE_ENDPOINT_PUBLIC", mode="before")
+    @field_validator(
+        "STORAGE_ENDPOINT_INTERNAL", "STORAGE_ENDPOINT_PUBLIC", mode="before"
+    )
     @classmethod
     def _normalize_storage_endpoint(cls, value: str) -> str:
         if not isinstance(value, str):
@@ -152,7 +154,9 @@ class Settings(BaseSettings):
             return self
 
         ws_scheme = "wss" if parsed.scheme == "https" else "ws"
-        self.CENTRIFUGO_WS_URL = urlunsplit((ws_scheme, parsed.netloc, "/connection/websocket", "", ""))
+        self.CENTRIFUGO_WS_URL = urlunsplit(
+            (ws_scheme, parsed.netloc, "/connection/websocket", "", "")
+        )
         return self
 
 
@@ -165,6 +169,7 @@ def clear_settings_cache() -> None:
     get_settings.cache_clear()
     try:
         from service.media import clear_media_storage_service_cache
+
         clear_media_storage_service_cache()
     except Exception:
         pass

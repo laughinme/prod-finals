@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Toaster } from "sonner";
 import { MatchmakingFlowProvider } from "@/features/matchmaking/model";
 import { useAuth } from "@/entities/auth";
-import { OfflineBlocker } from "@/app/components/OfflineBlocker";
+import { OfflineBlocker } from "@/widgets/OfflineBlocker";
 import { RealtimeProvider } from "@/app/providers/realtime";
 import { AppRoutes } from "@/app/routes/AppRoutes";
 import { useNetworkStatus } from "@/shared/lib/network/useNetworkStatus";

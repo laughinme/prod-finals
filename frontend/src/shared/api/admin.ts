@@ -69,10 +69,15 @@ export const getAdminUserSummary = async (): Promise<UserStatsSummaryDto> => {
   return response.data;
 };
 
-export const getAdminRegistrations = async (days: number): Promise<RegistrationsGraphDto[]> => {
-  const response = await apiProtected.get<RegistrationsGraphDto[]>("/admins/stats/registrations", {
-    params: { days },
-  });
+export const getAdminRegistrations = async (
+  days: number,
+): Promise<RegistrationsGraphDto[]> => {
+  const response = await apiProtected.get<RegistrationsGraphDto[]>(
+    "/admins/stats/registrations",
+    {
+      params: { days },
+    },
+  );
   return response.data;
 };
 
@@ -81,10 +86,15 @@ export const getAdminFunnelSummary = async (): Promise<FunnelSummaryDto> => {
   return response.data;
 };
 
-export const getAdminFunnelDaily = async (days: number): Promise<FunnelDailyRowDto[]> => {
-  const response = await apiProtected.get<FunnelDailyRowDto[]>("/admins/stats/funnel/daily", {
-    params: { days },
-  });
+export const getAdminFunnelDaily = async (
+  days: number,
+): Promise<FunnelDailyRowDto[]> => {
+  const response = await apiProtected.get<FunnelDailyRowDto[]>(
+    "/admins/stats/funnel/daily",
+    {
+      params: { days },
+    },
+  );
   return response.data;
 };
 
@@ -93,9 +103,14 @@ export const getAdminRandomMixConfig = async (): Promise<RandomMixConfigDto> => 
   return response.data;
 };
 
-export const updateAdminRandomMixConfig = async (randomMixPercent: number): Promise<RandomMixConfigDto> => {
-  const response = await apiProtected.put<RandomMixConfigDto>("/admins/experiments/random-mix", {
-    random_mix_percent: randomMixPercent,
-  });
+export const updateAdminRandomMixConfig = async (
+  randomMixPercent: number,
+): Promise<RandomMixConfigDto> => {
+  const response = await apiProtected.put<RandomMixConfigDto>(
+    "/admins/experiments/random-mix",
+    {
+      random_mix_percent: randomMixPercent,
+    },
+  );
   return response.data;
 };

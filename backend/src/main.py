@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 def create_app(
     settings: Settings | None = None,
-    enable_rate_limiter: bool = True,
+    enable_rate_limiter: bool = False,
     check_db_on_startup: bool = True,
     enable_scheduler: bool | None = None,
 ) -> FastAPI:
@@ -50,7 +50,9 @@ def create_app(
                 storage = get_media_storage_service()
 
             should_run_scheduler = (
-                settings.SCHEDULER_ENABLED if enable_scheduler is None else enable_scheduler
+                settings.SCHEDULER_ENABLED
+                if enable_scheduler is None
+                else enable_scheduler
             )
             if should_run_scheduler:
                 scheduler = init_scheduler(settings)
@@ -64,10 +66,13 @@ def create_app(
     app = FastAPI(
         lifespan=lifespan,
         title="Backend Template",
-        debug=settings.DEBUG if settings.DEBUG is not None else settings.APP_STAGE == "dev",
+        debug=settings.DEBUG
+        if settings.DEBUG is not None
+        else settings.APP_STAGE == "dev",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
+        swagger_ui_oauth2_redirect_url="/api/docs/oauth2-redirect",
     )
     app.state.enable_rate_limit = enable_rate_limiter
     app.add_middleware(RequestTracingMiddleware)
@@ -75,7 +80,6 @@ def create_app(
 
     app.include_router(get_api_routers())
     app.include_router(get_webhooks())
-
 
     @app.get("/api/ping")
     async def ping():
@@ -120,14 +124,18 @@ def create_app(
                     response.raise_for_status()
                     ml_payload = response.json()
                 dependencies["ml"] = (
-                    "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                    "ok"
+                    if str(ml_payload.get("status", "")).strip().lower() != "down"
+                    else "error"
                 )
             except Exception as exc:
                 logger.warning("ML health check failed: %s", exc)
                 dependencies["ml"] = "error"
 
         return {
-            "status": "ok" if all(value == "ok" for value in dependencies.values()) else "degraded",
+            "status": "ok"
+            if all(value == "ok" for value in dependencies.values())
+            else "degraded",
             "timestamp": datetime.now(UTC).isoformat(),
             "version": settings.APP_VERSION,
             "dependencies": dependencies,
@@ -173,7 +181,9 @@ def create_app(
                         response.raise_for_status()
                         ml_payload = response.json()
                     checks["ml"] = (
-                        "ok" if str(ml_payload.get("status", "")).strip().lower() != "down" else "error"
+                        "ok"
+                        if str(ml_payload.get("status", "")).strip().lower() != "down"
+                        else "error"
                     )
                 except Exception as exc:
                     logger.warning("ML readiness check failed: %s", exc)

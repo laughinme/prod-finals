@@ -26,15 +26,29 @@ def upgrade() -> None:
         sa.Column("match_id", sa.Uuid(), nullable=False),
         sa.Column("conversation_id", sa.Uuid(), nullable=False),
         sa.Column("peer_user_id", sa.Uuid(), nullable=False),
-        sa.Column("notification_type", sa.String(length=32), nullable=False, server_default="match_created"),
+        sa.Column(
+            "notification_type",
+            sa.String(length=32),
+            nullable=False,
+            server_default="match_created",
+        ),
         sa.Column("seen_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["match_id"], ["matches.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["conversation_id"], ["conversations.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["conversation_id"], ["conversations.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["peer_user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id", "match_id", name="uq_match_notifications_user_match"),
+        sa.UniqueConstraint(
+            "user_id", "match_id", name="uq_match_notifications_user_match"
+        ),
     )
     op.create_index(
         "ix_match_notifications_user_seen_created",
@@ -45,5 +59,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_match_notifications_user_seen_created", table_name="match_notifications")
+    op.drop_index(
+        "ix_match_notifications_user_seen_created", table_name="match_notifications"
+    )
     op.drop_table("match_notifications")

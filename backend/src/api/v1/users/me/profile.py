@@ -9,11 +9,8 @@ from service.users import UserService, get_user_service
 
 router = APIRouter()
 
-@router.get(
-    path='/me',
-    response_model=UserModel,
-    summary='Get user account info'
-)
+
+@router.get(path="/me", response_model=UserModel, summary="Get user account info")
 async def profile(
     user: Annotated[User, Depends(auth_user)],
     svc: Annotated[UserService, Depends(get_user_service)],
@@ -21,11 +18,7 @@ async def profile(
     return await svc.serialize_user(user)
 
 
-@router.patch(
-    path='/me',
-    response_model=UserModel,
-    summary='Update user info'
-)
+@router.patch(path="/me", response_model=UserModel, summary="Update user info")
 async def update_profile(
     payload: UserPatch,
     user: Annotated[User, Depends(auth_user)],

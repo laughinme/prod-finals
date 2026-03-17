@@ -1,20 +1,20 @@
-# ML Service
+# ML сервис
 
-Internal FastAPI service for:
+Внутренний FastAPI-сервис для:
 
-- recommendations (`/v1/recommendations`)
-- explanations (`/v1/explanations/compatibility`)
-- feedback ingestion (`/v1/interactions/*`)
-- health (`/v1/health`)
+- рекомендаций (`/v1/recommendations`)
+- объяснений (`/v1/explanations/compatibility`)
+- приёма фидбэка (`/v1/interactions/*`)
+- health-check (`/v1/health`)
 
-## Infrastructure (like backend)
+## Инфраструктура (как у backend)
 
-- Poetry project file: `ml/pyproject.toml`
-- Fly config: `ml/fly.toml`
-- Docker image with Poetry install: `ml/Dockerfile`
+- Poetry-проект: `ml/pyproject.toml`
+- Конфиг Fly: `ml/fly.toml`
+- Docker-образ с установкой через Poetry: `ml/Dockerfile`
 - Runtime entrypoint: `ml/entry.sh`
 
-Fly deploy example:
+Пример деплоя во Fly:
 
 ```bash
 cd ml
@@ -22,46 +22,46 @@ fly launch --copy-config --no-deploy
 fly deploy
 ```
 
-## Run locally
+## Локальный запуск
 
 ```bash
 docker compose up -d ml-service
 ```
 
-Service URL: `http://localhost:8081`  
-Auth header: `X-Service-Token: dev-ml-token`
+URL сервиса: `http://localhost:8081`  
+Заголовок авторизации: `X-Service-Token: dev-ml-token`
 
-## Production training flow (manual)
+## Продовый флоу обучения (вручную)
 
-Training is disabled in deploy pipeline and disabled on service startup by default:
+Обучение отключено в deploy-пайплайне и по умолчанию не запускается при старте сервиса:
 
 - `ML_TRAIN_ON_START=false`
 - `ML_TRAIN_REQUIRED=false`
 
-Recommended flow:
+Рекомендуемый порядок:
 
-1. Deploy app (ML service starts in inference mode).
-2. SSH to VM.
-3. Run manual training script:
+1. Деплой приложения (ML-сервис стартует в режиме инференса).
+2. Подключение к VM по SSH.
+3. Запуск скрипта ручного обучения:
 
 ```bash
 cd /opt/chupapis
 bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv"
 ```
 
-ZIP URL is supported too:
+Поддерживается и ZIP URL:
 
 ```bash
 bash deploy/manual-train-ml.sh "https://example.com/path/to/train.zip"
 ```
 
-Optional second argument sets exact model key in S3:
+Опциональный второй аргумент задаёт точный ключ модели в S3:
 
 ```bash
 bash deploy/manual-train-ml.sh "https://example.com/path/to/train.csv" "ml-models/manual-v1.json"
 ```
 
-Optional third argument selects CSV path inside ZIP (when archive contains multiple CSV files):
+Опциональный третий аргумент задаёт путь до CSV внутри ZIP (когда в архиве несколько CSV):
 
 ```bash
 bash deploy/manual-train-ml.sh \
@@ -70,16 +70,16 @@ bash deploy/manual-train-ml.sh \
   "datasets/train.csv"
 ```
 
-What script does:
+Что делает скрипт:
 
-- starts MinIO and bucket init
-- downloads dataset from URL
-- trains model (`python -m ml.scripts.train_model`)
-- writes artifact to `/app/ml/artifacts/model.json` (docker volume)
-- uploads artifact to S3/MinIO
-- restarts `ml-service` to load fresh artifact
+- поднимает MinIO и инициализацию bucket
+- скачивает датасет по URL
+- обучает модель (`python -m ml.scripts.train_model`)
+- пишет артефакт в `/app/ml/artifacts/model.json` (docker volume)
+- загружает артефакт в S3/MinIO
+- перезапускает `ml-service`, чтобы подхватить свежий артефакт
 
-Upload config for `train_model.py`:
+Конфиг загрузки для `train_model.py`:
 
-- primary vars: `ML_MODEL_S3_*`
-- fallback vars: `STORAGE_*` (`STORAGE_ENDPOINT_INTERNAL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_PRIVATE_BUCKET`, `STORAGE_REGION`)
+- основные переменные: `ML_MODEL_S3_*`
+- fallback-переменные: `STORAGE_*` (`STORAGE_ENDPOINT_INTERNAL`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_PRIVATE_BUCKET`, `STORAGE_REGION`)

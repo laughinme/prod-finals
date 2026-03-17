@@ -30,10 +30,7 @@ class RolesInterface:
         return list(rows)
 
     async def get_by_slug(self, slug: str) -> Role | None:
-        stmt = (
-            select(Role)
-            .where(Role.slug == slug)
-        )
+        stmt = select(Role).where(Role.slug == slug)
         return await self.session.scalar(stmt)
 
     async def get_by_slugs(self, slugs: Iterable[str]) -> list[Role]:
@@ -41,10 +38,7 @@ class RolesInterface:
         if not slugs:
             return []
 
-        stmt = (
-            select(Role)
-            .where(Role.slug.in_(slugs))
-        )
+        stmt = select(Role).where(Role.slug.in_(slugs))
         rows = await self.session.scalars(stmt)
         fetched = list(rows)
         slug_to_role = {role.slug: role for role in fetched}

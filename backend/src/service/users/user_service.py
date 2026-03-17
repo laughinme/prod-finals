@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 
 from core.config import get_settings
+
 # from core.rbac import permissions_cache_key
 from database.redis import CacheRepo
 from database.relational_db import (
@@ -63,7 +64,7 @@ class UserService:
         self.ml_facade = ml_facade
         self.cache_repo = cache_repo
         self.settings = get_settings()
-        
+
     async def get_user(self, user_id: UUID | str) -> User | None:
         return await self.user_repo.get_by_id(user_id)
 
@@ -89,7 +90,8 @@ class UserService:
             gender=user.gender if user.gender in PUBLIC_MATCH_GENDERS else None,
             bio=user.bio,
             looking_for_genders=[
-                gender for gender in list(user.looking_for_genders or [])
+                gender
+                for gender in list(user.looking_for_genders or [])
                 if gender in PUBLIC_MATCH_GENDERS
             ],
             age_range=AgeRange(**user.age_range) if user.age_range else None,
@@ -147,7 +149,8 @@ class UserService:
                 user.looking_for_genders = [
                     value.value if hasattr(value, "value") else value
                     for value in (prefs["looking_for_genders"] or [])
-                    if (value.value if hasattr(value, "value") else value) in PUBLIC_MATCH_GENDERS
+                    if (value.value if hasattr(value, "value") else value)
+                    in PUBLIC_MATCH_GENDERS
                 ]
                 should_reset_feed_batch = True
                 should_sync_preferences_answers = True
@@ -172,7 +175,8 @@ class UserService:
             user.looking_for_genders = [
                 value.value if hasattr(value, "value") else value
                 for value in (data.pop("looking_for_genders") or [])
-                if (value.value if hasattr(value, "value") else value) in PUBLIC_MATCH_GENDERS
+                if (value.value if hasattr(value, "value") else value)
+                in PUBLIC_MATCH_GENDERS
             ]
             should_reset_feed_batch = True
             should_sync_preferences_answers = True
@@ -222,7 +226,7 @@ class UserService:
                 user_id=user.id,
                 batch_date=datetime.now().date(),
             )
-            
+
         await self.uow.commit()
 
         refreshed_user = await self.user_repo.get_by_id(user.id)
@@ -260,7 +264,9 @@ class UserService:
             if gender in PUBLIC_MATCH_GENDERS
         ]
         if audiences:
-            goal_and_audience_answers.extend(f"audience:{gender}" for gender in audiences)
+            goal_and_audience_answers.extend(
+                f"audience:{gender}" for gender in audiences
+            )
         else:
             goal_and_audience_answers.append("audience:anyone")
 
@@ -292,7 +298,9 @@ class UserService:
         if content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
             raise UnsupportedAvatarContentTypeError(list(ALLOWED_AVATAR_CONTENT_TYPES))
 
-        object_key = self.media_storage.build_avatar_key(user.id, filename, content_type)
+        object_key = self.media_storage.build_avatar_key(
+            user.id, filename, content_type
+        )
         upload_url = self.media_storage.create_presigned_upload_url(
             bucket=self.settings.STORAGE_PUBLIC_BUCKET,
             key=object_key,
@@ -309,7 +317,9 @@ class UserService:
             expires_in=self.settings.STORAGE_PRESIGN_EXPIRES_SEC,
         )
 
-    async def confirm_avatar_upload(self, *, user: User, file_key: str) -> AvatarResponse:
+    async def confirm_avatar_upload(
+        self, *, user: User, file_key: str
+    ) -> AvatarResponse:
         expected_prefix = f"avatars/{user.id}/"
         if not file_key.startswith(expected_prefix):
             raise InvalidAvatarObjectKeyError()
