@@ -3,36 +3,22 @@ import { format } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
-  Activity,
   AlertCircle,
   Ban,
-  Bot,
-  ChartColumn,
   CheckCircle2,
   Clock3,
   Flame,
   Loader2,
   MessageSquareWarning,
-  MessageCircleMore,
   RefreshCcw,
   ShieldAlert,
-  Sparkles,
   UserRoundX,
   Users,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts";
 import { toast } from "sonner";
 
 import { useAdminDashboard } from "@/features/admin/useAdminDashboard";
-import { useAdminRandomMixSettings } from "@/features/admin/useAdminRandomMixSettings";
 import {
   ChartContainer,
   ChartTooltip,
@@ -71,31 +57,15 @@ import {
 } from "@/shared/api/admin/moderation";
 
 import ModerationPage from "./ModerationPage";
-import {
-  formatDayLabel,
-  formatNumber as formatNumberLabel,
-  formatPercent as formatPercentLabel,
-} from "./utils";
 
 type ReviewStatusFilter = ModerationReportStatusDto | "all";
 type ReviewDecision = Exclude<ModerationReportStatusDto, "pending">;
-type OverviewRow = {
-  day: string;
-  registrations: number;
-  feedServed: number;
-  matches: number;
-  firstMessages: number;
-  replies: number;
-  safetyEvents: number;
-};
 
 const OVERVIEW_CHART_CONFIG = {
   registrations: { label: "Registrations", color: "#0ea5e9" },
-  feedServed: { label: "Feed served", color: "#f59e0b" },
   matches: { label: "Matches", color: "#0f766e" },
-  firstMessages: { label: "First messages", color: "#ec4899" },
-  replies: { label: "Replies", color: "#8b5cf6" },
-  safetyEvents: { label: "Safety events", color: "#ef4444" },
+  messages: { label: "First messages", color: "#2563eb" },
+  reports: { label: "Reports", color: "#dc2626" },
 };
 
 function formatPercent(value: number) {
@@ -218,44 +188,28 @@ function SegmentTable({
 
 function OverviewTab() {
   const { t } = useTranslation();
-  const randomMix = useAdminRandomMixSettings();
   const { userSummary, registrations, funnelSummary, funnelDaily, isError, isLoading } =
     useAdminDashboard();
 
-  const dailyRows = useMemo<OverviewRow[]>(() => {
-    const map = new Map<string, OverviewRow>();
-    for (const item of registrations) {
-      map.set(item.day, {
-        day: item.day,
-        registrations: item.count,
-        feedServed: 0,
-        matches: 0,
-        firstMessages: 0,
-        replies: 0,
-        safetyEvents: 0,
-      });
-    }
+  const overviewRows = useMemo(
+    () =>
+      funnelDaily.map((row) => ({
+        day: format(new Date(row.day), "dd.MM"),
+        matches: row.counts.match_created,
+        messages: row.counts.chat_first_message_sent,
+        reports: row.counts.user_reported,
+      })),
+    [funnelDaily],
+  );
 
-    for (const item of funnelDaily) {
-      const existing = map.get(item.day) ?? {
-        day: item.day,
-        registrations: 0,
-        feedServed: 0,
-        matches: 0,
-        firstMessages: 0,
-        replies: 0,
-        safetyEvents: 0,
-      };
-      existing.feedServed += item.counts.feed_served;
-      existing.matches += item.counts.match_created;
-      existing.firstMessages += item.counts.chat_first_message_sent;
-      existing.replies += item.counts.chat_first_reply_received;
-      existing.safetyEvents += item.counts.user_blocked + item.counts.user_reported;
-      map.set(item.day, existing);
-    }
-
-    return Array.from(map.values()).sort((a, b) => a.day.localeCompare(b.day));
-  }, [funnelDaily, registrations]);
+  const registrationRows = useMemo(
+    () =>
+      registrations.map((row) => ({
+        day: format(new Date(row.day), "dd.MM"),
+        registrations: row.count,
+      })),
+    [registrations],
+  );
 
   if (isLoading) {
     return (
@@ -265,7 +219,7 @@ function OverviewTab() {
     );
   }
 
-  if (!userSummary || !funnelSummary) {
+  if (isError || !userSummary || !funnelSummary) {
     return (
       <Card className="border-destructive/30 bg-destructive/5">
         <CardHeader>
@@ -281,479 +235,146 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="bg-slate-900 text-white">
-          {t("admin.generated_at", {
-            date: funnelSummary.generated_at
-              ? new Intl.DateTimeFormat("ru-RU", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }).format(new Date(funnelSummary.generated_at))
-              : "—",
-          })}
-        </Badge>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={<Users className="h-5 w-5 text-primary" />}
+          label={t("admin.dashboard.cards.total_users")}
+          value={userSummary.total_users}
+        />
+        <MetricCard
+          icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+          label={t("admin.dashboard.cards.onboarded")}
+          value={userSummary.onboarded_users}
+        />
+        <MetricCard
+          icon={<UserRoundX className="h-5 w-5 text-amber-600" />}
+          label={t("admin.dashboard.cards.banned")}
+          value={userSummary.banned_users}
+        />
+        <MetricCard
+          icon={<Flame className="h-5 w-5 text-rose-600" />}
+          label={t("admin.dashboard.cards.last_24h")}
+          value={userSummary.registered_last_24h}
+        />
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <OverviewMetricCard
-          icon={Users}
-          title={t("admin.total_users")}
-          value={formatNumberLabel(userSummary.total_users)}
-          hint={t("admin.onboarded_share", {
-            value: formatPercentLabel(
-              userSummary.total_users > 0
-                ? userSummary.onboarded_users / userSummary.total_users
-                : 0,
-            ),
-          })}
-        />
-        <OverviewMetricCard
-          icon={Sparkles}
-          title={t("admin.matches_created")}
-          value={formatNumberLabel(funnelSummary.totals.match_created)}
-          hint={t("admin.match_rate", {
-            value: formatPercentLabel(funnelSummary.conversions.match_rate_from_likes),
-          })}
-        />
-        <OverviewMetricCard
-          icon={MessageCircleMore}
-          title={t("admin.first_replies")}
-          value={formatNumberLabel(funnelSummary.totals.chat_first_reply_received)}
-          hint={t("admin.reply_rate", {
-            value: formatPercentLabel(
-              funnelSummary.conversions.first_reply_rate_from_first_messages,
-            ),
-          })}
-        />
-        <OverviewMetricCard
-          icon={ShieldAlert}
-          title={t("admin.safety_events")}
-          value={formatNumberLabel(
-            funnelSummary.totals.user_blocked + funnelSummary.totals.user_reported,
-          )}
-          hint={t("admin.negative_rate", {
-            value: formatPercentLabel(
-              funnelSummary.conversions.negative_outcome_rate_from_matches,
-            ),
-          })}
-        />
-      </section>
-
-      <section className="grid items-start gap-4 xl:grid-cols-[1.7fr_1fr]">
-        <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <Card className="rounded-3xl border-border/60 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>{t("admin.activity_timeline")}</CardTitle>
-            <CardDescription>{t("admin.activity_timeline_description")}</CardDescription>
+            <CardTitle>{t("admin.dashboard.registrations_title")}</CardTitle>
+            <CardDescription>{t("admin.dashboard.registrations_description")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={OVERVIEW_CHART_CONFIG} className="h-80 w-full">
-              <AreaChart data={dailyRows} margin={{ left: 8, right: 8, top: 12 }}>
-                <defs>
-                  <linearGradient id="registrationsFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="var(--color-registrations)"
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="var(--color-registrations)"
-                      stopOpacity={0.03}
-                    />
-                  </linearGradient>
-                  <linearGradient id="feedServedFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.03} />
-                  </linearGradient>
-                </defs>
+            <ChartContainer config={OVERVIEW_CHART_CONFIG} className="h-[260px] w-full">
+              <LineChart data={registrationRows}>
                 <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickFormatter={formatDayLabel}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis tickLine={false} axisLine={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
+                <Line
                   dataKey="registrations"
-                  stroke="var(--color-registrations)"
-                  fill="url(#registrationsFill)"
-                  strokeWidth={2}
-                />
-                <Area
                   type="monotone"
-                  dataKey="feedServed"
-                  stroke="#f59e0b"
-                  fill="url(#feedServedFill)"
-                  strokeWidth={2}
+                  stroke="var(--color-registrations)"
+                  strokeWidth={3}
+                  dot={false}
                 />
-              </AreaChart>
+              </LineChart>
             </ChartContainer>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
+        <Card className="rounded-3xl border-border/60 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>{t("admin.quality_snapshot")}</CardTitle>
-            <CardDescription>{t("admin.quality_snapshot_description")}</CardDescription>
+            <CardTitle>{t("admin.dashboard.funnel_title")}</CardTitle>
+            <CardDescription>{t("admin.dashboard.funnel_description")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
-            <QualityItem
-              label={t("admin.like_rate_label")}
-              value={formatPercentLabel(funnelSummary.conversions.like_rate)}
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <MetricStat
+              label={t("admin.dashboard.metrics.feed_served")}
+              value={funnelSummary.totals.feed_served}
             />
-            <QualityItem
-              label={t("admin.message_after_match")}
-              value={formatPercentLabel(funnelSummary.conversions.first_message_rate_from_matches)}
+            <MetricStat
+              label={t("admin.dashboard.metrics.likes")}
+              value={funnelSummary.totals.feed_like}
             />
-            <QualityItem
-              label={t("admin.reply_after_message")}
-              value={formatPercentLabel(
-                funnelSummary.conversions.first_reply_rate_from_first_messages,
-              )}
+            <MetricStat
+              label={t("admin.dashboard.metrics.matches")}
+              value={funnelSummary.totals.match_created}
             />
-            <QualityItem
-              label={t("admin.explanation_opens")}
-              value={formatNumberLabel(funnelSummary.totals.feed_explanation_opened)}
+            <MetricStat
+              label={t("admin.dashboard.metrics.first_messages")}
+              value={funnelSummary.totals.chat_first_message_sent}
             />
-            <QualityItem
-              label={t("admin.banned_users")}
-              value={formatNumberLabel(userSummary.banned_users)}
+            <MetricStat
+              label={t("admin.dashboard.metrics.first_replies")}
+              value={funnelSummary.totals.chat_first_reply_received}
             />
-            <QualityItem
-              label={t("admin.registered_last_24h")}
-              value={formatNumberLabel(userSummary.registered_last_24h)}
+            <MetricStat
+              label={t("admin.dashboard.metrics.reports")}
+              value={funnelSummary.totals.user_reported}
             />
           </CardContent>
         </Card>
-      </section>
+      </div>
 
-      <section className="grid items-start gap-4 xl:grid-cols-[1.2fr_1fr]">
-        <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
+      <div className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
+        <Card className="rounded-3xl border-border/60 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>{t("admin.daily_funnel")}</CardTitle>
-            <CardDescription>{t("admin.daily_funnel_description")}</CardDescription>
+            <CardTitle>{t("admin.dashboard.daily_outcomes_title")}</CardTitle>
+            <CardDescription>{t("admin.dashboard.daily_outcomes_description")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={OVERVIEW_CHART_CONFIG} className="h-80 w-full">
-              <BarChart data={dailyRows} margin={{ left: 8, right: 8, top: 12 }}>
+            <ChartContainer config={OVERVIEW_CHART_CONFIG} className="h-[280px] w-full">
+              <BarChart data={overviewRows}>
                 <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="day"
-                  tickFormatter={formatDayLabel}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis tickLine={false} axisLine={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="matches"
-                  fill="var(--color-matches)"
-                  radius={[8, 8, 0, 0]}
-                />
-                <Bar
-                  dataKey="firstMessages"
-                  fill="#ec4899"
-                  radius={[8, 8, 0, 0]}
-                />
-                <Bar dataKey="replies" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="safetyEvents" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="matches" fill="var(--color-matches)" radius={8} />
+                <Bar dataKey="messages" fill="var(--color-messages)" radius={8} />
+                <Bar dataKey="reports" fill="var(--color-reports)" radius={8} />
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
 
-        <div className="grid gap-4">
-          <OverviewSegmentCard
-            title={t("admin.by_source")}
-            description={t("admin.by_source_description")}
-            items={funnelSummary.by_user_source}
-          />
-          <OverviewSegmentCard
-            title={t("admin.by_decision_mode")}
-            description={t("admin.by_decision_mode_description")}
-            items={funnelSummary.by_decision_mode}
-          />
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-2">
-        <SegmentMatrixCard
-          title={t("admin.segment_matrix")}
-          description={t("admin.segment_matrix_description")}
-          items={funnelSummary.by_segment}
-        />
-        <div className="grid gap-4">
-          <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
-            <CardHeader>
-              <CardTitle>{t("admin.notes_title")}</CardTitle>
-              <CardDescription>{t("admin.notes_description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm text-muted-foreground">
-              <InsightRow
-                icon={Bot}
-                title={t("admin.insight_model_title")}
-                text={t("admin.insight_model_text")}
-              />
-              <InsightRow
-                icon={Activity}
-                title={t("admin.insight_dataset_title")}
-                text={t("admin.insight_dataset_text")}
-              />
-              <InsightRow
-                icon={ChartColumn}
-                title={t("admin.insight_funnel_title")}
-                text={t("admin.insight_funnel_text")}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
-            <CardHeader>
-              <CardTitle>{t("admin.random_mix_title")}</CardTitle>
-              <CardDescription>{t("admin.random_mix_description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t("admin.random_mix_current")}</span>
-                <span className="font-semibold">{randomMix.draftPercent}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={80}
-                step={5}
-                value={randomMix.draftPercent}
-                onChange={(event) => randomMix.setDraftPercent(Number(event.target.value))}
-                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-amber-500"
-              />
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>{t("admin.random_mix_hint_low")}</span>
-                <span>{t("admin.random_mix_hint_high")}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-muted-foreground">
-                  {randomMix.updatedAt
-                    ? t("admin.random_mix_updated_at", {
-                        date: new Intl.DateTimeFormat("ru-RU", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(randomMix.updatedAt)),
-                      })
-                    : t("admin.random_mix_not_set")}
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => void randomMix.save()}
-                  disabled={
-                    randomMix.isLoading || randomMix.isSaving || !randomMix.isDirty
-                  }
-                >
-                  {randomMix.isSaving
-                    ? t("admin.random_mix_saving")
-                    : t("admin.random_mix_save")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {isError ? (
-        <Card className="rounded-[28px] border-destructive/30 bg-destructive/5">
+        <Card className="rounded-3xl border-border/60 bg-card/90 shadow-sm">
           <CardHeader>
-            <CardTitle>{t("admin.partial_data_title")}</CardTitle>
-            <CardDescription>{t("admin.partial_data_description")}</CardDescription>
+            <CardTitle>{t("admin.dashboard.conversions_title")}</CardTitle>
+            <CardDescription>{t("admin.dashboard.conversions_description")}</CardDescription>
           </CardHeader>
+          <CardContent className="space-y-3">
+            <ConversionStat
+              label={t("admin.dashboard.conversions.like_rate")}
+              value={funnelSummary.conversions.like_rate}
+            />
+            <ConversionStat
+              label={t("admin.dashboard.conversions.match_rate")}
+              value={funnelSummary.conversions.match_rate_from_likes}
+            />
+            <ConversionStat
+              label={t("admin.dashboard.conversions.first_message_rate")}
+              value={funnelSummary.conversions.first_message_rate_from_matches}
+            />
+            <ConversionStat
+              label={t("admin.dashboard.conversions.first_reply_rate")}
+              value={funnelSummary.conversions.first_reply_rate_from_first_messages}
+            />
+            <ConversionStat
+              label={t("admin.dashboard.conversions.negative_rate")}
+              value={funnelSummary.conversions.negative_outcome_rate_from_matches}
+            />
+          </CardContent>
         </Card>
-      ) : null}
-    </div>
-  );
-}
+      </div>
 
-function OverviewMetricCard({
-  icon: Icon,
-  title,
-  value,
-  hint,
-}: {
-  icon: typeof Users;
-  title: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <Card className="rounded-3xl border-border/80 bg-card/95">
-      <CardHeader className="gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-        <div>
-          <CardDescription>{title}</CardDescription>
-          <CardTitle className="mt-2 text-3xl font-semibold tracking-tight">{value}</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{hint}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function QualityItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold text-foreground">{value}</span>
-    </div>
-  );
-}
-
-function OverviewSegmentCard({
-  title,
-  description,
-  items,
-}: {
-  title: string;
-  description: string;
-  items: Array<{
-    user_source: string | null;
-    decision_mode: string | null;
-    counts: {
-      feed_served: number;
-      match_created: number;
-      chat_first_reply_received: number;
-    };
-    conversions: { first_reply_rate_from_first_messages: number };
-  }>;
-}) {
-  return (
-    <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        {items.map((item, index) => {
-          const label = item.user_source ?? item.decision_mode ?? `segment-${index}`;
-          return (
-            <div
-              key={`${label}-${index}`}
-              className="rounded-2xl border border-border/70 bg-background/90 p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium capitalize">
-                  {label.replaceAll("_", " ")}
-                </span>
-                <Badge variant="outline">
-                  {formatPercentLabel(item.conversions.first_reply_rate_from_first_messages)}
-                </Badge>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {formatNumberLabel(item.counts.feed_served)}
-                  </div>
-                  <div>Feed</div>
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {formatNumberLabel(item.counts.match_created)}
-                  </div>
-                  <div>Matches</div>
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {formatNumberLabel(item.counts.chat_first_reply_received)}
-                  </div>
-                  <div>Replies</div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
-  );
-}
-
-function SegmentMatrixCard({
-  title,
-  description,
-  items,
-}: {
-  title: string;
-  description: string;
-  items: Array<{
-    user_source: string | null;
-    decision_mode: string | null;
-    counts: {
-      match_created: number;
-      chat_first_message_sent: number;
-      user_blocked: number;
-      user_reported: number;
-    };
-  }>;
-}) {
-  return (
-    <Card className="rounded-[28px] border-border/60 bg-card/90 shadow-sm">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        {items.map((item, index) => (
-          <div
-            key={`${item.user_source}-${item.decision_mode}-${index}`}
-            className="flex items-center justify-between rounded-2xl border border-border/70 bg-background/90 px-4 py-3"
-          >
-            <div>
-              <div className="text-sm font-medium">
-                {(item.user_source ?? "unknown").replaceAll("_", " ")} x{" "}
-                {(item.decision_mode ?? "unknown").replaceAll("_", " ")}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {formatNumberLabel(item.counts.match_created)} matches /{" "}
-                {formatNumberLabel(item.counts.chat_first_message_sent)} first messages
-              </div>
-            </div>
-            <Badge variant="outline">
-              {formatNumberLabel(item.counts.user_blocked + item.counts.user_reported)} safety
-            </Badge>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-function InsightRow({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: typeof Activity;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-foreground">{title}</div>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p>
-        </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <SegmentTable
+          title={t("admin.dashboard.segments.user_source_title")}
+          rows={funnelSummary.by_user_source}
+        />
+        <SegmentTable
+          title={t("admin.dashboard.segments.decision_mode_title")}
+          rows={funnelSummary.by_decision_mode}
+        />
       </div>
     </div>
   );
