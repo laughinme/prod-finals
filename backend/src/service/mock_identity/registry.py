@@ -104,10 +104,10 @@ _LAST_NAMES_BY_GENDER: dict[str, tuple[str, ...]] = {
 _DEFAULT_INTERESTS: tuple[str, ...] = ("coffee", "music", "travel")
 
 _SCENARIO_EMAIL_BY_DATASET_INDEX: dict[int, str] = {
-    1: "demo.food.a@tmatch.local",
-    2: "demo.food.b@tmatch.local",
-    3: "demo.style@tmatch.local",
-    4: "demo.cold@tmatch.local",
+    1: "demo.food.a@tmatch.example.com",
+    2: "demo.food.b@tmatch.example.com",
+    3: "demo.style@tmatch.example.com",
+    4: "demo.cold@tmatch.example.com",
 }
 
 

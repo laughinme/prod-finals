@@ -1108,7 +1108,7 @@ async def test_seeded_demo_users_can_login_and_get_feed(redis_client):
     ) as seeded_client:
         login = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": "demo.food.a@tmatch.local", "password": "DemoPass123!"},
+            json={"email": "demo.food.a@tmatch.example.com", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert login.status_code == 200
@@ -1157,7 +1157,7 @@ async def test_seeded_dataset_and_cold_start_segments_are_visible_in_funnel(
     ) as seeded_client:
         dataset_login = await seeded_client.post(
             "/api/v1/auth/login",
-            json={"email": "demo.food.a@tmatch.local", "password": "DemoPass123!"},
+            json={"email": "demo.food.a@tmatch.example.com", "password": "DemoPass123!"},
             headers=_mobile_headers(),
         )
         assert dataset_login.status_code == 200

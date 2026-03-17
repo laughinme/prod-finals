@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     MOCK_USER_SEED_ENABLED: bool = False
     MOCK_USER_SEED_LIMIT: int = 0
     MOCK_USER_SEED_PASSWORD: str = "DemoPass123!"
-    DEMO_ADMIN_EMAIL: str = "admin@demo.local"
+    DEMO_ADMIN_EMAIL: str = "admin@demo.example.com"
     DEMO_ADMIN_PASSWORD: str = "Admin12345!"
     CENTRIFUGO_ENABLED: bool = False
     CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api/publish"

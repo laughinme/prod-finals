@@ -14,28 +14,28 @@ DEMO_DATASET_ACCOUNTS: tuple[DemoDatasetAccount, ...] = (
     DemoDatasetAccount(
         dataset_index=1,
         demo_user_key="dataset_demo_1",
-        email="demo.food.a@tmatch.local",
+        email="demo.food.a@tmatch.example.com",
     ),
     DemoDatasetAccount(
         dataset_index=2,
         demo_user_key="dataset_demo_2",
-        email="demo.food.b@tmatch.local",
+        email="demo.food.b@tmatch.example.com",
     ),
     DemoDatasetAccount(
         dataset_index=3,
         demo_user_key="dataset_demo_3",
-        email="demo.style@tmatch.local",
+        email="demo.style@tmatch.example.com",
     ),
     DemoDatasetAccount(
         dataset_index=4,
         demo_user_key="dataset_demo_4",
-        email="demo.cold@tmatch.local",
+        email="demo.cold@tmatch.example.com",
     ),
 )
 
 DEMO_FEED_PAIR_BY_EMAIL: dict[str, str] = {
-    "demo.food.a@tmatch.local": "demo.food.b@tmatch.local",
-    "demo.food.b@tmatch.local": "demo.food.a@tmatch.local",
+    "demo.food.a@tmatch.example.com": "demo.food.b@tmatch.example.com",
+    "demo.food.b@tmatch.example.com": "demo.food.a@tmatch.example.com",
 }
 
 DEMO_DATASET_EMAIL_TO_KEY: dict[str, str] = {

@@ -16,22 +16,22 @@ from .base import SeedContext
 _SCENARIO_INTERESTS_BY_EMAIL: dict[str, tuple[str, ...]] = {
     # Scenario presets control vector shape for demo accounts.
     # food_a: food cluster; food_b: single-category style; cold: single-category baseline.
-    "demo.food.a@tmatch.local": (
+    "demo.food.a@tmatch.example.com": (
         "рестораны",
         "фаст_фуд",
         "супермаркеты",
         "рестораны",
         "фаст_фуд",
     ),
-    "demo.food.b@tmatch.local": ("одежда_обувь",),
-    "demo.style@tmatch.local": (
+    "demo.food.b@tmatch.example.com": ("одежда_обувь",),
+    "demo.style@tmatch.example.com": (
         "одежда_обувь",
         "развлечения",
         "транспорт",
         "одежда_обувь",
         "развлечения",
     ),
-    "demo.cold@tmatch.local": ("супермаркеты",),
+    "demo.cold@tmatch.example.com": ("супермаркеты",),
 }
 
 

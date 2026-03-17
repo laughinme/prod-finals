@@ -22,8 +22,8 @@ DEFAULT_COLLECTION = "user_profiles"
 DEFAULT_QDRANT_URL = "http://qdrant:6333"
 DEFAULT_FAVORITE_CATEGORIES = ("grocery", "cafe", "transport", "travel", "health")
 _SCENARIO_ONLY_CATEGORIES_BY_EMAIL: dict[str, tuple[str, ...]] = {
-    "demo.food.b@tmatch.local": ("одежда_обувь",),
-    "demo.cold@tmatch.local": ("супермаркеты",),
+    "demo.food.b@tmatch.example.com": ("одежда_обувь",),
+    "demo.cold@tmatch.example.com": ("супермаркеты",),
 }
 
 

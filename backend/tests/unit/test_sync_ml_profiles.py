@@ -19,7 +19,7 @@ def _profile(
 @pytest.mark.unit
 def test_demo_food_b_uses_single_style_category():
     profile = _profile(
-        email="demo.food.b@tmatch.local",
+        email="demo.food.b@tmatch.example.com",
         ml_user_id="food-b-id",
         interests=["рестораны", "фаст_фуд", "супермаркеты"],
     )
@@ -35,7 +35,7 @@ def test_demo_food_b_uses_single_style_category():
 @pytest.mark.unit
 def test_demo_cold_uses_single_non_restaurants_category():
     profile = _profile(
-        email="demo.cold@tmatch.local",
+        email="demo.cold@tmatch.example.com",
         ml_user_id="cold-id",
         interests=["рестораны", "развлечения", "транспорт"],
     )

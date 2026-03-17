@@ -15,11 +15,11 @@
 - ML OpenAPI (локально): <http://localhost:8081/openapi.json>
 - ML API спецификация в репо: [`docs/internal-ml-api.yaml`](docs/internal-ml-api.yaml)
 - Публичный API контракт (backend): [`docs/public-api-final.yaml`](docs/public-api-final.yaml)
-- Демо login: `demo.food.a@tmatch.local` / `DemoPass123!`
-- Демо login: `demo.food.b@tmatch.local` / `DemoPass123!`
-- Демо login: `demo.style@tmatch.local` / `DemoPass123!`
-- Демо login: `demo.cold@tmatch.local` / `DemoPass123!`
-- Админ login: `admin@demo.local` / `Admin12345!`
+- Демо login: `demo.food.a@tmatch.example.com` / `DemoPass123!`
+- Демо login: `demo.food.b@tmatch.example.com` / `DemoPass123!`
+- Демо login: `demo.style@tmatch.example.com` / `DemoPass123!`
+- Демо login: `demo.cold@tmatch.example.com` / `DemoPass123!`
+- Админ login: `admin@demo.example.com` / `Admin12345!`
 
 ## E2E пользовательский путь
 

@@ -13,7 +13,7 @@ type Mode = "login" | "register";
 const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     key: "food_a",
-    email: "demo.food.a@tmatch.local",
+    email: "demo.food.a@tmatch.example.com",
     password: "DemoPass123!",
     titleKey: "auth.demo_account_food_a_title",
     scenarioKey: "auth.demo_account_food_a_scenario",
@@ -21,7 +21,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
   {
     key: "food_b",
-    email: "demo.food.b@tmatch.local",
+    email: "demo.food.b@tmatch.example.com",
     password: "DemoPass123!",
     titleKey: "auth.demo_account_food_b_title",
     scenarioKey: "auth.demo_account_food_b_scenario",
@@ -29,7 +29,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
   {
     key: "style",
-    email: "demo.style@tmatch.local",
+    email: "demo.style@tmatch.example.com",
     password: "DemoPass123!",
     titleKey: "auth.demo_account_style_title",
     scenarioKey: "auth.demo_account_style_scenario",
@@ -37,7 +37,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
   {
     key: "cold",
-    email: "demo.cold@tmatch.local",
+    email: "demo.cold@tmatch.example.com",
     password: "DemoPass123!",
     titleKey: "auth.demo_account_cold_title",
     scenarioKey: "auth.demo_account_cold_scenario",
@@ -45,7 +45,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   },
   {
     key: "admin",
-    email: "admin@demo.local",
+    email: "admin@demo.example.com",
     password: "Admin12345!",
     titleKey: "auth.demo_account_admin_title",
     scenarioKey: "auth.demo_account_admin_scenario",
