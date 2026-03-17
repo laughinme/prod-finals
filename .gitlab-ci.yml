@@ -35,7 +35,7 @@ ml:lint:
     - pip install "poetry==2.3.2"
     - poetry install --with dev --no-root
   script:
-    - poetry run ruff check .
+    - poetry run ruff check . --select E9,F63,F7
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'

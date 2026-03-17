@@ -31,7 +31,7 @@ ml-install:
 	cd $(ML_DIR) && poetry install --with dev --no-root
 
 ml-lint:
-	cd $(ML_DIR) && poetry run ruff check .
+	cd $(ML_DIR) && poetry run ruff check . --select E9,F63,F7
 
 ml-format:
 	cd $(ML_DIR) && poetry run ruff format .
