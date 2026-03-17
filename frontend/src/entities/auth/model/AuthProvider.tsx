@@ -24,6 +24,7 @@ import type {
 
 export const AUTH_LOGOUT_EVENT = "auth:logout";
 const SKIP_SESSION_RESTORE_STORAGE_KEY = "auth:skip-session-restore";
+const PROFILE_QUERY_KEY = ["profile", "me"] as const;
 
 const readSkipSessionRestoreFlag = (): boolean => {
   if (typeof window === "undefined") {
@@ -65,12 +66,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const skipSessionRestoreRef = useRef<boolean>(readSkipSessionRestoreFlag());
 
   const clearSession = useCallback((): void => {
+    const cachedUser = queryClient.getQueryData<AuthUser>(["me"]);
+    const email = cachedUser?.email ?? "anonymous";
+
     setAccessToken(null);
     setAxiosAccessToken(null);
     queryClient.removeQueries({ queryKey: ["me"] });
+    queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
     window.dispatchEvent(new CustomEvent(AUTH_LOGOUT_EVENT));
-    const cachedUser = queryClient.getQueryData<AuthUser>(["me"]);
-    const email = cachedUser?.email ?? "anonymous";
     localStorage.removeItem(`t-match:quiz-profile-preview:${email}`);
   }, [queryClient]);
 

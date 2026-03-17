@@ -3,15 +3,19 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import * as Sentry from "@sentry/react";
 
+import { useAuth } from "@/entities/auth";
 import { getProfile, patchProfile, setDefaultProfilePicture, uploadProfilePicture } from "@/shared/api/profile";
 import type { UserPatchPayload } from "@/entities/user/model";
 
 const PROFILE_KEY = ["profile", "me"] as const;
 
 export function useProfile() {
+    const auth = useAuth();
+
     return useQuery({
         queryKey: PROFILE_KEY,
         queryFn: getProfile,
+        enabled: Boolean(auth?.user),
         staleTime: 1000 * 60 * 5,
         retry: 1,
     });
