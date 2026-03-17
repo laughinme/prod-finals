@@ -30,7 +30,10 @@
     redir @qdrant_root /qdrant/dashboard 308
 
     handle_path /qdrant/* {
-        reverse_proxy qdrant:6333
+        reverse_proxy qdrant:6333 {
+            # Keep Qdrant dashboard redirects under /qdrant prefix.
+            header_down Location ^/(.*)$ /qdrant/$1
+        }
     }
     handle /openapi.json {
         reverse_proxy ml-service:8080
