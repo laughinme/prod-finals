@@ -4,6 +4,7 @@ import { MessageCircle } from "lucide-react";
 
 import { useChatPage } from "@/pages/Chat/model";
 import { Button } from "@/shared/components/ui/button";
+import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { ChatSidebar } from "@/widgets/ChatSidebar";
 import { ChatWindow } from "@/widgets/ChatWindow";
@@ -88,13 +89,15 @@ export default function ChatPage() {
               {...mobileSlide.sidebar}
               className="flex w-full flex-col border-r border-border bg-card"
             >
-              <ChatSidebar
-                search={chat.search}
-                setSearch={chat.setSearch}
-                visibleMatches={chat.visibleMatches}
-                activeMatchId={chat.activeMatch?.matchId}
-                onSelectMatch={chat.selectMatch}
-              />
+              <ErrorBoundary compact title="Не удалось загрузить список чатов">
+                <ChatSidebar
+                  search={chat.search}
+                  setSearch={chat.setSearch}
+                  visibleMatches={chat.visibleMatches}
+                  activeMatchId={chat.activeMatch?.matchId}
+                  onSelectMatch={chat.selectMatch}
+                />
+              </ErrorBoundary>
             </motion.div>
           ) : showChat ? (
             <motion.div
@@ -102,6 +105,57 @@ export default function ChatPage() {
               {...mobileSlide.chat}
               className="relative flex w-full flex-col bg-secondary/10"
             >
+              <ErrorBoundary compact title="Не удалось отобразить чат">
+                <ChatWindow
+                  isMobile={isMobile}
+                  onBack={handleBack}
+                  activeChatAvatar={chat.activeChatAvatar}
+                  activeChatName={chat.activeChatName}
+                  activeChatMeta={chat.activeChatMeta}
+                  showMenu={chat.showMenu}
+                  toggleMenu={chat.toggleMenu}
+                  activeMatch={chat.activeMatch}
+                  isClosingMatch={chat.isClosingMatch}
+                  onCloseMatch={chat.handleCloseMatch}
+                  conversationSafetyActions={chat.conversationSafetyActions}
+                  isBlockingUser={chat.isBlockingUser}
+                  onBlockUser={chat.handleBlockUser}
+                  isReportingUser={chat.isReportingUser}
+                  onReportUser={chat.handleReportUser}
+                  isLoadingConversation={chat.isLoadingConversation}
+                  messages={chat.messages}
+                  messagesEndRef={chat.messagesEndRef}
+                  conversationIsClosed={chat.conversationIsClosed}
+                  input={chat.input}
+                  setInput={chat.setInput}
+                  isSendingMessage={chat.isSendingMessage}
+                  onSend={chat.handleSend}
+                />
+              </ErrorBoundary>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex w-80 flex-col border-r border-border bg-card"
+          >
+            <ErrorBoundary compact title="Не удалось загрузить список чатов">
+              <ChatSidebar
+                search={chat.search}
+                setSearch={chat.setSearch}
+                visibleMatches={chat.visibleMatches}
+                activeMatchId={chat.activeMatch?.matchId}
+                onSelectMatch={chat.selectMatch}
+              />
+            </ErrorBoundary>
+          </motion.div>
+
+          <div className="relative flex flex-1 flex-col bg-secondary/10">
+            <ErrorBoundary compact title="Не удалось отобразить чат">
               <ChatWindow
                 isMobile={isMobile}
                 onBack={handleBack}
@@ -127,52 +181,7 @@ export default function ChatPage() {
                 isSendingMessage={chat.isSendingMessage}
                 onSend={chat.handleSend}
               />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      ) : (
-        <>
-          <motion.div
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex w-80 flex-col border-r border-border bg-card"
-          >
-            <ChatSidebar
-              search={chat.search}
-              setSearch={chat.setSearch}
-              visibleMatches={chat.visibleMatches}
-              activeMatchId={chat.activeMatch?.matchId}
-              onSelectMatch={chat.selectMatch}
-            />
-          </motion.div>
-
-          <div className="relative flex flex-1 flex-col bg-secondary/10">
-            <ChatWindow
-              isMobile={isMobile}
-              onBack={handleBack}
-              activeChatAvatar={chat.activeChatAvatar}
-              activeChatName={chat.activeChatName}
-              activeChatMeta={chat.activeChatMeta}
-              showMenu={chat.showMenu}
-              toggleMenu={chat.toggleMenu}
-              activeMatch={chat.activeMatch}
-              isClosingMatch={chat.isClosingMatch}
-              onCloseMatch={chat.handleCloseMatch}
-              conversationSafetyActions={chat.conversationSafetyActions}
-              isBlockingUser={chat.isBlockingUser}
-              onBlockUser={chat.handleBlockUser}
-              isReportingUser={chat.isReportingUser}
-              onReportUser={chat.handleReportUser}
-              isLoadingConversation={chat.isLoadingConversation}
-              messages={chat.messages}
-              messagesEndRef={chat.messagesEndRef}
-              conversationIsClosed={chat.conversationIsClosed}
-              input={chat.input}
-              setInput={chat.setInput}
-              isSendingMessage={chat.isSendingMessage}
-              onSend={chat.handleSend}
-            />
+            </ErrorBoundary>
           </div>
         </>
       )}

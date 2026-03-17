@@ -148,3 +148,8 @@
         -webkit-font-smoothing: antialiased;
     }
 }
+
+@utility wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}

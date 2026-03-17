@@ -281,7 +281,7 @@ export function MatchProfileDesktopCard({
                     ) : null}
 
                     {profile.location ? (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
                         <MapPin className="size-5 shrink-0" />
                         <span className="truncate">{profile.location}</span>
                       </span>
@@ -343,7 +343,7 @@ export function MatchProfileDesktopCard({
                           {t("discovery.why_matched")}
                         </h4>
                       </div>
-                      <p className="text-[18px] leading-[1.55] text-muted-foreground">
+                      <p className="wrap-break-word text-[18px] leading-[1.55] text-muted-foreground">
                         {detailsText}
                       </p>
                     </div>
@@ -355,7 +355,7 @@ export function MatchProfileDesktopCard({
                 <div>{customBioContent}</div>
               ) : profile.bio ? (
                 <div>
-                  <p className="text-lg leading-relaxed text-foreground/80">
+                  <p className="wrap-break-word text-lg leading-relaxed text-foreground/80">
                     {profile.bio}
                   </p>
                 </div>

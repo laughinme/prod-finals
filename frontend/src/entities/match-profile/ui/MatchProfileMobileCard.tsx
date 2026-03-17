@@ -175,7 +175,7 @@ export function MatchProfileMobileCard({
               {customBioContent ? (
                 <div>{customBioContent}</div>
               ) : profile.bio ? (
-                <p className="max-w-[18rem] text-[15px] leading-[1.35] text-white/80">
+                <p className="max-w-[18rem] wrap-break-word text-[15px] leading-[1.35] text-white/80">
                   {profile.bio}
                 </p>
               ) : null}
@@ -196,7 +196,7 @@ export function MatchProfileMobileCard({
                             <Sparkles className="size-3.5" />
                             {t("discovery.why_matched")}
                           </p>
-                          <p className="text-[15px] leading-8 text-white/80">
+                          <p className="wrap-break-word text-[15px] leading-8 text-white/80">
                             {profile.explanation}
                           </p>
                         </div>

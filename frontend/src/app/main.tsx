@@ -37,7 +37,44 @@ createRoot(rootElement, {
   onRecoverableError: Sentry.reactErrorHandler(),
 }).render(
   <StrictMode>
-    <Sentry.ErrorBoundary fallback={<p>An error has occurred</p>}>
+    <Sentry.ErrorBoundary
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background p-8 text-center">
+          <div className="flex size-20 items-center justify-center rounded-3xl bg-destructive/10">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-destructive"
+            >
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+            </svg>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Произошла непредвиденная ошибка
+            </h1>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Приложение столкнулось с проблемой. Попробуйте обновить страницу.
+            </p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Обновить страницу
+          </button>
+        </div>
+      }
+    >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <App />
