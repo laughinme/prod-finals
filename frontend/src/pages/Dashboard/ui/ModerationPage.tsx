@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import {
@@ -45,13 +45,14 @@ type ModerationPageProps = {
 export function ModerationPage({ embedded = false }: ModerationPageProps) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<"all" | "banned" | "active">("all");
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const apiFilter = {
     banned: filter === "all" ? null : filter === "banned",
   };
 
   const {
-    data,
+    users,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -66,9 +67,13 @@ export function ModerationPage({ embedded = false }: ModerationPageProps) {
     toggleBan({ userId, isBanned: !currentStatus });
   };
 
-  const users = (data?.pages.flatMap((page) => page.items) || []).filter(
-    (u): u is NonNullable<typeof u> => Boolean(u && u.id),
-  );
+  const handleLoadMore = () => {
+    if (!hasNextPage || isFetchingNextPage) {
+      return;
+    }
+
+    void fetchNextPage();
+  };
 
   const formatCreatedAt = (value?: string | Date | null) => {
     if (!value) return t("admin.moderation_page.date_unavailable");
@@ -77,6 +82,28 @@ export function ModerationPage({ embedded = false }: ModerationPageProps) {
       return t("admin.moderation_page.date_unavailable");
     return format(date, "MMM d, yyyy");
   };
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasNextPage) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting || isFetchingNextPage) return;
+        void fetchNextPage();
+      },
+      {
+        rootMargin: "320px 0px",
+      },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, users.length]);
 
   return (
     <div
@@ -290,24 +317,29 @@ export function ModerationPage({ embedded = false }: ModerationPageProps) {
         </div>
       )}
 
-      {hasNextPage && (
+      {(hasNextPage || isFetchingNextPage) && (
         <div className="flex justify-center pb-12 pt-6">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="min-w-[200px] shadow-sm"
+          <div
+            ref={loadMoreRef}
+            className="flex min-h-10 items-center justify-center"
           >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("common.loading")}
-              </>
-            ) : (
-              t("admin.moderation_page.load_more")
-            )}
-          </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-w-44 rounded-full px-6"
+              onClick={handleLoadMore}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("common.loading")}
+                </>
+              ) : (
+                t("admin.moderation_page.load_more")
+              )}
+            </Button>
+          </div>
         </div>
       )}
     </div>

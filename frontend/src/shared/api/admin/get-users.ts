@@ -6,18 +6,21 @@ export interface GetUsersRequestDto {
   cursor: string | null;
 }
 
+export interface GetUsersItemDto {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  banned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GetUsersResponseDto {
-  items: {
-    id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    avatar_url: string;
-    bio: string;
-    banned: boolean;
-    created_at: Date;
-    updated_at: Date;
-  }[];
+  items: GetUsersItemDto[];
+  next_cursor: string | null;
 }
 
 export const getAllUsersAdmin = async (
