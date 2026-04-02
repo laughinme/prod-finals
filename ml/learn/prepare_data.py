@@ -48,9 +48,6 @@ def transaction_from_mapping(row: Mapping[str, Any]) -> Transaction:
     if user_id.isdigit():
         user_id = f"user-{user_id}"
 
-    if user_id.isdigit():
-        user_id = f"user-{user_id}"
-
     return Transaction(
         user_id=user_id,
         category=_normalize_category(row.get("category_nm", "unknown")),
