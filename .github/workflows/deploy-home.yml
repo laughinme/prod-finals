@@ -95,7 +95,7 @@ jobs:
           HOST: ${{ vars.TMATCH_HOST }}
         run: |
           for i in $(seq 1 20); do
-            if curl -fsS "https://$HOST/api/health" | grep -q 'operating'; then echo "https://$HOST is up"; exit 0; fi
+            if curl -fsS "https://$HOST/api/health" | grep -q '"status":"ok"'; then echo "https://$HOST is up"; exit 0; fi
             sleep 6
           done
           echo "public /api/health did not answer as expected"; exit 1
