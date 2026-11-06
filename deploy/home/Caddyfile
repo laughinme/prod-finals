@@ -1,0 +1,45 @@
+# Public entry point on the home server. TLS is terminated by the proxy in front, so Caddy serves plain HTTP.
+# The Qdrant dashboard that the original Caddyfile exposes at /qdrant is left out: it has no authentication.
+{
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	encode gzip zstd
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle /connection/* {
+		reverse_proxy centrifugo:8000
+	}
+
+	handle /ml/* {
+		uri strip_prefix /ml
+		reverse_proxy ml-service:8080
+	}
+
+	@ml_docs path /docs /docs/* /redoc /redoc/* /openapi.json
+	handle @ml_docs {
+		reverse_proxy ml-service:8080
+	}
+
+	# The Host header reaches the S3 server unchanged: presigned URLs are signed for it.
+	handle /media-public/* {
+		reverse_proxy minio:9000
+	}
+
+	handle /media-private/* {
+		reverse_proxy minio:9000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
