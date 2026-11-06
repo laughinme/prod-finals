@@ -31,7 +31,7 @@ jobs:
         include:
           - image: backend
             context: backend
-            dockerfile: backend/Dockerfile
+            dockerfile: deploy/home/backend.Dockerfile
           - image: ml
             context: .
             dockerfile: deploy/home/ml.Dockerfile
