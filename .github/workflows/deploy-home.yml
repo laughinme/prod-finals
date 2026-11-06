@@ -34,7 +34,7 @@ jobs:
             dockerfile: backend/Dockerfile
           - image: ml
             context: .
-            dockerfile: ml/Dockerfile
+            dockerfile: deploy/home/ml.Dockerfile
           - image: web
             context: .
             dockerfile: deploy/home/web.Dockerfile
